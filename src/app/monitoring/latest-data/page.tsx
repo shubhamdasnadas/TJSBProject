@@ -1,65 +1,66 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Button,
-  Cascader,
-  DatePicker,
   Form,
   Input,
-  InputNumber,
   Radio,
   Select,
-  Switch,
-  TreeSelect,
   Row,
   Col,
   Space,
-  Divider,
   Checkbox,
   Table,
-  Empty,
 } from 'antd';
 import type { FormProps } from 'antd';
-import BoltIcon from '/public/icons/bolt.svg';
 
 type SizeType = Parameters<typeof Form>[0]['size'];
 
 export default function LatestDataPage() {
-  const [componentSize, setComponentSize] = useState<SizeType | 'default'>('default');
+  const [componentSize, setComponentSize] = useState<SizeType | 'default'>('small');
   const [form] = Form.useForm();
 
   const onFormLayoutChange: FormProps<any>['onValuesChange'] = ({ size }) => {
     setComponentSize(size);
   };
 
-  const columns = [
-    { title: 'Host', dataIndex: 'host', key: 'host' },
-    { title: 'Name', dataIndex: 'name', key: 'name' },
-    { title: 'Last check', dataIndex: 'lastCheck', key: 'lastCheck' },
-    { title: 'Last value', dataIndex: 'lastValue', key: 'lastValue' },
-    { title: 'Change', dataIndex: 'change', key: 'change' },
-    { title: 'Tags', dataIndex: 'tags', key: 'tags' },
+  // Memoize columns to prevent recreation on each render
+  const columns = useMemo(() => [
+    { title: 'Host', dataIndex: 'host', key: 'host', width: 120 },
+    { title: 'Name', dataIndex: 'name', key: 'name', width: 150 },
+    { title: 'Last check', dataIndex: 'lastCheck', key: 'lastCheck', width: 140 },
+    { title: 'Last value', dataIndex: 'lastValue', key: 'lastValue', width: 120 },
+    { title: 'Change', dataIndex: 'change', key: 'change', width: 100 },
+    { title: 'Tags', dataIndex: 'tags', key: 'tags', width: 150 },
     { title: 'Info', dataIndex: 'info', key: 'info' },
-  ];
+  ], []);
+
   const dataSource: any[] = [];
+
+  // Memoize empty state component
+  const emptyText = useMemo(() => (
+    <div style={{ textAlign: 'center', padding: 32 }}>
+      <div style={{ fontSize: 28, color: '#bfbfbf' }}>🔍</div>
+      <div style={{ marginTop: 8, fontSize: 14, color: '#8c8c8c', fontWeight: 500 }}>Filter is not set</div>
+      <div style={{ fontSize: 13, color: '#bfbfbf' }}>Use the filter to display results</div>
+    </div>
+  ), []);
 
   return (
     <div>
-
-
       <Form
         form={form}
-        labelCol={{ span: 8 }}
-        wrapperCol={{ span: 16 }}
         layout="vertical"
-        initialValues={{ size: componentSize }}
+        initialValues={{ size: 'small' }}
         onValuesChange={onFormLayoutChange}
-        size={componentSize as SizeType}
+        size="small"
+        style={{ background: '#fafafa', padding: '16px', borderRadius: '8px' }}
       >
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item label="Host groups">
+        <Row gutter={16}>
+          {/* Left Column */}
+          <Col span={8}>
+            <Form.Item label="Host groups" style={{ marginBottom: 12 }}>
               <Row gutter={8}>
                 <Col flex="1">
                   <Input placeholder="type here to search" />
@@ -67,62 +68,41 @@ export default function LatestDataPage() {
                 <Col>
                   <Button>Select</Button>
                 </Col>
-                <Form.Item label="Name">
+              </Row>
+            </Form.Item>
+
+            <Form.Item label="Hosts" style={{ marginBottom: 12 }}>
+              <Row gutter={8}>
+                <Col flex="1">
+                  <Input placeholder="type here to search" />
+                </Col>
+                <Col>
+                  <Button>Select</Button>
+                </Col>
+              </Row>
+            </Form.Item>
+
+            <Form.Item label="Name" style={{ marginBottom: 12 }}>
               <Input />
             </Form.Item>
-              </Row>
+
+            <Form.Item label="State" style={{ marginBottom: 12 }}>
+              <Radio.Group defaultValue="all" buttonStyle="solid" size="small">
+                <Radio.Button value="all">All</Radio.Button>
+                <Radio.Button value="normal">Normal</Radio.Button>
+                <Radio.Button value="not_supported">Not supported</Radio.Button>
+              </Radio.Group>
             </Form.Item>
 
-            <Form.Item label="Hosts">
-              <Row gutter={8}>
-                <Col flex="1">
-                  <Input placeholder="type here to search" />
-                </Col>
-                <Col>
-                  <Button>Select</Button>
-                </Col>
-              </Row>
+            <Form.Item style={{ marginBottom: 0 }}>
+              <Checkbox>Show details</Checkbox>
             </Form.Item>
-
-            
           </Col>
 
-          <Col span={12}>
-            <Form.Item label="Tags">
-              <Row align="middle" gutter={8} wrap={false}>
-                <Col>
-                  <Radio.Group size="small" defaultValue="and">
-                    <Radio.Button value="and">And/Or</Radio.Button>
-                    <Radio.Button value="or">Or</Radio.Button>
-                  </Radio.Group>
-                </Col>
-                <Col flex="1">
-                  <Input placeholder="tag" />
-                </Col>
-                <Col>
-                  <Select defaultValue="Contains" style={{ width: 120 }}>
-                    <Select.Option value="contains">Contains</Select.Option>
-                    <Select.Option value="equals">Equals</Select.Option>
-                    <Select.Option value="contains">Exits</Select.Option>
-                    <Select.Option value="contains">Does not Contains</Select.Option>
-                    <Select.Option value="contains">Does not exits</Select.Option>
-                    <Select.Option value="contains">Does not Equals</Select.Option>
-                  </Select>
-                </Col>
-                <Col flex="1">
-                  <Input placeholder="value" />
-                </Col>
-                <Col>
-                  <Button type="link">Remove</Button>
-                </Col>
-              </Row>
-              <div style={{ marginTop: 6 }}>
-                <Button type="link">Add</Button>
-              </div>
-            </Form.Item>
-
-            <Form.Item label="Show tags">
-              <Radio.Group defaultValue="3" buttonStyle="solid">
+          {/* Middle Column */}
+          <Col span={8}>
+            <Form.Item label="Show tags" style={{ marginBottom: 12 }}>
+              <Radio.Group defaultValue="3" buttonStyle="solid" size="small">
                 <Radio.Button value="none">None</Radio.Button>
                 <Radio.Button value="1">1</Radio.Button>
                 <Radio.Button value="2">2</Radio.Button>
@@ -130,72 +110,89 @@ export default function LatestDataPage() {
               </Radio.Group>
             </Form.Item>
 
-            <Form.Item label="Tag name">
-              <Radio.Group defaultValue="full" buttonStyle="solid">
+            <Form.Item label="Tag name" style={{ marginBottom: 12 }}>
+              <Radio.Group defaultValue="full" buttonStyle="solid" size="small">
                 <Radio.Button value="full">Full</Radio.Button>
-                <Radio.Button value="short">Shortened</Radio.Button>
+                <Radio.Button value="short">Short</Radio.Button>
                 <Radio.Button value="none">None</Radio.Button>
               </Radio.Group>
             </Form.Item>
-            <Form.Item label="Tag display priority">
+
+            <Form.Item label="Tag display priority" style={{ marginBottom: 12 }}>
               <Input placeholder="comma-separated list" />
             </Form.Item>
-            <div style={{}}>
+          </Col>
 
-              <Form.Item label="State">
-                <Radio.Group defaultValue="all" buttonStyle="solid">
-                  <Radio.Button value="all">All</Radio.Button>
-                  <Radio.Button value="normal">Normal</Radio.Button>
-                  <Radio.Button value="not_supported">Not supported</Radio.Button>
-                </Radio.Group>
-              </Form.Item>  </div>
-
-            <Form.Item>
-              <Checkbox>Show details</Checkbox>
+          {/* Right Column */}
+          <Col span={8}>
+            <Form.Item label="Tags" style={{ marginBottom: 12 }}>
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Row gutter={8} align="middle">
+                  <Col>
+                    <Radio.Group size="small" defaultValue="and">
+                      <Radio.Button value="and">And/Or</Radio.Button>
+                      <Radio.Button value="or">Or</Radio.Button>
+                    </Radio.Group>
+                  </Col>
+                  <Col flex="1">
+                    <Input placeholder="tag" size="small" />
+                  </Col>
+                </Row>
+                <Row gutter={8} align="middle">
+                  <Col span={12}>
+                    <Select defaultValue="Contains" style={{ width: '100%' }} size="small">
+                      <Select.Option value="contains">Contains</Select.Option>
+                      <Select.Option value="equals">Equals</Select.Option>
+                      <Select.Option value="exists">Exists</Select.Option>
+                      <Select.Option value="not_contains">Does not contain</Select.Option>
+                      <Select.Option value="not_exists">Does not exist</Select.Option>
+                      <Select.Option value="not_equals">Does not equal</Select.Option>
+                    </Select>
+                  </Col>
+                  <Col span={12}>
+                    <Input placeholder="value" size="small" />
+                  </Col>
+                </Row>
+                <div>
+                  <Button type="link" size="small" style={{ padding: '0 4px', height: 'auto' }}>+ Add</Button>
+                  <Button type="link" size="small" style={{ padding: '0 4px', height: 'auto', marginLeft: 8 }}>Remove</Button>
+                </div>
+              </Space>
             </Form.Item>
           </Col>
         </Row>
 
-        <Divider />
-
-        <Row justify="center" style={{ marginTop: 8 }} gutter={12}>
+        <Row justify="center" style={{ marginTop: 16 }} gutter={12}>
           <Col>
-            <Button>Save as</Button>
+            <Button size="middle">Save as</Button>
           </Col>
           <Col>
-            <Button type="primary" className="apply-bolt">Apply</Button>
+            <Button type="primary" size="middle" className="apply-bolt">Apply</Button>
           </Col>
           <Col>
-            <Button>Reset</Button>
+            <Button size="middle">Reset</Button>
           </Col>
         </Row>
       </Form>
 
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 20 }}>
         <Table
           columns={columns}
           dataSource={dataSource}
           pagination={false}
-          locale={{
-            emptyText: (
-              <div style={{ textAlign: 'center', padding: 48 }}>
-                <div style={{ fontSize: 32, color: '#bfbfbf' }}>🔍</div>
-                <div style={{ marginTop: 12, fontSize: 16, color: '#8c8c8c' }}>Filter is not set</div>
-                <div style={{ color: '#bfbfbf' }}>Use the filter to display results</div>
-              </div>
-            ),
-          }}
-          rowKey={(record) => record.key}
+          size="small"
+          locale={{ emptyText }}
+          rowKey={(record, index) => index?.toString() || '0'}
           bordered
         />
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f5f7f9', border: '1px solid #e8e8e8' }}>
-          <div style={{ color: '#8c8c8c' }}>0 selected</div>
-          <div>
-            <Button style={{ marginRight: 8 }} disabled>Display stacked graph</Button>
-            <Button style={{ marginRight: 8 }} disabled>Display graph</Button>
-            <Button disabled>Execute now</Button>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#f5f7f9', border: '1px solid #e8e8e8', borderTop: 'none' }}>
+          <div style={{ color: '#8c8c8c', fontSize: 13 }}>0 selected</div>
+          <Space size={8}>
+            <Button size="small" disabled>Display stacked graph</Button>
+            <Button size="small" disabled>Display graph</Button>
+            <Button size="small" disabled>Execute now</Button>
+          </Space>
         </div>
       </div>
     </div>
