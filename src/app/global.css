@@ -1,0 +1,37 @@
+*{
+     font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif !important;
+}
+/* ALIGN ALL MENU ITEMS (TOP LEVEL + SUBMENU) */
+.rms-menuitem,
+.rms-menuitem > a,
+.rms-menuitem-title,
+.rms-submenu-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding-left: 16px !important;
+  font-size: 15px !important;
+}
+
+/* Align icon and text */
+.rms-menuitem svg,
+.rms-submenu-title svg {
+  min-width: 20px !important;
+  margin-right: 10px !important;
+}
+
+/* NESTED SUBMENU ITEMS */
+.rms-submenu .rms-menuitem {
+  padding-left: 32px !important;
+}
+
+/* FIX first item (Dashboard), since its div wrapper differs */
+.rms-menu > .rms-menuitem,
+.rms-menu > div > .rms-menuitem {
+  padding-left: 16px !important;
+}
+
+/* Fix Dashboard text alignment */
+.rms-menu > div > .rms-menuitem * {
+  margin-left: 0 !important;
+}

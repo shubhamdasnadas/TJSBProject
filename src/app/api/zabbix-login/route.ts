@@ -6,10 +6,11 @@ export async function POST(req: Request) {
   try {
     const { username, password } = await req.json();
 
-    // const httpsAgent = new https.Agent({
-      // rejectUnauthorized: false,
-    // });
-
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    
+    console.log("Received login request for user:", username, password);
     const ZABBIX_URL =
       process.env.NEXT_PUBLIC_ZABBIX_URL ||
       "https://192.168.0.252/monitor/api_jsonrpc.php";
@@ -20,10 +21,11 @@ export async function POST(req: Request) {
       params: {
         username,
         password,
+        userData: false
+        
       },
       id: 1,
     };
-
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
@@ -32,9 +34,11 @@ export async function POST(req: Request) {
         "Origin": "https://192.168.0.252",
         "User-Agent": "ZabbixAPI-Client",
       },
-      // httpsAgent,
+      httpsAgent,
       timeout: 10000,
     });
+
+    // var user_token : any = response.data.result 
 
     if (response.data?.result) {
       return NextResponse.json({ result: response.data.result });
@@ -53,3 +57,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
+
