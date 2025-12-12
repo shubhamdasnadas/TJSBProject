@@ -133,7 +133,7 @@ export default function ProblemSeverity() {
         makeCol("Average", "average"),
         makeCol("Warning", "warning"),
         makeCol("Information", "information"),
-        makeCol("Not classified", "not_classified"),
+ 
     ];
 
     return (

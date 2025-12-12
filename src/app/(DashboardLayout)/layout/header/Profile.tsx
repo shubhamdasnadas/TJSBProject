@@ -1,93 +1,62 @@
+"use client";
+
 import React, { useState } from "react";
-import Link from "next/link";
 import {
   Avatar,
   Box,
   Menu,
   Button,
   IconButton,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
 } from "@mui/material";
-
-import { IconListCheck, IconMail, IconUser } from "@tabler/icons-react";
+import { IconMoon, IconSun, IconLogout } from "@tabler/icons-react";
+import { useThemeMode } from "@/app/context/ThemeContext";
 
 const Profile = () => {
-  const [anchorEl2, setAnchorEl2] = useState(null);
-  const handleClick2 = (event: any) => {
-    setAnchorEl2(event.currentTarget);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const { mode, toggleMode } = useThemeMode();
+
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
   };
-  const handleClose2 = () => {
-    setAnchorEl2(null);
+
+  const handleCloseMenu = () => setAnchorEl(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem("zabbix_auth");
+    localStorage.setItem("zabbix_login_status", "false");
+    window.location.href = "/authentication/login";
   };
 
   return (
     <Box>
-      <IconButton
-        size="large"
-        aria-label="show 11 new notifications"
-        color="inherit"
-        aria-controls="msgs-menu"
-        aria-haspopup="true"
-        sx={{
-          ...(typeof anchorEl2 === "object" && {
-            color: "primary.main",
-          }),
-        }}
-        onClick={handleClick2}
-      >
-        <Avatar
-          src="/images/profile/user-1.jpg"
-          alt="image"
-          sx={{
-            width: 35,
-            height: 35,
-          }}
-        />
+      <IconButton size="large" onClick={handleOpenMenu}>
+        <Avatar src="/images/profile/user-1.jpg" alt="Profile" sx={{ width: 36, height: 36 }} />
       </IconButton>
-      {/* ------------------------------------------- */}
-      {/* Message Dropdown */}
-      {/* ------------------------------------------- */}
-      <Menu
-        id="msgs-menu"
-        anchorEl={anchorEl2}
-        keepMounted
-        open={Boolean(anchorEl2)}
-        onClose={handleClose2}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-        sx={{
-          "& .MuiMenu-paper": {
-            width: "200px",
-          },
-        }}
-      >
-        <MenuItem>
-          <ListItemIcon>
-            <IconUser width={20} />
-          </ListItemIcon>
-          <ListItemText>My Profile</ListItemText>
-        </MenuItem>
-        <MenuItem>
-          <ListItemIcon>
-            <IconMail width={20} />
-          </ListItemIcon>
-          <ListItemText>My Account</ListItemText>
-        </MenuItem>
-        <MenuItem>
-          <ListItemIcon>
-            <IconListCheck width={20} />
-          </ListItemIcon>
-          <ListItemText>My Tasks</ListItemText>
-        </MenuItem>
-        <Box mt={1} py={1} px={2}>
+
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
+        <Box
+          sx={{
+            padding: "10px 14px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>Theme: {mode === "light" ? "Light" : "Dark"}</span>
+
+          <IconButton size="small" onClick={toggleMode}>
+            {mode === "light" ? <IconMoon size={18} /> : <IconSun size={18} />}
+          </IconButton>
+        </Box>
+
+        <Box px={2} pb={2}>
           <Button
-            href="/authentication/login"
-            variant="outlined"
-            color="primary"
-            component={Link}
             fullWidth
+            variant="contained"
+            color="primary"
+            startIcon={<IconLogout />}
+            onClick={handleLogout}
           >
             Logout
           </Button>

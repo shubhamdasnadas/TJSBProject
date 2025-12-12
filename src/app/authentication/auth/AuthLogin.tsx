@@ -62,6 +62,7 @@ const AuthLogin: React.FC<LoginProps> = ({
         console.log("User Token:", token);
 
         localStorage.setItem("zabbix_auth", token);
+        localStorage.setItem("zabbix_login_status", "true");
 
         router.push("/");
       } else {

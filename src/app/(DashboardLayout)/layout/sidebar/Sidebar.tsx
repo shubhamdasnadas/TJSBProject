@@ -1,6 +1,6 @@
 "use client";
 
-import { Drawer, Box, useMediaQuery, Theme } from "@mui/material";
+import { Drawer, useMediaQuery, Theme } from "@mui/material";
 import SidebarItems from "./SidebarItems";
 
 interface SidebarProps {
@@ -14,9 +14,7 @@ const Sidebar = ({
   isMobileSidebarOpen,
   onSidebarClose,
 }: SidebarProps) => {
-
   const lgUp = useMediaQuery((theme: Theme) => theme.breakpoints.up("lg"));
-
   const sidebarWidth = isSidebarOpen ? 260 : 70;
 
   // ==========================
@@ -33,7 +31,13 @@ const Sidebar = ({
           "& .MuiDrawer-paper": {
             width: sidebarWidth,
             boxSizing: "border-box",
-            borderRight: "1px solid #eee",
+
+            /* ⭐ Theme Variables */
+            background: "var(--sidebar-bg)",
+            color: "var(--sidebar-text)",
+            borderRight: "1px solid var(--border-color)",
+
+            transition: "background 0.3s ease, color 0.3s ease",
           },
         }}
       >
@@ -54,12 +58,16 @@ const Sidebar = ({
       ModalProps={{ keepMounted: true }}
       sx={{
         "& .MuiDrawer-paper": {
-          width: 260,        // ⭐ Force full desktop width on mobile
-          boxSizing: "border-box",
+          width: 260,
+
+          /* ⭐ Theme Variables */
+          background: "var(--sidebar-bg)",
+          color: "var(--sidebar-text)",
+
+          transition: "background 0.3s ease, color 0.3s ease",
         },
       }}
     >
-      {/* ⭐ Mobile always shows full expanded menu */}
       <SidebarItems isSidebarOpen={true} />
     </Drawer>
   );
