@@ -114,7 +114,7 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
           />
         ) : (
           <img
-            src="/images/logos/techsec_logo.png"
+            src="/images/logos/techsec_logo-removebg-preview.png"
             style={{ width: "40px" }}
             alt="Logo Icon"
           />

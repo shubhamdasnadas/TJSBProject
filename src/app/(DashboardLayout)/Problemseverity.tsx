@@ -6,184 +6,170 @@ import { Table, Typography } from "antd";
 
 const { Text } = Typography;
 
+/* --------------------- COLOR MAP --------------------- */
 const colors: Record<string, string> = {
-    disaster: "144,238,144",
-    high: "211,211,211",
-    average: "255,204,128",
-    warning: "255,245,157",
-    information: "173,216,230",
-    not_classified: "255,179,179",
+  disaster: "144,238,144",
+  high: "211,211,211",
+  average: "255,204,128",
+  warning: "255,245,157",
+  information: "173,216,230",
+  not_classified: "255,179,179",
 };
 
-export default function ProblemSeverity() {
-    const [rows, setRows] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const token =
-        typeof window !== "undefined" ? localStorage.getItem("zabbix_auth") : "";
+/* --------------------- STRICT SEVERITY TYPE --------------------- */
+type SeverityKey =
+  | "disaster"
+  | "high"
+  | "average"
+  | "warning"
+  | "information"
+  | "not_classified";
 
-    useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const res = await axios.post(
-                    "http://192.168.56.1:3000/api/zabbix/problems",
-                    { auth: token }
-                );
+/* --------------------- PRIORITY MAP --------------------- */
+const priorityMap: Record<number, SeverityKey> = {
+  5: "disaster",
+  4: "high",
+  3: "average",
+  2: "warning",
+  1: "information",
+};
 
-                const triggers = Array.isArray(res.data?.result)
-                    ? res.data.result
-                    : [];
+/* --------------------- TYPES --------------------- */
+interface HostItem {
+  name: string;
+}
 
-                const map: any = {};
-                const pri: any = {
-                    5: "disaster",
-                    4: "high",
-                    3: "average",
-                    2: "warning",
-                    1: "information",
-                };
+interface EventItem {
+  severity: number;
+  hosts?: HostItem[];
+}
 
-                triggers.forEach((t: any) =>
-                    t.groups.forEach((g: any) => {
-                        map[g.name] ??= {
-                            disaster: 0,
-                            high: 0,
-                            average: 0,
-                            warning: 0,
-                            information: 0,
-                            not_classified: 0,
-                        };
-                        const k = pri[t.priority] || "not_classified";
-                        map[g.name][k]++;
-                    })
-                );
+interface Props {
+  rangeData: {
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+  };
+  groupID: number[];
+}
 
-                setRows(
-                    Object.entries(map).map(([group, v]: any) => ({
-                        key: group,
-                        group,
-                        ...v,
-                    }))
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
+/* --------------------- MAIN COMPONENT --------------------- */
+export default function ProblemSeverity({ rangeData, groupID }: Props) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-        // 🔥 Call immediately on first load
-        load();
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("zabbix_auth")
+      : null;
 
-        // 🔄 Auto-refresh every 1 minute (60,000 milliseconds)
-        const interval = setInterval(() => {
-            console.log("🔄 Auto-refreshing severity table...");
-            load();
-        }, 60000);
+  const load = async () => {
+    setLoading(true);
 
-        // 🧹 Cleanup the interval on unmount
-        return () => clearInterval(interval);
-
-    }, [token]);
-
-    const Cell = (value: number, severity: string, record: any) => {
-        const total =
-            record.disaster +
-            record.high +
-            record.average +
-            record.warning +
-            record.information +
-            record.not_classified;
-
-        if (!value || !total) return <div style={{ height: 34 }} />;
-
-        const opacity = Math.max(0.25, value / total);
-
-        return (
-            <div
-                style={{
-                    background: `rgba(${colors[severity]}, ${opacity})`,
-                    height: 34,
-                    lineHeight: "34px",
-                    textAlign: "center",
-                    fontWeight: 600,
-                    width: "100%",
-                }}
-            >
-                {value}
-            </div>
-        );
-    };
-
-    const makeCol = (title: string, key: string) => ({
-        title,
-        dataIndex: key,
-        render: (_: any, r: any) => Cell(r[key], key, r),
-    });
-
-    const columns = [
+    try {
+      const res = await axios.post(
+        "http://192.168.56.1:3000/api/zabbix/problems",
         {
-            title: "Host Group",
-            dataIndex: "group",
-            width: 180,
-            render: (t: string) => (
-                <Text strong style={{ textAlign: "center", display: "block" }}>{t}</Text>
-            ),
-        },
-        makeCol("Disaster", "disaster"),
-        makeCol("High", "high"),
-        makeCol("Average", "average"),
-        makeCol("Warning", "warning"),
-        makeCol("Information", "information"),
- 
-    ];
-
-    return (
-        <>
-            <Table
-                columns={columns}
-                dataSource={rows}
-                loading={loading}
-                pagination={false}
-                bordered
-                size="small"
-                className="sev-table"
-                scroll={{ x: true }}
-                tableLayout="fixed"
-                style={{ marginTop: "20px" }}
-            />
-            <style jsx global>{`
-        .sev-table .ant-table,
-        .sev-table .ant-table-container,
-        .sev-table .ant-table-content {
-          background: white !important;
+          auth: token,
+          ...rangeData,
+          groupids: groupID,
         }
+      );
 
-        /* Fix header misalignment */
-        .sev-table .ant-table-thead > tr > th {
-          padding: 10px !important;
-          height: 40px !important;
-          line-height: 40px !important;
-          background: #fafafa !important;
-          font-weight: 600;
-          font-size: 13px;
-          text-align: center;
-          border-bottom: 2px solid #e5e5e5 !important;
-        }
+      const events: EventItem[] = Array.isArray(res.data?.events)
+        ? res.data.events
+        : [];
 
-        .sev-table .ant-table-tbody > tr > td {
-          padding: 0 !important;
-          border-color: #f0f0f0 !important;
-        }
+      /* ---------- FIX: Strongly typed map ---------- */
+      const map: Record<string, Record<SeverityKey, number>> = {};
 
-        .sev-table .ant-table-container {
-          border-radius: 10px;
-          overflow: hidden;
-          border: 1px solid #e5e7eb !important;
-        }
+      events.forEach((ev) => {
+        const sevKey: SeverityKey =
+          priorityMap[ev.severity] || "not_classified";
 
-        .sev-table table {
-          table-layout: fixed !important;
-        }
-      `}</style>
-        </>
-    );
+        (ev.hosts || []).forEach((host) => {
+          const name = host.name || "Unknown Host";
+
+          if (!map[name]) {
+            map[name] = {
+              disaster: 0,
+              high: 0,
+              average: 0,
+              warning: 0,
+              information: 0,
+              not_classified: 0,
+            };
+          }
+
+          map[name][sevKey] += 1; // ✅ ERROR FIXED
+        });
+      });
+
+      const formattedRows = Object.entries(map).map(([host, counts]) => ({
+        key: host,
+        host,
+        ...counts,
+      }));
+
+      setRows(formattedRows);
+    } catch (err) {
+      console.error("❌ ProblemSeverity fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* --------------------- EFFECT --------------------- */
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 60000);
+    return () => clearInterval(interval);
+  }, [rangeData, groupID]);
+
+  /* --------------------- TABLE COLUMNS --------------------- */
+  const columns = [
+    {
+      title: "Host",
+      dataIndex: "host",
+      render: (text: string) => <Text strong>{text}</Text>,
+    },
+    ...[
+      "disaster",
+      "high",
+      "average",
+      "warning",
+      "information",
+      "not_classified",
+    ].map((key) => ({
+      title: key.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      dataIndex: key,
+      render: (value: number) => (
+        <div
+          style={{
+            background: `rgba(${colors[key]}, ${Math.max(0.25, value / 10)})`,
+            padding: "6px 0",
+            textAlign: "center",
+            borderRadius: 4,
+            fontWeight: 600,
+          }}
+        >
+          {value}
+        </div>
+      ),
+    })),
+  ];
+
+  return (
+    <Table
+      columns={columns}
+      dataSource={rows}
+      loading={loading}
+      pagination={false}
+      bordered
+      size="small"
+      style={{ marginTop: 20 }}
+      rowKey="host"
+    />
+  );
 }

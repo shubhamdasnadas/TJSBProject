@@ -250,3 +250,12 @@ body {
   background: #333333 !important;
   border-color: #555555 !important;
 }
+
+/* Reduce spacing between date text and arrow */
+.ant-picker-suffix {
+  margin-left: 4px !important;     /* controls space before arrow */
+}
+
+.ant-picker {
+  padding-right: 6px !important;   /* reduces right empty space */
+}

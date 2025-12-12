@@ -11,7 +11,7 @@ const cardStyle: React.CSSProperties = {
   border: "1px solid #e5e5e5",
   borderRadius: 10,
   padding: 0,
-  width: "260px",     // fixed width → ensures one row
+  width: "263px",     // fixed width → ensures one row
   height: 150,
   boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
 };
@@ -34,7 +34,7 @@ const titleStyle: React.CSSProperties = {
 const valueStyle: React.CSSProperties = {
   textAlign: "center",
   fontWeight: 700,
-  fontSize: "24px",
+  fontSize: "22px",
   marginTop: 40,
   
 };
