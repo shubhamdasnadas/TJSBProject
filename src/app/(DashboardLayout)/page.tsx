@@ -7,6 +7,7 @@ import Problemseverity from "./Problemseverity";
 import RangePickerDemo from "./RangePickerDemo";
 import { Button } from "antd";
 import axios from "axios";
+import ProblemsTablePage from "./ProblemsTable";
 
 const Dashboard = () => {
   const [rangeData, setRangeData] = useState({
@@ -84,6 +85,7 @@ const Dashboard = () => {
       <DashboardSummaryCount rangeData={rangeData} groupID={groupID} />
       <DashboardSummary />
       <Problemseverity rangeData={rangeData} groupID={groupID} />
+      <ProblemsTablePage />
     </div>
   );
 };
