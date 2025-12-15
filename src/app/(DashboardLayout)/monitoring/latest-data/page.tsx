@@ -37,7 +37,8 @@ export default function LatestDataPage() {
   const [value, setValue] = useState<string[]>([]);
   const [tableData, setTableData] = useState<any[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
-
+  const user_token =
+    typeof window !== "undefined" ? localStorage.getItem("zabbix_auth") : null;
   const onFormLayoutChange: FormProps<any>['onValuesChange'] = ({ size }) => {
     setComponentSize(size);
   };
@@ -46,20 +47,19 @@ export default function LatestDataPage() {
   const handleGetHostGroups = async () => {
     setLoadingGroups(true);
 
-
     const payload = {
       jsonrpc: '2.0',
       method: 'hostgroup.get',
       params: {
         output: ['groupid', 'name'],
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
+      auth: user_token,
       id: 1,
     };
 
     try {
-      const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+      const response = await axios.post('http://192.168.56.1:3000/api/zabbix-proxy', payload, {
+        headers: { 'Content-Type': 'application/json', },
       });
 
       const items = response?.data?.result ?? [];
@@ -96,12 +96,12 @@ export default function LatestDataPage() {
         output: ['hostid', 'name'],
         groupids: groupIds,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
+      auth: user_token,
       id: 2,
     };
 
     try {
-      const res = await axios.post('/api/zabbix-proxy', payload, {
+      const res = await axios.post('http://192.168.56.1:3000/api/zabbix-proxy', payload, {
         headers: { 'Content-Type': 'application/json' },
       });
 
@@ -148,13 +148,13 @@ export default function LatestDataPage() {
       jsonrpc: '2.0',
       method: 'item.get',
       params,
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
+      auth: user_token,
       id: 3,
     };
 
     try {
-      const res = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+      const res = await axios.post('http://192.168.56.1:3000/api/zabbix-proxy', payload, {
+        headers: { 'Content-Type': 'application/json', },
       });
 
       const items = res?.data?.result ?? [];
@@ -215,7 +215,7 @@ export default function LatestDataPage() {
   };
 
   // REMOVE TAG ROW
-  const handleRemoveTag = (index:number) => {
+  const handleRemoveTag = (index: number) => {
     const updated = [...tags];
     updated.splice(index, 1);
     setTags(updated);
@@ -250,10 +250,15 @@ export default function LatestDataPage() {
             <Form.Item label="Host groups">
               <Select
                 mode="multiple"
-                placeholder="Select host groups"
+                maxCount={MAX_COUNT}
+                value={value}
+                loading={loadingGroups}
+                style={{ width: '100%' }}
+                onChange={setValue}
+                suffixIcon={suffix}
+                placeholder="Please select"
                 size="middle"
-                allowClear
-                style={{ width: "100%" }}
+                options={hostGroups.map(g => ({ value: g.groupid, label: g.name }))}
               />
             </Form.Item>
           </Col>
@@ -262,10 +267,15 @@ export default function LatestDataPage() {
             <Form.Item label="Hosts">
               <Select
                 mode="multiple"
-                placeholder="Select hosts"
+                maxCount={MAX_COUNT}
+                value={selectedHosts}
+                loading={loadingHosts}
+                style={{ width: '100%' }}
+                onChange={setSelectedHosts}
+                suffixIcon={suffix}
+                placeholder="Please select"
                 size="middle"
-                allowClear
-                style={{ width: "100%" }}
+                options={hosts.map(h => ({ value: h.hostid, label: h.name }))}
               />
             </Form.Item>
           </Col>
@@ -434,6 +444,7 @@ export default function LatestDataPage() {
               type="primary"
               size="middle"
               style={{ padding: "0 28px", borderRadius: 6 }}
+              onClick={handleApply}
             >
               Apply
             </Button>

@@ -26,7 +26,7 @@ function useAnimatedNumber(value: number, duration = 800) {
 
     requestAnimationFrame(animate);
     prev.current = value;
-  }, [value]);
+  }, [value, duration]);
 
   return displayValue;
 }
@@ -47,13 +47,14 @@ const MetricCard = ({ value, footer, color }: MetricCardProps) => {
         borderRadius: 10,
         width: 220,
         height: 150,
+        background: color,
         display: "flex",
         justifyContent: "center",
-        background: color,
         textAlign: "center",
       }}
       bodyStyle={{
         padding: "10px",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -102,7 +103,6 @@ export default function DashboardSummaryCount({
         }
       );
 
-      // Backend returns { counts, events }
       if (res.data?.counts) {
         setCounts(res.data.counts);
       }
@@ -129,8 +129,22 @@ export default function DashboardSummaryCount({
   ];
 
   return (
-    <div style={{ width: "100%", display: "flex", justifyContent: "center", marginTop: 20 }}>
-      <Row gutter={[16, 16]} wrap={false}>
+    <div
+      style={{
+        // width: "100%",
+        // overflowX: "hidden",     // ⭐ allows scroll if screen is small
+      }}
+    >
+      <Row
+        gutter={[16, 8]}
+        // justify="center"
+        // align="middle"
+        wrap={false}           // ⭐ IMPORTANT: keeps all cards in one row
+        style={{
+          marginTop: 20,
+          minWidth: "max-content", // ⭐ prevents shrinking
+        }}
+      >
         {metrics.map((metric, index) => (
           <Col key={index}>
             <MetricCard {...metric} />

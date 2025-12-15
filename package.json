@@ -24,6 +24,7 @@
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.3",
     "lodash": "^4.17.21",
