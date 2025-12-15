@@ -202,7 +202,7 @@ export default function ProblemsTablePage() {
           Active Problems
         </h2>
         <Button
-          onClick={fetchProblems}
+          onClick={() => {}}
           style={{ marginBottom: 12 }}
           disabled={loading}
         >
