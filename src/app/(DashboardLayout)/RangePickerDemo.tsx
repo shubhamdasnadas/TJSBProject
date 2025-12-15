@@ -16,6 +16,7 @@ const presetOptions = [
   { key: "6h", label: "Last 6 hours", minutes: 360 },
   { key: "12h", label: "Last 12 hours", minutes: 720 },
   { key: "1d", label: "Last 1 day", minutes: 1440 },
+  { key: '365d', label: 'Last 1 year', minutes: 525600 }
 ];
 
 export default function RangePickerDemo({ onRangeChange }: { onRangeChange: (data: { startDate: string; startTime: string; endDate: string; endTime: string }) => void }) {

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const httpsAgent = new https.Agent({
       rejectUnauthorized: false,
     });
-
+    console.log("groupids",groupids);
     const ZABBIX_URL =
       process.env.NEXT_PUBLIC_ZABBIX_URL ||
       "https://192.168.0.252/monitor/api_jsonrpc.php";

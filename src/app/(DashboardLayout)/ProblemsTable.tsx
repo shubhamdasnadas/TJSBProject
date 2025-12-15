@@ -1,18 +1,25 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Table, Tag, Checkbox, Button } from "antd";
+import { Table, Tag, Checkbox, Button, Modal, Select } from "antd";
+import axios from "axios";
 
-/* ===================== API TRIGGER TYPE ===================== */
+/* ===================== API RESPONSE TYPE (problem.get) ===================== */
 
 interface ApiTriggerItem {
-  triggerid?: string;
-  priority: string;
-  hosts: { hostid: string; host: string; name: string }[];
-  tags?: Array<{ tag: string; value?: string }>;
-  lastchange?: string;
-  description?: string;
-  status?: string;
+  eventid: string;
+  clock: string;
+  r_clock?: string;
+  severity: string;
+  name?: string;
+  tags?: { tag: string; value?: string }[];
+  trigger?: {
+    triggerid: string;
+    priority?: string;
+    status?: string;
+    description?: string;
+    hosts?: { hostid: string; name: string }[];
+  };
 }
 
 /* ===================== TABLE ROW TYPE ===================== */
@@ -29,17 +36,28 @@ interface TableRow {
   priority: string;
   status: string;
   depends_on?: string;
-  tags?: Array<{ tag: string; value?: string }>;
+  tags?: { tag: string; value?: string }[];
 }
 
 /* ===================== COMPONENT ===================== */
 
 export default function ProblemsTablePage() {
-  /* ---------- STATE ---------- */
+  const user_token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("zabbix_auth")
+      : null;
+
+  const [host_group, setHost_group] = useState<any[]>([]);
+  const [templateList, setTemplateList] = useState<any[]>([]);
+  const [selectHost, setSelectHost] = useState<string[]>([]);
+  const [selectGroup, setSelectGroup] = useState<string[]>([]);
+
   const [data, setData] = useState<TableRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [filterVisible, setFilterVisible] = useState(false);
 
-  /* ---------- TAG HELPERS ---------- */
+  /* ===================== TAG HELPERS ===================== */
+
   const getSeverityTag = (priority: string) => {
     const map: Record<string, { color: string; label: string }> = {
       "5": { color: "red", label: "Disaster" },
@@ -55,52 +73,79 @@ export default function ProblemsTablePage() {
   };
 
   const getStatusTag = (status: string) => {
-    if (status === "0") return <Tag color="red">Problem</Tag>;
-    if (status === "1") return <Tag color="green">OK</Tag>;
-    return <Tag color="default">-</Tag>;
+    if (status === "0") {
+      return <Tag color="red">Problem</Tag>;
+    }
+
+    if (status === "1") {
+      return <Tag color="green">OK</Tag>;
+    }
+
+    return <Tag>-</Tag>;
   };
 
-  /* ===================== API FETCH (ONLY FOR TABLE) ===================== */
+
+  /* ===================== API FETCH ===================== */
 
   const fetchProblems = async () => {
     setLoading(true);
-    try {
-      const res = await fetch("http://192.168.56.1:3000/api/zabbix/problem_table", { method: "POST" });
-      const json = await res.json();
 
-      const triggers: ApiTriggerItem[] = Array.isArray(json?.result)
-        ? json.result
+    try {
+      const res = await axios.post("/api/zabbix/problem_table", {
+        auth: user_token,
+        hostids: selectHost,
+        groupids: selectGroup,
+      });
+
+      const problems: ApiTriggerItem[] = Array.isArray(res.data?.result)
+        ? res.data.result
         : [];
 
-      const mapped: TableRow[] = triggers.map((t, index) => ({
-        key: t.triggerid ?? String(index),
-        triggerid: t.triggerid ?? String(index),
-        timestamp: t.lastchange ?? "",
-        time_from: t.lastchange ? Number(t.lastchange) : undefined,
-        time_till: undefined,
-        hostname:
-          t.hosts?.[0]?.name || t.hosts?.[0]?.host || "Unknown",
-        hostid: t.hosts?.[0]?.hostid || "",
-        description: t.description || "",
-        priority: t.priority || "0",
-        status: t.status || "0",
+      /* ===================== MAP API → TABLE ===================== */
+
+      const mapped: TableRow[] = problems.map((p, index) => ({
+        key: p.eventid ?? String(index),
+
+        triggerid: p.trigger?.triggerid ?? "",
+
+        timestamp: p.clock ?? "",
+        time_from: p.clock ? Number(p.clock) : undefined,
+        time_till:
+          p.r_clock && p.r_clock !== "0"
+            ? Number(p.r_clock)
+            : undefined,
+
+        hostname: p.trigger?.hosts?.[0]?.name || "Unknown",
+
+        hostid: p.trigger?.hosts?.[0]?.hostid
+          ? String(p.trigger.hosts[0].hostid)
+          : "",
+
+        description:
+          p.name ||
+          p.trigger?.description ||
+          "",
+
+        priority: p.severity || p.trigger?.priority || "0",
+        status: p.trigger?.status || "0",
+
         depends_on: undefined,
-        tags: Array.isArray(t.tags) ? t.tags : [],
+        tags: Array.isArray(p.tags) ? p.tags : [],
       }));
 
       setData(mapped);
     } catch (err) {
       console.error("❌ Failed to fetch problems:", err);
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------- EFFECT ---------- */
+  /* ===================== EFFECT ===================== */
+
   useEffect(() => {
-    setTimeout(() => {
     fetchProblems();
-    }, 60000);
   }, []);
 
   /* ===================== TABLE COLUMNS ===================== */
@@ -118,7 +163,6 @@ export default function ProblemsTablePage() {
       width: 160,
       render: (_: any, record: TableRow) => {
         if (!record.time_from) return "-";
-
         const date = new Date(record.time_from * 1000);
         return (
           <div>
@@ -146,6 +190,7 @@ export default function ProblemsTablePage() {
       width: 90,
       render: (s: string) => getStatusTag(s),
     },
+
     {
       title: "Host",
       dataIndex: "hostname",
@@ -160,27 +205,7 @@ export default function ProblemsTablePage() {
       width: 280,
       render: (text: string) => <a>{text}</a>,
     },
-    {
-      title: "Tags",
-      key: "tags",
-      width: 300,
-      render: (_: any, record: TableRow) => {
-        if (!record.tags?.length) return "-";
 
-        const colors = ["blue", "green", "orange", "purple", "cyan"];
-
-        return (
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {record.tags.map((tag, i) => (
-              <Tag key={i} color={colors[i % colors.length]}>
-                {tag.tag}
-                {tag.value ? `: ${tag.value}` : ""}
-              </Tag>
-            ))}
-          </div>
-        );
-      },
-    },
     {
       title: "Actions",
       key: "actions",
@@ -193,30 +218,95 @@ export default function ProblemsTablePage() {
     },
   ];
 
+  /* ===================== FILTER UI ===================== */
+
+  const handleGetHostGroup = async () => {
+    try {
+      const res = await axios.post("/api/api_host/api_host_group", {
+        auth: user_token,
+      });
+      setHost_group(res.data.result);
+    } catch {
+      console.log("Error host group");
+    }
+  };
+
+  const handleGetHostList = async (groupid: any) => {
+    try {
+      const res = await axios.post("/api/api_host/api_get_host", {
+        auth: user_token,
+        groupids: groupid,
+      });
+      setTemplateList(res.data.result);
+    } catch {
+      console.log("error template list");
+    }
+  };
+
   /* ===================== UI ===================== */
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
-        <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 16 }}>
-          Active Problems
-        </h2>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 600 }}>Active Problems</h2>
         <Button
-          onClick={() => {}}
-          style={{ marginBottom: 12 }}
+          onClick={() => {
+            setFilterVisible(true);
+            handleGetHostGroup();
+          }}
           disabled={loading}
         >
           Filter
         </Button>
       </div>
+
+      <Modal
+        title="Filter Problems"
+        open={filterVisible}
+        onOk={() => {
+          setFilterVisible(false);
+          fetchProblems();
+        }}
+        onCancel={() => setFilterVisible(false)}
+      >
+        <Select
+          style={{ width: "100%" }}
+          mode="multiple"
+          placeholder="Select Group"
+          onChange={(v) => {
+            setSelectGroup(v as string[]);
+            handleGetHostList(v);
+          }}
+        >
+          {host_group.map((g: any) => (
+            <Select.Option key={g.groupid} value={g.groupid}>
+              {g.name}
+            </Select.Option>
+          ))}
+        </Select>
+
+        <Select
+          style={{ width: "100%", marginTop: 16 }}
+          mode="multiple"
+          placeholder="Select Host"
+          onChange={(v) => setSelectHost(v as string[])}
+        >
+          {templateList.map((h: any) => (
+            <Select.Option key={h.hostid} value={h.hostid}>
+              {h.name}
+            </Select.Option>
+          ))}
+        </Select>
+      </Modal>
+
       <Table
         rowKey="key"
         columns={columns}
         dataSource={data}
         loading={loading}
         pagination={{ pageSize: 10, showSizeChanger: false }}
-        scroll={{ x: true }}
         size="small"
+        style={{ marginTop: 16 }}
       />
     </div>
   );

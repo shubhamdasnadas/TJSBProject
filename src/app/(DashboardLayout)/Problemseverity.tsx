@@ -25,25 +25,7 @@ type SeverityKey =
   | "information"
   | "not_classified";
 
-/* --------------------- PRIORITY MAP --------------------- */
-const priorityMap: Record<number, SeverityKey> = {
-  5: "disaster",
-  4: "high",
-  3: "average",
-  2: "warning",
-  1: "information",
-};
-
-/* --------------------- TYPES --------------------- */
-interface HostItem {
-  name: string;
-}
-
-interface EventItem {
-  severity: number;
-  hosts?: HostItem[];
-}
-
+/* --------------------- PROPS --------------------- */
 interface Props {
   rangeData: {
     startDate: string;
@@ -64,53 +46,66 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
       ? localStorage.getItem("zabbix_auth")
       : null;
 
+  /* ===================== DEFAULT LAST 1 DAY ===================== */
+  const getDefaultLastOneDayRange = () => {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+
+    const formatDate = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const formatTime = (d: Date) =>
+      `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+    return {
+      startDate: formatDate(oneDayAgo),
+      startTime: formatTime(oneDayAgo),
+      endDate: formatDate(now),
+      endTime: formatTime(now),
+    };
+  };
+
+  /* ===================== LOAD DATA ===================== */
   const load = async () => {
     setLoading(true);
 
     try {
+      if (!token) return;
+
+      const isRangeEmpty =
+        !rangeData?.startDate &&
+        !rangeData?.startTime &&
+        !rangeData?.endDate &&
+        !rangeData?.endTime;
+
+      const finalRangeData = isRangeEmpty
+        ? getDefaultLastOneDayRange()
+        : rangeData;
+
       const res = await axios.post(
         "http://192.168.56.1:3000/api/zabbix/problems",
         {
           auth: token,
-          ...rangeData,
+          ...finalRangeData,
           groupids: groupID,
         }
       );
 
-      const events: EventItem[] = Array.isArray(res.data?.events)
-        ? res.data.events
-        : [];
+      /* ===================== HOST GROUP DATA ===================== */
+      const countsByGroup: Record<
+        string,
+        Record<SeverityKey, number>
+      > = res.data?.countsByGroup || {};
 
-      /* ---------- FIX: Strongly typed map ---------- */
-      const map: Record<string, Record<SeverityKey, number>> = {};
-
-      events.forEach((ev) => {
-        const sevKey: SeverityKey =
-          priorityMap[ev.severity] || "not_classified";
-
-        (ev.hosts || []).forEach((host) => {
-          const name = host.name || "Unknown Host";
-
-          if (!map[name]) {
-            map[name] = {
-              disaster: 0,
-              high: 0,
-              average: 0,
-              warning: 0,
-              information: 0,
-              not_classified: 0,
-            };
-          }
-
-          map[name][sevKey] += 1; // ✅ ERROR FIXED
-        });
-      });
-
-      const formattedRows = Object.entries(map).map(([host, counts]) => ({
-        key: host,
-        host,
-        ...counts,
-      }));
+      const formattedRows = Object.entries(countsByGroup).map(
+        ([groupName, counts]) => ({
+          key: groupName,
+          host: groupName, // ✅ HOST COLUMN = HOST GROUP NAME
+          ...counts,
+        })
+      );
 
       setRows(formattedRows);
     } catch (err) {
@@ -120,34 +115,37 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
     }
   };
 
-  /* --------------------- EFFECT --------------------- */
+  /* ===================== EFFECT ===================== */
   useEffect(() => {
     load();
     const interval = setInterval(load, 60000);
     return () => clearInterval(interval);
   }, [rangeData, groupID]);
 
-  /* --------------------- TABLE COLUMNS --------------------- */
+  /* ===================== TABLE COLUMNS ===================== */
   const columns = [
     {
-      title: "Host",
+      title: "Host Group",
       dataIndex: "host",
       render: (text: string) => <Text strong>{text}</Text>,
     },
-    ...[
+    ...([
       "disaster",
       "high",
       "average",
       "warning",
       "information",
       "not_classified",
-    ].map((key) => ({
+    ] as SeverityKey[]).map((key) => ({
       title: key.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       dataIndex: key,
       render: (value: number) => (
         <div
           style={{
-            background: `rgba(${colors[key]}, ${Math.max(0.25, value / 10)})`,
+            background: `rgba(${colors[key]}, ${Math.max(
+              0.25,
+              value / 10
+            )})`,
             padding: "6px 0",
             textAlign: "center",
             borderRadius: 4,
@@ -160,6 +158,7 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
     })),
   ];
 
+  /* ===================== UI ===================== */
   return (
     <Table
       columns={columns}

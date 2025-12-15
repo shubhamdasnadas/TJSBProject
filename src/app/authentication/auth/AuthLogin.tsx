@@ -48,7 +48,7 @@ const AuthLogin: React.FC<LoginProps> = ({
 
     try {
       const response = await axios.post(
-        "http://192.168.56.1:3000/api/zabbix-login",
+        "/api/zabbix-login",
         {
           username: userData.userName,
           password: userData.password,

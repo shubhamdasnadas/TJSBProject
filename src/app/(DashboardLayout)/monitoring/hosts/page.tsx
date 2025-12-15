@@ -75,7 +75,7 @@ const Host = () => {
   const handleGetTemplateList = async (groupid: string) => {
     try {
       const response = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_template",
+        "/api/api_host/api_template",
         {
           auth: user_token,
           groupids: [groupid],
