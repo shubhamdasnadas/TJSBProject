@@ -61,13 +61,15 @@ export async function POST(req: Request) {
       jsonrpc: "2.0",
       method: "problem.get",
       params: problemParams,
-      auth,
       id: 1,
     };
 
     const problemRes = await axios.post(ZABBIX_URL, problemPayload, {
       httpsAgent,
-      headers: { "Content-Type": "application/json-rpc" },
+      headers: { 
+        "Content-Type": "application/json-rpc",
+        "Authorization": `Bearer ${auth}`
+      },
       timeout: 15000,
     });
 
@@ -96,13 +98,15 @@ export async function POST(req: Request) {
         expandDescription: true,
         triggerids: triggerIds,
       },
-      auth,
       id: 2,
     };
 
     const triggerRes = await axios.post(ZABBIX_URL, triggerPayload, {
       httpsAgent,
-      headers: { "Content-Type": "application/json-rpc" },
+      headers: { 
+        "Content-Type": "application/json-rpc",
+        "Authorization": `Bearer ${auth}`
+      },
       timeout: 15000,
     });
 

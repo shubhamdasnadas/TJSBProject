@@ -12,33 +12,35 @@ export async function POST(req: Request) {
 
     const ZABBIX_URL =
       process.env.NEXT_PUBLIC_ZABBIX_URL ||
-      "https://192.168.0.252/monitor/api_jsonrpc.php";
+      "http://localhost:8080/api_jsonrpc.php";
+
+    // Build params - only add filter if names are provided
+    const params: any = {
+      output: "extend",
+    };
+    
+    // Only filter by name if names array is provided and not empty
+    if (Array.isArray(names) && names.length > 0) {
+      params.filter = { name: names };
+    }
 
     const payload = {
       jsonrpc: "2.0",
       method: "hostgroup.get",
-      params: {
-        output: "extend",
-        filter: {
-          name: names || [],
-        },
-      },
-      
+      params,
       id: 1,
     };
+
+    console.log("hostgroup.get request:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
-        Host: "192.168.0.252",
-        Referer: "https://192.168.0.252",
-        Origin: "https://192.168.0.252",
-        Authorization: `Bearer ${auth}`,
+        "Authorization": `Bearer ${auth}`,
       },
-      httpsAgent,
       timeout: 10000,
     });
-    console.log("templategroup.get response:", response.data);
+    console.log("hostgroup.get response:", response.data);
     // SUCCESS — Return result
     if (response.data?.result) {
       return NextResponse.json({ result: response.data.result });

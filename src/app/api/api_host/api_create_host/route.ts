@@ -94,7 +94,6 @@ export async function POST(req: Request) {
         inventory_mode: 0,
         inventory: fixedInventory,
       },
-      auth,
       id: 1,
     };
 

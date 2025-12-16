@@ -22,7 +22,7 @@ const ActionLog: React.FC = () => {
     const [userRole, setUserRole] = React.useState<any[]>([]);
     const [actionRole, setActionRole] = React.useState<any[]>([]);
     const [mediaRole, setMediaRole] = React.useState<any[]>([]);
-    const zabbix_auth = localStorage.getItem("zabbix_auth");
+    const zabbix_auth = typeof window !== "undefined" ? localStorage.getItem("zabbix_auth") : null;
     const get_user_data = async () => {
         try {
             const response = await axios.post("/api/dashboard_action_log/user_get", { auth: zabbix_auth });

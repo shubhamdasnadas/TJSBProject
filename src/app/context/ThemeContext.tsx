@@ -18,13 +18,17 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [mode, setMode] = useState<Mode>("light");
 
   useEffect(() => {
-    const saved = localStorage.getItem("app_theme") as Mode;
-    if (saved) setMode(saved);
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("app_theme") as Mode;
+      if (saved) setMode(saved);
+    }
   }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", mode);
-    localStorage.setItem("app_theme", mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("app_theme", mode);
+    }
   }, [mode]);
 
   const toggleMode = () => {

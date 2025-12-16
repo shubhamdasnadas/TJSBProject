@@ -105,9 +105,11 @@ export default function Dashboard() {
       },
       gridRef.current
     );
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      grid.current.load(JSON.parse(saved));
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        grid.current.load(JSON.parse(saved));
+      }
     }
   }, []);
 
@@ -131,7 +133,9 @@ export default function Dashboard() {
     if (!grid.current) return;
 
     const layout = grid.current.save(false);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    }
     setEditMode(false);
   };
   return (

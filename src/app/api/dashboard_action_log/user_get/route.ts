@@ -36,13 +36,13 @@ export async function POST(req: Request) {
       params: {
         output: "extend",
       },
-      auth, 
       id: 1,
     };
 
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
+        "Authorization": `Bearer ${auth}`,
         Host: "192.168.0.252",
         Referer: "https://192.168.0.252",
         Origin: "https://192.168.0.252",

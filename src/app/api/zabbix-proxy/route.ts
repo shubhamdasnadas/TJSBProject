@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import axios from 'axios';
 import https from 'https';
@@ -12,6 +11,8 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized,
 });
 
+const zabbixUrl = process.env.ZABBIX_URL || 'http://localhost:8080/api_jsonrpc.php';
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     console.log('Proxy received:', body);
 
     const resp = await axios.post(
-      'https://192.168.0.252/monitor/api_jsonrpc.php',
+      zabbixUrl,
       body,
       {
         headers: { 'Content-Type': 'application/json' },

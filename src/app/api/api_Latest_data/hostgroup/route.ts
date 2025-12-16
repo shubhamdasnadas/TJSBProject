@@ -19,22 +19,31 @@ export async function POST(req: Request) {
       process.env.ZABBIX_URL ??
       "https://192.168.0.252/monitor/api_jsonrpc.php";
 
+    // Build params - only add filter if names are provided
+    const params: any = {
+      output: "extend",
+    };
+    
+    // Only filter by name if names array is provided and not empty
+    if (Array.isArray(names) && names.length > 0) {
+      params.filter = { name: names };
+    }
+
     const payload = {
       jsonrpc: "2.0",
       method: "hostgroup.get",
-      params: {
-        output: "extend",
-        filter: { name: names },
-      },
-      auth,
+      params,
       id: 1,
     };
+
+    console.log("hostgroup.get request:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(ZABBIX_URL, payload, {
       httpsAgent,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json-rpc",
+        "Authorization": `Bearer ${auth}`,
         Host: "192.168.0.252",
         Referer: "https://192.168.0.252",
         Origin: "https://192.168.0.252",

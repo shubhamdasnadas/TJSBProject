@@ -42,12 +42,14 @@ export async function POST(req: Request) {
         sortfield: "clock",
         sortorder: "DESC",
       },
-      auth,
       id: 1,
     };
 
     const eventResponse = await axios.post(ZABBIX_URL, eventPayload, {
-      headers: { "Content-Type": "application/json-rpc" },
+      headers: { 
+        "Content-Type": "application/json-rpc",
+        "Authorization": `Bearer ${auth}`
+      },
       httpsAgent,
       timeout: 10000,
     });
@@ -77,12 +79,14 @@ export async function POST(req: Request) {
         output: ["hostid"],
         selectGroups: ["groupid", "name"],
       },
-      auth,
       id: 2,
     };
 
     const hostResponse = await axios.post(ZABBIX_URL, hostPayload, {
-      headers: { "Content-Type": "application/json-rpc" },
+      headers: { 
+        "Content-Type": "application/json-rpc",
+        "Authorization": `Bearer ${auth}`
+      },
       httpsAgent,
       timeout: 10000,
     });

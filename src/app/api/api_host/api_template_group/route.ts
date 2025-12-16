@@ -23,7 +23,6 @@ export async function POST(req: Request) {
           name: names || []
         }
       },
-      auth,
       id: 1,
     };
 

@@ -7,7 +7,7 @@ import Interface from "./Interface";
 import HostFilterCard from "./HostFilterCard";
 
 const Host = () => {
-  const user_token = localStorage.getItem("zabbix_auth");
+  // const user_token = localStorage.getItem("zabbix_auth");
 
   const [title, setTitle] = useState("Create Host");
   const [modal2Open, setModal2Open] = useState(false);
@@ -20,7 +20,7 @@ const Host = () => {
   const [updateFilter, setUpdateFilter] = useState([]);
 
   const [formData, setFormData] = useState({
-    auth: user_token,
+    auth:   "4da1fa11e111045e020b7985d219eeea",
     host: "",
     type: 1,
     main: 1,
@@ -45,9 +45,9 @@ const Host = () => {
     console.log("Filter Data:", filterFormData);
     try {
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_getdata_host",
+        "/api/api_host/api_getdata_host",
         {
-          auth: user_token,
+          auth:   "4da1fa11e111045e020b7985d219eeea",
           groupid: filterFormData.groupid,
         }
       );
@@ -60,9 +60,9 @@ const Host = () => {
   const handleGetHostGroup = async () => {
     try {
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_host_group",
+        "/api/api_host/api_host_group",
         {
-          auth: user_token,
+          auth:   "4da1fa11e111045e020b7985d219eeea",
         }
       );
       setHost_group(res.data.result);
@@ -77,7 +77,7 @@ const Host = () => {
       const response = await axios.post(
         "/api/api_host/api_template",
         {
-          auth: user_token,
+          auth:   "4da1fa11e111045e020b7985d219eeea",
           groupids: [groupid],
         }
       );
@@ -93,9 +93,9 @@ const Host = () => {
   const handleClick = async () => {
     try {
       const response = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_template_group",
+        "/api/api_host/api_template_group",
         {
-          auth: user_token,
+          auth:   "4da1fa11e111045e020b7985d219eeea",
         }
       );
       setTemplategrouplist(response.data.result);
@@ -107,7 +107,7 @@ const Host = () => {
   const handleCreateHost = async () => {
     try {
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_create_host",
+        "/api/api_host/api_create_host",
         formData
       );
       console.log("Host created:", res.data);
