@@ -259,3 +259,149 @@ body {
 .ant-picker {
   padding-right: 6px !important;   /* reduces right empty space */
 }
+
+
+  .dashboard-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  height: 100%;
+}
+
+.grid-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: move;
+  border-bottom: 1px solid #eee;
+}
+
+/* ========================================================= */
+/*            DASHBOARD GRIDSTACK – FINAL OVERRIDES          */
+/* ========================================================= */
+
+/* 🔴 REMOVE ALL CARD BACKGROUND / SHADOW */
+.dashboard-card {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* HEADER = DRAG AREA */
+.dashboard-card-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: default;
+  background: transparent !important;
+}
+
+/* Drag cursor only in edit mode */
+.dashboard-edit-mode .dashboard-card-header {
+  cursor: move;
+}
+
+/* Drag icon */
+.drag-icon {
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+/* BODY */
+.dashboard-card-body {
+  padding: 14px;
+  height: 100%;
+  overflow: auto; /* ✅ prevents overlap */
+}
+
+/* ========================================================= */
+/*            EDIT MODE OUTLINE (SIDE-LINE BASED)             */
+/* ========================================================= */
+
+.dashboard-edit-mode .dashboard-card {
+  outline: 1px dashed var(--active-color);
+  outline-offset: -2px;
+}
+
+/* ========================================================= */
+/*            GRIDSTACK RESIZE HANDLE FIX (DOTS)              */
+/* ========================================================= */
+
+/* Remove default resize arrows */
+.grid-stack > .grid-stack-item > .ui-resizable-handle {
+  background: none !important;
+  border: none !important;
+}
+
+/* Common dot style */
+.grid-stack > .grid-stack-item > .ui-resizable-handle::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--active-color);
+  border-radius: 50%;
+  position: absolute;
+}
+
+/* TOP */
+.ui-resizable-n::after {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* BOTTOM */
+.ui-resizable-s::after {
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* RIGHT */
+.ui-resizable-e::after {
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* LEFT */
+.ui-resizable-w::after {
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* CORNERS */
+.ui-resizable-se::after {
+  right: -4px;
+  bottom: -4px;
+}
+
+.ui-resizable-sw::after {
+  left: -4px;
+  bottom: -4px;
+}
+
+.ui-resizable-ne::after {
+  right: -4px;
+  top: -4px;
+}
+
+.ui-resizable-nw::after {
+  left: -4px;
+  top: -4px;
+}
+
+/* ========================================================= */
+/*            GRIDSTACK CONTENT HEIGHT FIX                    */
+/* ========================================================= */
+
+.grid-stack-item-content {
+  height: 100% !important;
+  overflow: hidden !important;
+}
