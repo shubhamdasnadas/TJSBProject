@@ -14,6 +14,7 @@ import ProblemsTablePage from "./ProblemsTable";
 import RangePickerDemo from "./RangePickerDemo";
 import ActionLog from "./widget/actionLog";
 import Graph from "./widget/graph";
+import PieChart from "./widget/pie_chart";
 
 /* ================= STORAGE KEYS ================= */
 const STORAGE_KEY = "dashboard_layout_v2";
@@ -97,7 +98,7 @@ export default function Dashboard() {
       .then((res) =>
         setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
       )
-      .catch(() => {});
+      .catch(() => { });
   }, [user_token]);
 
   /* ================= GRID INIT ================= */
@@ -169,6 +170,7 @@ export default function Dashboard() {
 
     setShowAddModal(false);
     setGraphConfig(null);
+    setSelectType("")
   };
 
   /* ================= REMOVE HELPERS ================= */
@@ -282,7 +284,7 @@ export default function Dashboard() {
         width={1000}
         centered
         destroyOnHidden
-        onCancel={() => setShowAddModal(false)}
+        onCancel={() => { setShowAddModal(false), setSelectType("") }}
         onOk={handleAddWidget}
       >
         <Form layout="vertical">
@@ -298,6 +300,7 @@ export default function Dashboard() {
 
           {selectType === "action_log" && <ActionLog />}
           {selectType === "graph" && <Graph rangeData={rangeData} onConfigChange={setGraphConfig} />}
+          {selectType === "pie_chart" && <PieChart />}
         </Form>
       </Modal>
     </div>

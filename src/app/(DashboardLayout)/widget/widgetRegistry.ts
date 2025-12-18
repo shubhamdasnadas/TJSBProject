@@ -6,6 +6,7 @@ export const WIDGET_TYPES = [
   { value: "favorite_maps", label: "Favorite maps" },
   { value: "gauge", label: "Gauge" },
   { value: "graph", label: "Graph" },
+  { value: "pie_chart", label: "Pie Chart" },
   { value: "geomap", label: "Geomap" },
   { value: "problems", label: "Problems" },
   { value: "problems_by_severity", label: "Problems by severity" },
