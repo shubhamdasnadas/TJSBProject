@@ -1,224 +1,327 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-    Card,
-    Tabs,
-    Form,
-    Input,
-    Select,
-    Row,
-    Col,
-    Button,
-    ColorPicker,
-} from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import React, { useEffect, useState } from "react";
+import { Card, Form, Select, Row, Col } from "antd";
 import { Pie } from "@ant-design/plots";
+import axios from "axios";
 
-interface DataSet {
-    id: number;
-    label: string;
-    color: string;
+/* ================= TYPES ================= */
+
+interface HostGroup {
+  groupid: string;
+  name: string;
 }
 
-const PieChart = () => {
-    const [dataSets, setDataSets] = useState<DataSet[]>([
-        { id: 1, label: "CPU", color: "#1677ff" },
-        { id: 2, label: "Memory", color: "#13c2c2" },
-    ]);
+interface Host {
+  hostid: string;
+  name: string;
+}
 
-    const addDataSet = () => {
-        const nextId = dataSets.length + 1;
-        setDataSets([
-            ...dataSets,
-            { id: nextId, label: `Data set ${nextId}`, color: "#fa8c16" },
-        ]);
-    };
+interface Item {
+  itemid: string;
+  name: string;
+  key_: string;
+}
 
-    /* ---------------- Preview data (synced) ---------------- */
-    const previewData = dataSets.map((ds) => ({
-        type: ds.label,
-        value: Math.round(100 / dataSets.length),
-    }));
+interface PieData {
+  type: string;
+  value: number;
+  gb: number;
+}
 
-    const pieConfig = {
-        data: previewData,
-        angleField: "value",
-        colorField: "type",
-        radius: 0.9,
-        innerRadius: 0.65,
-        color: dataSets.map((ds) => ds.color),
+interface PieChartProps {
+  initialConfig?: {
+    selectedGroups?: string[];
+    selectedHosts?: string[];
+    selectedItems?: string[];
+  };
+  onConfigChange?: (config: any) => void;
+}
 
-        /* 🔽 KEY SPACING FIXES 🔽 */
-        padding: [0, 0, 0, 0],
-        appendPadding: 0,
+/* ================= COMPONENT ================= */
 
-        legend: {
-            position: "top",
-            itemSpacing: 8,
-        },
+const PieChart: React.FC<PieChartProps> = ({
+  initialConfig,
+  onConfigChange,
+}) => {
+  const user_token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("zabbix_auth")
+      : null;
 
-        label: false,
-        interactions: [{ type: "element-active" }],
-    };
+  /* 🔑 MODE DETECTION */
+  const isViewOnly = !!initialConfig && !onConfigChange;
 
-    return (
-        <div >
-            <Form layout="vertical">
+  const [hostGroups, setHostGroups] = useState<HostGroup[]>([]);
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
 
-                <Row gutter={24} align="stretch" style={{ marginBottom: 24 }}>
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [pieData, setPieData] = useState<PieData[]>([]);
 
-                    <Col span={16}>
-                        <Card
-                            title="General configuration"
-                            bodyStyle={{ padding: 20 }}
-                            style={{ height: "100%" }}
-                        >
-                            <Row gutter={24} style={{ marginBottom: 16 }}>
-                                <Col span={12}>
-                                    <Form.Item label="Name">
-                                        <Input placeholder="default" />
-                                    </Form.Item>
-                                </Col>
+  /* ================= HELPERS ================= */
 
-                                <Col span={12}>
-                                    <Form.Item label="Refresh interval">
-                                        <Select
-                                            defaultValue="1m"
-                                            options={[
-                                                { value: "30s", label: "30 seconds" },
-                                                { value: "1m", label: "1 minute" },
-                                                { value: "5m", label: "5 minutes" },
-                                            ]}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
+  const bytesToGB = (bytes: number) =>
+    bytes / (1024 * 1024 * 1024);
 
-                            <Row gutter={24}>
-                                <Col span={8}>
-                                    <Form.Item label="Host pattern">
-                                        <Select placeholder="Select host pattern" />
-                                    </Form.Item>
-                                </Col>
+  const COLORS = [
+    "#ff4d4f",
+    "#faad14",
+    "#52c41a",
+    "#1890ff",
+    "#722ed1",
+    "#13c2c2",
+  ];
 
-                                <Col span={8}>
-                                    <Form.Item label="Host name">
-                                        <Select placeholder="Select host name" />
-                                    </Form.Item>
-                                </Col>
+  /* ================= API ================= */
 
-                                <Col span={8}>
-                                    <Form.Item label="Item pattern">
-                                        <Select placeholder="Select item pattern" />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                        </Card>
-                    </Col>
+  const getHostGroups = async () => {
+    if (!user_token) return;
+    const res = await axios.post("/api/api_host/api_host_group", {
+      auth: user_token,
+    });
+    setHostGroups(res.data?.result ?? []);
+  };
 
-                    {/* -------- LIVE PREVIEW -------- */}
-                    <Col span={8}>
-                        <Card
-                            title="Live preview"
-                            bodyStyle={{
-                                padding: "12px 12px 8px",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "flex-start",
-                            }}
-                            style={{ height: "100%" }}
-                        >
-                            <div
-                                style={{
-                                    width: "100%",
-                                    height: 240,
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <Pie {...pieConfig} />
-                            </div>
-                        </Card>
-                    </Col>
-                </Row>
+  const getHosts = async (groupids: string[]) => {
+    if (!user_token || !groupids.length) return;
 
-                {/* ================= DATA SETS ================= */}
-                <Card
-                    title="Data sets"
-                    bodyStyle={{ padding: 20 }}
-                    extra={
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={addDataSet}
-                        >
-                            Add new data set
-                        </Button>
-                    }
-                >
-                    <Tabs
-                        items={dataSets.map((ds) => ({
-                            key: String(ds.id),
-                            label: `Data set ${ds.id}`,
-                            children: (
-                                <Row gutter={24} style={{ paddingTop: 16 }}>
-                                    <Col span={8}>
-                                        <Form.Item label="Label">
-                                            <Input
-                                                value={ds.label}
-                                                onChange={(e) =>
-                                                    setDataSets((prev) =>
-                                                        prev.map((d) =>
-                                                            d.id === ds.id
-                                                                ? { ...d, label: e.target.value }
-                                                                : d
-                                                        )
-                                                    )
-                                                }
-                                            />
-                                        </Form.Item>
-                                    </Col>
+    const res = await axios.post("/api/api_host/api_get_host", {
+      auth: user_token,
+      groupids,
+    });
 
-                                    <Col span={8}>
-                                        <Form.Item label="Color">
-                                            <ColorPicker
-                                                value={ds.color}
-                                                onChange={(color) =>
-                                                    setDataSets((prev) =>
-                                                        prev.map((d) =>
-                                                            d.id === ds.id
-                                                                ? { ...d, color: color.toHexString() }
-                                                                : d
-                                                        )
-                                                    )
-                                                }
-                                            />
-                                        </Form.Item>
-                                    </Col>
+    setHosts(res.data?.result ?? []);
+  };
 
-                                    <Col span={8}>
-                                        <Form.Item label="Aggregation">
-                                            <Select
-                                                defaultValue="last"
-                                                options={[
-                                                    { value: "last", label: "last" },
-                                                    { value: "avg", label: "avg" },
-                                                    { value: "min", label: "min" },
-                                                    { value: "max", label: "max" },
-                                                ]}
-                                            />
-                                        </Form.Item>
-                                    </Col>
-                                </Row>
-                            ),
-                        }))}
-                    />
-                </Card>
-            </Form>
-        </div>
+  const getItems = async (hostids: string[]) => {
+    if (!user_token || !hostids.length) return;
+
+    const res = await axios.post("/api/dashboard_action_log/get_item", {
+      auth: user_token,
+      hostids,
+    });
+
+    setItems(res.data?.result ?? []);
+  };
+
+  const loadPieData = async (
+    groups: string[],
+    hostsIds: string[],
+    itemIds: string[]
+  ) => {
+    if (!user_token || !hostsIds.length || !itemIds.length) return;
+
+    const selectedItemObjects = items.filter((i) =>
+      itemIds.includes(i.itemid)
     );
+
+    if (!selectedItemObjects.length) return;
+
+    const keys = selectedItemObjects.map((i) => i.key_);
+
+    const res = await axios.post(
+      "/api/dashboard_action_log/get_item_pie_chart",
+      {
+        auth: user_token,
+        hostids: hostsIds,
+        key_: keys,
+      }
+    );
+
+    const result = res.data?.result ?? {};
+    const hostName =
+      hosts.find((h) => h.hostid === hostsIds[0])?.name ?? "Host";
+
+    const slices: { label: string; gb: number }[] = [];
+
+    keys.forEach((key) => {
+      const raw = Number(result[key]?.[0]?.lastvalue ?? 0);
+      if (!raw) return;
+
+      const gb = bytesToGB(raw);
+
+      let metric = "Value";
+      if (key.toLowerCase().includes("used")) metric = "Used";
+      else if (key.toLowerCase().includes("free")) metric = "Free";
+      else if (key.toLowerCase().includes("total")) metric = "Total";
+
+      slices.push({
+        label: `${hostName}: ${metric}`,
+        gb,
+      });
+    });
+
+    const totalGB = slices.reduce((s, i) => s + i.gb, 0);
+
+    setPieData(
+      slices.map((s) => ({
+        type: s.label,
+        gb: s.gb,
+        value: Number(((s.gb / totalGB) * 100).toFixed(2)),
+      }))
+    );
+  };
+
+  /* ================= INIT ================= */
+
+  useEffect(() => {
+    getHostGroups();
+  }, []);
+
+  /* 🔥 RESTORE CONFIG */
+  useEffect(() => {
+    if (!initialConfig) return;
+
+    setSelectedGroups(initialConfig.selectedGroups ?? []);
+    setSelectedHosts(initialConfig.selectedHosts ?? []);
+    setSelectedItems(initialConfig.selectedItems ?? []);
+  }, [initialConfig]);
+
+  /* 🔥 RESTORE HOSTS */
+  useEffect(() => {
+    if (!isViewOnly || !selectedGroups.length) return;
+    getHosts(selectedGroups);
+  }, [isViewOnly, selectedGroups]);
+
+  /* 🔥 RESTORE ITEMS */
+  useEffect(() => {
+    if (!isViewOnly || !selectedHosts.length) return;
+    getItems(selectedHosts);
+  }, [isViewOnly, selectedHosts]);
+
+  /* 🔥 RESTORE PIE DATA */
+  useEffect(() => {
+    if (!isViewOnly) return;
+
+    loadPieData(
+      selectedGroups,
+      selectedHosts,
+      selectedItems
+    );
+  }, [isViewOnly, items]);
+
+  /* 🔁 CONFIG SYNC */
+  useEffect(() => {
+    if (!onConfigChange) return;
+
+    onConfigChange({
+      selectedGroups,
+      selectedHosts,
+      selectedItems,
+    });
+  }, [selectedGroups, selectedHosts, selectedItems]);
+
+  /* ================= PIE CONFIG ================= */
+
+  const pieConfig = {
+    data: pieData,
+    angleField: "value",
+    colorField: "type",
+    radius: 0.75,
+    color: (_: string, __: any, idx: number) =>
+      COLORS[idx % COLORS.length],
+    legend: { position: "left", flipPage: true },
+    tooltip: {
+      customContent: (_: string, items: any[]) => {
+        if (!items?.length) return "";
+        const d = items[0].datum as PieData;
+        return `
+          <div style="padding:8px">
+            <b>${d.type}</b><br/>
+            ${d.gb.toFixed(2)} GB<br/>
+            ${d.value}%
+          </div>
+        `;
+      },
+    },
+    interactions: [{ type: "element-active" }],
+  };
+
+  /* ================= VIEW ONLY ================= */
+
+  if (isViewOnly) {
+    return (
+      <div style={{ width: "100%", height: "100%", minHeight: 260 }}>
+        <Pie {...pieConfig} />
+      </div>
+    );
+  }
+
+  /* ================= CONFIG MODE ================= */
+
+  return (
+    <Form layout="vertical">
+      <Row gutter={24}>
+        <Col span={16}>
+          <Card title="Pie chart">
+            <Row gutter={24}>
+              <Col span={8}>
+                <Form.Item label="Host group">
+                  <Select
+                    mode="multiple"
+                    value={selectedGroups}
+                    onChange={(ids) => {
+                      setSelectedGroups(ids);
+                      getHosts(ids);
+                    }}
+                    options={hostGroups.map((g) => ({
+                      label: g.name,
+                      value: g.groupid,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={8}>
+                <Form.Item label="Host">
+                  <Select
+                    mode="multiple"
+                    value={selectedHosts}
+                    onChange={(ids) => {
+                      setSelectedHosts(ids);
+                      getItems(ids);
+                    }}
+                    options={hosts.map((h) => ({
+                      label: h.name,
+                      value: h.hostid,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col span={8}>
+                <Form.Item label="Item">
+                  <Select
+                    mode="multiple"
+                    value={selectedItems}
+                    onChange={(ids) => {
+                      setSelectedItems(ids);
+                      loadPieData(selectedGroups, selectedHosts, ids);
+                    }}
+                    options={items.map((i) => ({
+                      label: i.name,
+                      value: i.itemid,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        <Col span={8}>
+          <Card>
+            <div style={{ width: "100%", height: 300 }}>
+              <Pie {...pieConfig} />
+            </div>
+          </Card>
+        </Col>
+      </Row>
+    </Form>
+  );
 };
 
 export default PieChart;

@@ -10,4 +10,5 @@ export const WIDGET_TYPES = [
   { value: "geomap", label: "Geomap" },
   { value: "problems", label: "Problems" },
   { value: "problems_by_severity", label: "Problems by severity" },
+  { value: "item_value", label: "Item Value" },
 ];

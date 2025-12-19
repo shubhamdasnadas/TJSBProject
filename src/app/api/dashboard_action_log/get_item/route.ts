@@ -34,7 +34,6 @@ export async function POST(req: Request) {
             params: {
                 output: "extend",
                 hostids: Array.isArray(hostids) ? hostids : [hostids],
-                with_triggers: true,
                 sortfield: "name",
             },
             auth,

@@ -15,6 +15,7 @@ import RangePickerDemo from "./RangePickerDemo";
 import ActionLog from "./widget/actionLog";
 import Graph from "./widget/graph";
 import PieChart from "./widget/pie_chart";
+import ItemValue from "./widget/itemvalue";
 
 /* ================= STORAGE KEYS ================= */
 const STORAGE_KEY = "dashboard_layout_v2";
@@ -28,6 +29,14 @@ const WIDGETS = [
   { id: "problem-severity", title: "Problem Severity", component: Problemseverity, x: 0, y: 4, w: 6, h: 3 },
   { id: "problems-table", title: "Active Problems", component: ProblemsTablePage, x: 6, y: 4, w: 6, h: 3 },
 ];
+
+/* ================= HELPERS ================= */
+const getWidgetTitle = (type: string) => {
+  if (type === "graph") return "Graph";
+  if (type === "pie_chart") return "Pie Chart";
+  if (type === "action_log") return "Action Log";
+  return "Widget";
+};
 
 export default function Dashboard() {
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -43,9 +52,10 @@ export default function Dashboard() {
 
   const [dynamicWidgets, setDynamicWidgets] = useState<any[]>([]);
   const [removedStaticIds, setRemovedStaticIds] = useState<string[]>([]);
-  const [graphConfig, setGraphConfig] = useState<any>(null);
 
-  const [groupID, setGroupID] = useState<number[]>([]);
+  const [graphConfig, setGraphConfig] = useState<any>(null);
+  const [pieConfig, setPieConfig] = useState<any>(null);
+
   const [rangeData, setRangeData] = useState({
     startDate: "",
     startTime: "",
@@ -53,10 +63,41 @@ export default function Dashboard() {
     endTime: "",
   });
 
+  const [groupID, setGroupID] = useState<number[]>([]);
+
   const user_token =
     typeof window !== "undefined"
       ? localStorage.getItem("zabbix_auth")
       : null;
+
+
+  const removeWidgetFromLocalStorage = (widgetId: string) => {
+    /* 1️⃣ Remove from dashboard_dynamic_widgets_v1 */
+    const dynRaw = localStorage.getItem(DYNAMIC_WIDGETS_KEY);
+    if (dynRaw) {
+      const dyn = JSON.parse(dynRaw).filter(
+        (w: any) => w.id !== widgetId
+      );
+      localStorage.setItem(
+        DYNAMIC_WIDGETS_KEY,
+        JSON.stringify(dyn)
+      );
+    }
+
+    /* 2️⃣ Remove from dashboard_layout_v2 */
+    const layoutRaw = localStorage.getItem(STORAGE_KEY);
+    if (layoutRaw) {
+      const layout = JSON.parse(layoutRaw).filter(
+        (l: any) => l.id !== widgetId
+      );
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(layout)
+      );
+    }
+  };
+
+
 
   /* ================= LOAD SAVED STATE ================= */
   useEffect(() => {
@@ -73,7 +114,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!hasLoadedFromStorage.current) return;
     if (!hasUserModifiedWidgets.current) return;
-    if (dynamicWidgets.length === 0) return;
 
     localStorage.setItem(
       DYNAMIC_WIDGETS_KEY,
@@ -110,7 +150,7 @@ export default function Dashboard() {
         column: 12,
         cellHeight: 90,
         margin: 12,
-        staticGrid: true,
+        staticGrid: false, // ✅ IMPORTANT
         draggable: { handle: ".dashboard-card-header" },
         resizable: { handles: "all" },
       },
@@ -120,18 +160,28 @@ export default function Dashboard() {
     setGridReady(true);
   }, []);
 
-  /* ================= LOAD GRID LAYOUT ================= */
+  /* ================= RESTORE GRID LAYOUT ================= */
   useEffect(() => {
     if (!grid.current || !gridReady) return;
 
-    const savedLayout = localStorage.getItem(STORAGE_KEY);
-    if (!savedLayout) return;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    let layout = raw ? JSON.parse(raw) : [];
+
+    // Ensure default widgets exist
+    const ids = new Set(layout.map((l: any) => l.id));
+    WIDGETS.forEach((w) => {
+      if (!ids.has(w.id)) {
+        layout.push({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h });
+      }
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 
     requestAnimationFrame(() => {
-      grid.current?.load(JSON.parse(savedLayout));
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
+      grid.current!.load(layout);
+      window.dispatchEvent(new Event("resize"));
     });
-  }, [gridReady, dynamicWidgets, removedStaticIds]);
+  }, [gridReady]);
 
   /* ================= REGISTER DYNAMIC WIDGETS ================= */
   useEffect(() => {
@@ -139,66 +189,68 @@ export default function Dashboard() {
 
     dynamicWidgets.forEach((w) => {
       const el = document.querySelector(`[gs-id="${w.id}"]`) as HTMLElement | null;
-      if (el) {
-        grid.current?.makeWidget(el);
-        window.dispatchEvent(new Event("resize"));
-      }
+      if (el) grid.current!.makeWidget(el);
     });
+
+    window.dispatchEvent(new Event("resize"));
   }, [dynamicWidgets]);
 
   /* ================= EDIT MODE ================= */
   useEffect(() => {
     if (!grid.current) return;
-
     grid.current.setStatic(!editMode);
-    grid.current.enableMove(editMode);
-    grid.current.enableResize(editMode);
   }, [editMode]);
 
-  /* ================= ADD WIDGET ================= */
+  /* ================= ADD WIDGET (FIXED) ================= */
   const handleAddWidget = () => {
     if (!selectType) return;
 
     hasUserModifiedWidgets.current = true;
-
     const id = `${selectType}-${Date.now()}`;
 
-    setDynamicWidgets((prev) => [
-      ...prev,
-      { id, type: selectType, config: graphConfig },
-    ]);
+    setDynamicWidgets((prev) => {
+      const next = [
+        ...prev,
+        {
+          id,
+          type: selectType,
+          config:
+            selectType === "pie_chart"
+              ? pieConfig
+              : graphConfig,
+        },
+      ];
+
+      localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
+      return next;
+    });
 
     setShowAddModal(false);
     setGraphConfig(null);
-    setSelectType("")
+    setPieConfig(null);
+    setSelectType("");
   };
 
-  /* ================= REMOVE HELPERS ================= */
-  const removeWidgetFromLocalStorage = (widgetId: string) => {
-    const dynRaw = localStorage.getItem(DYNAMIC_WIDGETS_KEY);
-    if (dynRaw) {
-      const dyn = JSON.parse(dynRaw).filter((w: any) => w.id !== widgetId);
-      localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(dyn));
-    }
-
-    const layoutRaw = localStorage.getItem(STORAGE_KEY);
-    if (layoutRaw) {
-      const layout = JSON.parse(layoutRaw).filter((i: any) => i.id !== widgetId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
-    }
-  };
-
-  /* ================= REMOVE HANDLERS ================= */
+  /* ================= REMOVE WIDGETS ================= */
   const removeDynamicWidget = (id: string) => {
     hasUserModifiedWidgets.current = true;
 
+    /* Remove from React state */
     setDynamicWidgets((prev) => prev.filter((w) => w.id !== id));
 
-    const el = document.querySelector(`[gs-id="${id}"]`) as HTMLElement;
-    if (el) grid.current?.removeWidget(el);
+    /* Remove from GridStack */
+    const el = document.querySelector(
+      `[gs-id="${id}"]`
+    ) as HTMLElement | null;
 
+    if (el) {
+      grid.current?.removeWidget(el);
+    }
+
+    /* 🔑 Remove from BOTH localStorage keys */
     removeWidgetFromLocalStorage(id);
   };
+
 
   const removeStaticWidget = (id: string) => {
     setRemovedStaticIds((prev) => [...prev, id]);
@@ -210,7 +262,6 @@ export default function Dashboard() {
   /* ================= SAVE LAYOUT ================= */
   const saveLayout = () => {
     if (!grid.current) return;
-
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(grid.current.save(false))
@@ -218,10 +269,11 @@ export default function Dashboard() {
     setEditMode(false);
   };
 
+  /* ================= UI ================= */
   return (
     <div style={{ width: "100%" }}>
-      {/* ================= TOOLBAR ================= */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, padding: "16px 24px" }}>
+      {/* TOOLBAR */}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, padding: 16 }}>
         <Button onClick={() => (editMode ? saveLayout() : setEditMode(true))}>
           {editMode ? "Save Dashboard" : "Edit Dashboard"}
         </Button>
@@ -235,16 +287,16 @@ export default function Dashboard() {
         <RangePickerDemo onRangeChange={setRangeData} />
       </div>
 
-      {/* ================= GRID ================= */}
+      {/* GRID */}
       <div className="grid-stack" ref={gridRef}>
-        {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
+        {WIDGETS.filter(w => !removedStaticIds.includes(w.id)).map(
           ({ id, title, component: Component, x, y, w, h }) => (
             <div key={id} className="grid-stack-item" gs-id={id} gs-x={x} gs-y={y} gs-w={w} gs-h={h}>
               <div className="grid-stack-item-content dashboard-card">
                 <div className="dashboard-card-header">
                   {title}
                   {editMode && (
-                    <span onClick={() => removeStaticWidget(id)} style={{ float: "right", cursor: "pointer", color: "red" }}>
+                    <span onClick={() => removeStaticWidget(id)} style={{ float: "right", color: "red", cursor: "pointer" }}>
                       ✖
                     </span>
                   )}
@@ -261,15 +313,16 @@ export default function Dashboard() {
           <div key={w.id} className="grid-stack-item" gs-id={w.id} gs-w="6" gs-h="4">
             <div className="grid-stack-item-content dashboard-card">
               <div className="dashboard-card-header">
-                {w.type === "graph" ? "Graph" : "Action Log"}
+                {getWidgetTitle(w.type)}
                 {editMode && (
-                  <span onClick={() => removeDynamicWidget(w.id)} style={{ float: "right", cursor: "pointer", color: "red" }}>
+                  <span onClick={() => removeDynamicWidget(w.id)} style={{ float: "right", color: "red", cursor: "pointer" }}>
                     ✖
                   </span>
                 )}
               </div>
               <div className="dashboard-card-body">
                 {w.type === "graph" && <Graph rangeData={rangeData} initialConfig={w.config} />}
+                {w.type === "pie_chart" && <PieChart initialConfig={w.config} />}
                 {w.type === "action_log" && <ActionLog />}
               </div>
             </div>
@@ -277,19 +330,18 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* ================= ADD MODAL ================= */}
+      {/* ADD MODAL */}
       <Modal
         title="Add Widget"
         open={showAddModal}
         width={1000}
         centered
-        destroyOnHidden
-        onCancel={() => { setShowAddModal(false), setSelectType("") }}
+        onCancel={() => { setShowAddModal(false); setSelectType(""); }}
         onOk={handleAddWidget}
       >
         <Form layout="vertical">
           <Form.Item label="Type">
-            <Select style={{ width: "70%" }} onChange={setSelectType}>
+            <Select onChange={setSelectType} style={{ width: "70%" }}>
               {WIDGET_TYPES.map((v: any) => (
                 <Select.Option key={v.value} value={v.value}>
                   {v.label}
@@ -298,9 +350,10 @@ export default function Dashboard() {
             </Select>
           </Form.Item>
 
-          {selectType === "action_log" && <ActionLog />}
           {selectType === "graph" && <Graph rangeData={rangeData} onConfigChange={setGraphConfig} />}
-          {selectType === "pie_chart" && <PieChart />}
+          {selectType === "pie_chart" && <PieChart onConfigChange={setPieConfig} />}
+          {selectType === "item_value" && <ItemValue />}
+          {selectType === "action_log" && <ActionLog />}
         </Form>
       </Modal>
     </div>
