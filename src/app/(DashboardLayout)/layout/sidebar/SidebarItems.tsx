@@ -20,31 +20,58 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
   const pathname = usePathname();
 
   // ============================================
-  // RENDER MENU ITEMS WITH FULL PROPER NESTING
+  // RENDER MENU ITEMS (Ant + Tabler SAFE)
   // ============================================
-  const renderMenuItems = (items: any, level = 0) => {
-    return items.map((item: any) => {
-      const Icon = item.icon || IconPoint;
+  const renderMenuItems = (items: any[], level = 0) => {
+    return items.map((item) => {
+      const paddingLeft = isSidebarOpen ? level * 20 + 20 : 0;
 
-      // Icon wrapper
+      // ============================================
+      // ICON HANDLER (BIGGER ICON SIZE)
+      // ============================================
+      const renderIcon = () => {
+        // Default icon
+        if (!item.icon) {
+          return <IconPoint size={24} />;
+        }
+
+        // ✅ Ant Design icon (React element)
+        if (React.isValidElement(item.icon)) {
+          return React.cloneElement(
+            item.icon as React.ReactElement,
+            {
+              style: {
+                fontSize: 24, // ⭐ ANT ICON SIZE
+              },
+            }
+          );
+        }
+
+        // ✅ Tabler icon (React component)
+        const IconComponent = item.icon;
+        return (
+          <IconComponent
+            size={24}      // ⭐ TABLER ICON SIZE
+            stroke={1.8}
+          />
+        );
+      };
+
       const itemIcon = (
         <Box
           sx={{
             display: "flex",
-            justifyContent: isSidebarOpen ? "flex-start" : "center",
+            justifyContent: "center",
             alignItems: "center",
-            width: isSidebarOpen ? "auto" : "100%",
+            minWidth: 32,              // keeps alignment clean
           }}
         >
-          <Icon stroke={1.5} size="1.7rem" />
+          {renderIcon()}
         </Box>
       );
 
-      // ⭐ Nested Left Padding
-      const paddingLeft = isSidebarOpen ? level * 20 + 20 : 0;
-
       // ============================================
-      // SUBMENU (HAS CHILDREN)
+      // SUBMENU
       // ============================================
       if (item.children) {
         return (
@@ -59,7 +86,6 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
               marginBottom: 3,
             }}
           >
-            {/* ⭐ REAL NESTED CHILDREN WRAPPER */}
             <Box sx={{ marginLeft: isSidebarOpen ? 2 : 0 }}>
               {renderMenuItems(item.children, level + 1)}
             </Box>
@@ -68,7 +94,7 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
       }
 
       // ============================================
-      // NORMAL MENU ITEM
+      // MENU ITEM
       // ============================================
       return (
         <MenuItem
@@ -81,7 +107,7 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
             display: "flex",
             alignItems: "center",
             paddingLeft,
-            height: 36,
+            height: 40,
           }}
         >
           {isSidebarOpen ? item.title : ""}
@@ -97,7 +123,7 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
       themeColor={"#014d8c"}
       themeSecondaryColor={"#49beff"}
     >
-      {/* ========== LOGO SECTION ========== */}
+      {/* ================= LOGO ================= */}
       <Box
         sx={{
           display: "flex",
@@ -121,7 +147,7 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
         )}
       </Box>
 
-      {/* ========== FULL NESTED MENU ========== */}
+      {/* ================= MENU ================= */}
       {renderMenuItems(Menuitems)}
     </MUI_Sidebar>
   );

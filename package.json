@@ -10,13 +10,14 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@ant-design/plots": "^2.6.6",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/server": "^11.11.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.5",
     "@mui/lab": "^7.0.1-beta.19",
-    "@mui/material": "^7.3.5",
+    "@mui/material": "^7.3.6",
     "@tabler/icons-react": "^3.35.0",
     "antd": "^6.1.0",
     "apexcharts": "5.3.6",
@@ -43,7 +44,7 @@
     "react-mui-sidebar": "^1.6.10",
     "react-resizable": "^3.0.5",
     "react-syntax-highlighter": "^16.1.0",
-    "recharts": "^3.5.1",
+    "recharts": "^3.6.0",
     "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
