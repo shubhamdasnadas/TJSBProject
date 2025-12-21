@@ -16,7 +16,9 @@ import { IconBellRinging, IconMenu } from "@tabler/icons-react";
 import Link from "next/link";
 import Profile from "./Profile";
 
-import { useThemeMode } from "@/app/context/ThemeContext";   // ⭐ ADDED
+import { useThemeMode } from "@/app/context/ThemeContext";
+import { EncryptedText } from "@/components/ui/encrypted-text";   // ⭐ ADDED
+ 
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -54,6 +56,29 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
           <IconMenu width={22} height={22} color="var(--text-color)" />  
           {/* ⭐ Icon color from theme */}
         </IconButton>
+
+        <Box
+          sx={{
+            ml: 2,
+            fontWeight: 700,
+            fontSize: "1.25rem",
+            letterSpacing: "0.5px",
+            textTransform: "uppercase",
+            "& .text-cyan-500": {
+              color: "#06b6d4 !important",
+            },
+            "& .text-white": {
+              color: mode === "dark" ? "#ffffffff" : "#014d8c",
+            },
+          }}
+        >
+          <EncryptedText 
+            text="TECHSEC NMS - Cybersecurity Operations"
+            encryptedClassName="text-cyan-500"
+            revealedClassName="text-white"
+            revealDelayMs={30}
+          />
+        </Box>
 
         <Box flexGrow={1} />
 

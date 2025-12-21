@@ -5,7 +5,7 @@ import { Button, Form, Modal, Select } from "antd";
 import axios from "axios";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
-
+import { EncryptedText } from "@/components/ui/encrypted-text";
 import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import DashboardSummary from "./DashboardSummary";
 import DashboardSummaryCount from "./DashboardSummaryCount";
