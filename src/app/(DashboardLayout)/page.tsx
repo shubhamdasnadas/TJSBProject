@@ -5,7 +5,7 @@ import { Button, Form, Modal, Select } from "antd";
 import axios from "axios";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
-
+// import { EncryptedText } from "@/components/ui/encrypted-text";
 import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import DashboardSummary from "./DashboardSummary";
 import DashboardSummaryCount from "./DashboardSummaryCount";
@@ -55,6 +55,7 @@ export default function Dashboard() {
 
   const [graphConfig, setGraphConfig] = useState<any>(null);
   const [pieConfig, setPieConfig] = useState<any>(null);
+  const [itemConfig, setItemConfig] = useState<any>(null);
 
   const [rangeData, setRangeData] = useState({
     startDate: "",
@@ -210,16 +211,18 @@ export default function Dashboard() {
 
     setDynamicWidgets((prev) => {
       const next = [
-        ...prev,
-        {
-          id,
-          type: selectType,
-          config:
-            selectType === "pie_chart"
-              ? pieConfig
-              : graphConfig,
-        },
-      ];
+  ...prev,
+  {
+    id,
+    type: selectType,
+    config:
+      selectType === "pie_chart"
+        ? pieConfig
+        : selectType === "item_value"
+        ? itemConfig
+        : graphConfig,
+  },
+];
 
       localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
       return next;
@@ -228,6 +231,7 @@ export default function Dashboard() {
     setShowAddModal(false);
     setGraphConfig(null);
     setPieConfig(null);
+    setItemConfig(null);
     setSelectType("");
   };
 
@@ -352,7 +356,7 @@ export default function Dashboard() {
 
           {selectType === "graph" && <Graph rangeData={rangeData} onConfigChange={setGraphConfig} />}
           {selectType === "pie_chart" && <PieChart onConfigChange={setPieConfig} />}
-          {selectType === "item_value" && <ItemValue />}
+          {selectType === "item_value" && <ItemValue onConfigChange={setItemConfig}/>}
           {selectType === "action_log" && <ActionLog />}
         </Form>
       </Modal>

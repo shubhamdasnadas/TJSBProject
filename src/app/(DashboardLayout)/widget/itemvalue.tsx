@@ -1,191 +1,233 @@
 "use client";
 
-import React, { useState } from "react";
-import { Form, Input, Select, Row, Col, Card } from "antd";
+import React, { useEffect, useState } from "react";
+import { Form, Input, Select, Row, Col } from "antd";
 import type { DefaultOptionType } from "antd/es/select";
 
 import useZabbixData from "./three";
 import Itemcard from "./item_value_card/itemcard";
 
-const ItemValue: React.FC = () => {
+/* ================= TYPES ================= */
+
+interface ZabbixItem {
+  itemid: string;
+  name: string;
+  key_: string;
+  lastvalue?: string;
+  prevvalue?: string;
+  units?: string;
+}
+
+export interface ItemValueConfig {
+  name?: string;
+  refresh_interval?: string;
+  hostgroup?: string[];
+  host?: string[];
+  item?: string[];
+}
+
+interface ItemValueProps {
+  initialConfig?: ItemValueConfig;
+  onConfigChange?: (config: ItemValueConfig) => void;
+}
+
+const ItemValue: React.FC<ItemValueProps> = ({
+  initialConfig,
+  onConfigChange,
+}) => {
   const {
-    hostGroups,
-    hosts,
-    items,
+    hostGroups = [],
+    hosts = [],
+    items = [],
     fetchZabbixData,
   } = useZabbixData();
 
-  /* ================= STATE ================= */
-  const [selectedItemKeys, setSelectedItemKeys] = useState<string[]>([]);
-  const [selectedHostName, setSelectedHostName] = useState<string>("");
+  const [form] = Form.useForm<ItemValueConfig>();
+
+  const isViewMode = !!initialConfig && !onConfigChange;
+
+  const [selectedHostName, setSelectedHostName] = useState("Host");
+  const [selectedItems, setSelectedItems] = useState<ZabbixItem[]>([]);
+
+  /* ================= INIT FROM CONFIG ================= */
+  useEffect(() => {
+    if (!initialConfig) return;
+
+    form.setFieldsValue(initialConfig);
+
+    if (initialConfig.hostgroup?.length) {
+      fetchZabbixData("host", initialConfig.hostgroup);
+    }
+
+    if (initialConfig.host?.length) {
+      fetchZabbixData("item", initialConfig.host);
+    }
+  }, [initialConfig, fetchZabbixData, form]);
+
+  /* ================= BUILD ITEMS AFTER FETCH ================= */
+  useEffect(() => {
+    if (!initialConfig?.item) return;
+    if (items.length === 0) return;
+
+    const selected = items.filter((i: ZabbixItem) =>
+      initialConfig.item!.includes(i.itemid)
+    );
+
+    setSelectedItems(selected);
+  }, [items, initialConfig]);
+
+  /* ================= SET HOST NAME IN VIEW MODE ================= */
+  useEffect(() => {
+    if (!initialConfig?.host) return;
+    if (hosts.length === 0) return;
+
+    const host = hosts.find((h: any) =>
+      initialConfig.host!.includes(h.hostid)
+    );
+
+    if (host?.name) {
+      setSelectedHostName(host.name);
+    }
+  }, [hosts, initialConfig]);
+
+  /* ================= CONFIG EMITTER ================= */
+  const emitConfig = (changed: Partial<ItemValueConfig>) => {
+    if (!onConfigChange) return;
+    const values = form.getFieldsValue();
+    onConfigChange({ ...values, ...changed });
+  };
 
   /* ================= HANDLERS ================= */
 
   const handleHostGroupChange = (groupIds: string[]) => {
     fetchZabbixData("host", groupIds);
+    emitConfig({ hostgroup: groupIds });
   };
 
   const handleHostChange = (
     hostIds: string[],
-    options: DefaultOptionType | DefaultOptionType[] | undefined
+    options?: DefaultOptionType | DefaultOptionType[]
   ) => {
     fetchZabbixData("item", hostIds);
+    emitConfig({ host: hostIds });
 
-    if (options) {
-      const optionArray = Array.isArray(options) ? options : [options];
-      if (optionArray.length > 0) {
-        setSelectedHostName(String(optionArray[0].label ?? "Host"));
-      }
+    const optionArray = Array.isArray(options)
+      ? options
+      : options
+      ? [options]
+      : [];
+
+    if (optionArray[0]?.label) {
+      setSelectedHostName(String(optionArray[0].label));
     }
   };
 
   const handleItemChange = (itemIds: string[]) => {
-    const selectedItems = items.filter((i) =>
+    emitConfig({ item: itemIds });
+
+    const selected = items.filter((i: ZabbixItem) =>
       itemIds.includes(i.itemid)
     );
 
-    const keys = selectedItems.map((i) => i.key_);
-    setSelectedItemKeys(keys);
+    setSelectedItems(selected);
   };
 
   /* ================= UI ================= */
 
   return (
-    <Form layout="vertical">
+    <>
+      {!isViewMode && (
+        <Form layout="vertical" form={form}>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Name" name="name">
+                <Input
+                  placeholder="default"
+                  onChange={(e) => emitConfig({ name: e.target.value })}
+                />
+              </Form.Item>
+            </Col>
 
-      {/* ================= ROW 1 ================= */}
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item label="Name" name="name">
-            <Input placeholder="default" />
-          </Form.Item>
-        </Col>
+            <Col span={12}>
+              <Form.Item label="Refresh interval" name="refresh_interval">
+                <Select
+                  defaultValue="1m"
+                  onChange={(v) => emitConfig({ refresh_interval: v })}
+                >
+                  <Select.Option value="1m">Default (1 minute)</Select.Option>
+                  <Select.Option value="30s">30 seconds</Select.Option>
+                  <Select.Option value="5m">5 minutes</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-        <Col span={12}>
-          <Form.Item label="Refresh interval" name="refresh_interval">
-            <Select defaultValue="1m">
-              <Select.Option value="1m">
-                Default (1 minute)
-              </Select.Option>
-              <Select.Option value="30s">
-                30 seconds
-              </Select.Option>
-              <Select.Option value="5m">
-                5 minutes
-              </Select.Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
+          <Row gutter={24}>
+            <Col span={8}>
+              <Form.Item label="Host group" name="hostgroup" required>
+                <Select
+                  mode="multiple"
+                  allowClear
+                  onChange={handleHostGroupChange}
+                  options={hostGroups.map((g: any) => ({
+                    label: g.name,
+                    value: g.groupid,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
 
-      {/* ================= ROW 2 ================= */}
-      <Row gutter={24}>
-        {/* HOST GROUP */}
-        <Col span={8}>
-          <Form.Item
-            label="Host group"
-            name="hostgroup"
-            rules={[{ required: true, message: "Select host group" }]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Select host group"
-              allowClear
-              onChange={handleHostGroupChange}
-              options={hostGroups.map((g) => ({
-                label: g.name,
-                value: g.groupid,
-              }))}
-            />
-          </Form.Item>
-        </Col>
+            <Col span={8}>
+              <Form.Item label="Host" name="host" required>
+                <Select
+                  mode="multiple"
+                  allowClear
+                  onChange={handleHostChange}
+                  options={hosts.map((h: any) => ({
+                    label: h.name,
+                    value: h.hostid,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
 
-        {/* HOST */}
-        <Col span={8}>
-          <Form.Item
-            label="Host"
-            name="host"
-            rules={[{ required: true, message: "Select host" }]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Select host"
-              allowClear
-              onChange={handleHostChange}
-              options={hosts.map((h) => ({
-                label: h.name,
-                value: h.hostid,
-              }))}
-            />
-          </Form.Item>
-        </Col>
+            <Col span={8}>
+              <Form.Item label="Item" name="item" required>
+                <Select
+                  mode="multiple"
+                  allowClear
+                  onChange={handleItemChange}
+                  options={items.map((i: ZabbixItem) => ({
+                    label: i.name,
+                    value: i.itemid,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      )}
 
-        {/* ITEM */}
-        <Col span={8}>
-          <Form.Item
-            label="Item"
-            name="item"
-            rules={[{ required: true, message: "Select item" }]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Select item"
-              allowClear
-              onChange={handleItemChange}
-              options={items.map((i) => ({
-                label: i.name,
-                value: i.itemid,
-              }))}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+      <Row gutter={16}>
+        {selectedItems.map((item) => {
+          const last = Number(item.lastvalue ?? 0);
+          const prev = Number(item.prevvalue ?? last);
 
-      {/* ================= ROW 3 ================= */}
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item label="Show" name="show">
-            <Select
-              mode="multiple"
-              placeholder="Select fields"
-              allowClear
-            >
-              <Select.Option value="description">
-                Description
-              </Select.Option>
-              <Select.Option value="value">
-                Value
-              </Select.Option>
-              <Select.Option value="time">
-                Time
-              </Select.Option>
-              <Select.Option value="change">
-                Change indicator
-              </Select.Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      {/* ================= ITEM VALUE CARDS ================= */}
-      <Card>
-        <Row gutter={16}>
-          {selectedItemKeys.map((key) => (
-            <Col key={key}>
+          return (
+            <Col key={item.itemid}>
               <Itemcard
-                hostName={selectedHostName || "Host"}
+                hostName={selectedHostName}
                 timestamp={new Date().toLocaleString()}
-                value={8.8}        
-                unit="%"
-                label={key}      
-                trend="up"
+                value={last}
+                unit={item.units ?? ""}
+                label={item.name}
+                trend={last >= prev ? "up" : "down"}
               />
             </Col>
-          ))}
-        </Row>
-      </Card>
-
-    </Form>
+          );
+        })}
+      </Row>
+    </>
   );
 };
 
