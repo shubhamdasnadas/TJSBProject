@@ -12,6 +12,8 @@ import { IconPoint } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import type { CSSProperties } from "react";
+
 interface SidebarItemsProps {
   isSidebarOpen: boolean;
 }
@@ -38,14 +40,15 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
         // ✅ Ant Design icon (React element)
         if (React.isValidElement(item.icon)) {
           return React.cloneElement(
-            item.icon as React.ReactElement,
+            item.icon as React.ReactElement<any>,
             {
               style: {
-                fontSize: 24, // ⭐ ANT ICON SIZE
+                fontSize: 24,
               },
             }
           );
         }
+
 
         // ✅ Tabler icon (React component)
         const IconComponent = item.icon;

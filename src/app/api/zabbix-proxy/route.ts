@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         httpsAgent,
         // accept any status so we forward upstream status back
-        validateStatus: () => true,
+        // validateStatus: () => true,
       }
     );
 

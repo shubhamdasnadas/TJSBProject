@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Form, Input, Select, Row, Col } from "antd";
 import type { DefaultOptionType } from "antd/es/select";
 
@@ -49,9 +49,17 @@ const ItemValue: React.FC<ItemValueProps> = ({
   const [selectedHostName, setSelectedHostName] = useState("Host");
   const [selectedItems, setSelectedItems] = useState<ZabbixItem[]>([]);
 
-  /* ================= INIT FROM CONFIG ================= */
+  /* ================= EFFECT GUARDS ================= */
+  const initializedRef = useRef(false);
+  const itemsBuiltRef = useRef(false);
+  const hostResolvedRef = useRef(false);
+
+  /* ================= INIT FROM CONFIG (RUN ONCE) ================= */
   useEffect(() => {
     if (!initialConfig) return;
+    if (initializedRef.current) return;
+
+    initializedRef.current = true;
 
     form.setFieldsValue(initialConfig);
 
@@ -62,24 +70,30 @@ const ItemValue: React.FC<ItemValueProps> = ({
     if (initialConfig.host?.length) {
       fetchZabbixData("item", initialConfig.host);
     }
-  }, [initialConfig, fetchZabbixData, form]);
+  }, [initialConfig]); // intentionally minimal deps
 
-  /* ================= BUILD ITEMS AFTER FETCH ================= */
+  /* ================= BUILD SELECTED ITEMS ================= */
   useEffect(() => {
     if (!initialConfig?.item) return;
-    if (items.length === 0) return;
+    if (!items.length) return;
+    if (itemsBuiltRef.current) return;
+
+    itemsBuiltRef.current = true;
 
     const selected = items.filter((i: ZabbixItem) =>
       initialConfig.item!.includes(i.itemid)
     );
 
     setSelectedItems(selected);
-  }, [items, initialConfig]);
+  }, [items]);
 
-  /* ================= SET HOST NAME IN VIEW MODE ================= */
+  /* ================= RESOLVE HOST NAME ================= */
   useEffect(() => {
     if (!initialConfig?.host) return;
-    if (hosts.length === 0) return;
+    if (!hosts.length) return;
+    if (hostResolvedRef.current) return;
+
+    hostResolvedRef.current = true;
 
     const host = hosts.find((h: any) =>
       initialConfig.host!.includes(h.hostid)
@@ -88,7 +102,7 @@ const ItemValue: React.FC<ItemValueProps> = ({
     if (host?.name) {
       setSelectedHostName(host.name);
     }
-  }, [hosts, initialConfig]);
+  }, [hosts]);
 
   /* ================= CONFIG EMITTER ================= */
   const emitConfig = (changed: Partial<ItemValueConfig>) => {
@@ -102,6 +116,9 @@ const ItemValue: React.FC<ItemValueProps> = ({
   const handleHostGroupChange = (groupIds: string[]) => {
     fetchZabbixData("host", groupIds);
     emitConfig({ hostgroup: groupIds });
+
+    // reset dependent data
+    setSelectedItems([]);
   };
 
   const handleHostChange = (
@@ -143,20 +160,33 @@ const ItemValue: React.FC<ItemValueProps> = ({
               <Form.Item label="Name" name="name">
                 <Input
                   placeholder="default"
-                  onChange={(e) => emitConfig({ name: e.target.value })}
+                  onChange={(e) =>
+                    emitConfig({ name: e.target.value })
+                  }
                 />
               </Form.Item>
             </Col>
 
             <Col span={12}>
-              <Form.Item label="Refresh interval" name="refresh_interval">
+              <Form.Item
+                label="Refresh interval"
+                name="refresh_interval"
+              >
                 <Select
                   defaultValue="1m"
-                  onChange={(v) => emitConfig({ refresh_interval: v })}
+                  onChange={(v) =>
+                    emitConfig({ refresh_interval: v })
+                  }
                 >
-                  <Select.Option value="1m">Default (1 minute)</Select.Option>
-                  <Select.Option value="30s">30 seconds</Select.Option>
-                  <Select.Option value="5m">5 minutes</Select.Option>
+                  <Select.Option value="1m">
+                    Default (1 minute)
+                  </Select.Option>
+                  <Select.Option value="30s">
+                    30 seconds
+                  </Select.Option>
+                  <Select.Option value="5m">
+                    5 minutes
+                  </Select.Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -164,7 +194,11 @@ const ItemValue: React.FC<ItemValueProps> = ({
 
           <Row gutter={24}>
             <Col span={8}>
-              <Form.Item label="Host group" name="hostgroup" required>
+              <Form.Item
+                label="Host group"
+                name="hostgroup"
+                required
+              >
                 <Select
                   mode="multiple"
                   allowClear

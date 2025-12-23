@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Table, Typography } from "antd";
 
 const { Text } = Typography;
@@ -25,6 +25,11 @@ type SeverityKey =
   | "information"
   | "not_classified";
 
+/* --------------------- CONFIG TYPE (ADDED) --------------------- */
+export interface ProblemSeverityConfig {
+  groupID?: number[];
+}
+
 /* --------------------- PROPS --------------------- */
 interface Props {
   rangeData: {
@@ -34,17 +39,43 @@ interface Props {
     endTime: string;
   };
   groupID: number[];
+
+  /* ✅ ADDED (NON-BREAKING) */
+  initialConfig?: ProblemSeverityConfig;
+  onConfigChange?: (config: ProblemSeverityConfig) => void;
 }
 
 /* --------------------- MAIN COMPONENT --------------------- */
-export default function ProblemSeverity({ rangeData, groupID }: Props) {
+export default function ProblemSeverity({
+  rangeData,
+  groupID,
+  initialConfig,
+  onConfigChange,
+}: Props) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const initializedRef = useRef(false);
 
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem("zabbix_auth")
       : null;
+
+  /* ===================== INIT CONFIG (VIEW MODE) ===================== */
+  useEffect(() => {
+    if (!initialConfig) return;
+    if (initializedRef.current) return;
+
+    initializedRef.current = true;
+
+    // Emit config once so parent stores it
+    if (onConfigChange) {
+      onConfigChange({
+        groupID: initialConfig.groupID ?? groupID,
+      });
+    }
+  }, [initialConfig]);
 
   /* ===================== DEFAULT LAST 1 DAY ===================== */
   const getDefaultLastOneDayRange = () => {
@@ -67,7 +98,7 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
     };
   };
 
-  /* ===================== LOAD DATA ===================== */
+  /* ===================== LOAD DATA (UNCHANGED CORE LOGIC) ===================== */
   const load = async () => {
     setLoading(true);
 
@@ -84,16 +115,23 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
         ? getDefaultLastOneDayRange()
         : rangeData;
 
+      // ✅ groupID priority:
+      // 1. initialConfig
+      // 2. prop groupID (existing behavior)
+      const finalGroupIDs =
+        initialConfig?.groupID && initialConfig.groupID.length > 0
+          ? initialConfig.groupID
+          : groupID;
+
       const res = await axios.post(
         "http://192.168.56.1:3000/api/zabbix/problems",
         {
           auth: token,
           ...finalRangeData,
-          groupids: groupID,
+          groupids: finalGroupIDs,
         }
       );
 
-      /* ===================== HOST GROUP DATA ===================== */
       const countsByGroup: Record<
         string,
         Record<SeverityKey, number>
@@ -102,7 +140,7 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
       const formattedRows = Object.entries(countsByGroup).map(
         ([groupName, counts]) => ({
           key: groupName,
-          host: groupName, // ✅ HOST COLUMN = HOST GROUP NAME
+          host: groupName,
           ...counts,
         })
       );
@@ -115,12 +153,12 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
     }
   };
 
-  /* ===================== EFFECT ===================== */
+  /* ===================== EFFECT (UNCHANGED) ===================== */
   useEffect(() => {
     load();
     const interval = setInterval(load, 60000);
     return () => clearInterval(interval);
-  }, [rangeData, groupID]);
+  }, [rangeData, groupID, initialConfig]);
 
   /* ===================== TABLE COLUMNS ===================== */
   const columns = [
@@ -158,7 +196,7 @@ export default function ProblemSeverity({ rangeData, groupID }: Props) {
     })),
   ];
 
-  /* ===================== UI ===================== */
+  /* ===================== UI (UNCHANGED) ===================== */
   return (
     <Table
       columns={columns}

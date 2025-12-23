@@ -37,6 +37,7 @@
     "react": "^19.2.3",
     "react-apexcharts": "1.8.0",
     "react-chartjs-2": "^5.3.1",
+    "react-color": "^2.19.3",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.2.3",
