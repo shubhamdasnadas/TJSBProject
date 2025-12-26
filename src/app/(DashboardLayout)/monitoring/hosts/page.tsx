@@ -45,7 +45,7 @@ const Host = () => {
     console.log("Filter Data:", filterFormData);
     try {
       const res = await axios.post(
-        "/api/api_host/api_getdata_host",
+        "http://localhost:3000/api/api_host/api_getdata_host",
         {
           auth: user_token,
           groupid: filterFormData.groupid,
@@ -60,7 +60,7 @@ const Host = () => {
   const handleGetHostGroup = async () => {
     try {
       const res = await axios.post(
-        "/api/api_host/api_host_group",
+        "http://localhost:3000/api/api_host/api_host_group",
         {
           auth: user_token,
         }
@@ -75,7 +75,7 @@ const Host = () => {
   const handleGetTemplateList = async (groupid: string) => {
     try {
       const response = await axios.post(
-        "/api/api_host/api_template",
+        "http://localhost:3000/api/api_host/api_template",
         {
           auth: user_token,
           groupids: [groupid],
@@ -93,7 +93,7 @@ const Host = () => {
   const handleClick = async () => {
     try {
       const response = await axios.post(
-        "/api/api_host/api_template_group",
+        "http://localhost:3000/api/api_host/api_template_group",
         {
           auth: user_token,
         }
@@ -107,7 +107,7 @@ const Host = () => {
   const handleCreateHost = async () => {
     try {
       const res = await axios.post(
-        "/api/api_host/api_create_host",
+        "http://localhost:3000/api/api_host/api_create_host",
         formData
       );
       console.log("Host created:", res.data);
@@ -156,7 +156,7 @@ const Host = () => {
           <Row gutter={[24, 24]}>
             <Col span={12}>
               <Form.Item label="Template Group">
-                <Select onChange={(e) => {handleClick(), handleGetTemplateList(e  as any)}}>
+                <Select onChange={(e) => { handleClick(), handleGetTemplateList(e as any) }}>
                   {templateGrouplist.map((v: any) => (
                     <Select.Option key={v.groupid} value={v.groupid}>
                       {v.name}
