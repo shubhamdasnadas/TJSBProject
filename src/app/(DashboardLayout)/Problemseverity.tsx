@@ -124,7 +124,7 @@ export default function ProblemSeverity({
           : groupID;
 
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/zabbix/problems",
+        "/api/zabbix/problems",
         {
           auth: token,
           ...finalRangeData,

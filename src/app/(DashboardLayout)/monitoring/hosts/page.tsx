@@ -45,7 +45,7 @@ const Host = () => {
     console.log("Filter Data:", filterFormData);
     try {
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_getdata_host",
+        "/api/api_host/api_getdata_host",
         {
           auth: user_token,
           groupid: filterFormData.groupid,
@@ -60,7 +60,7 @@ const Host = () => {
   const handleGetHostGroup = async () => {
     try {
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_host_group",
+        "/api/api_host/api_host_group",
         {
           auth: user_token,
         }
@@ -93,7 +93,7 @@ const Host = () => {
   const handleClick = async () => {
     try {
       const response = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_template_group",
+        "/api/api_host/api_template_group",
         {
           auth: user_token,
         }
@@ -107,7 +107,7 @@ const Host = () => {
   const handleCreateHost = async () => {
     try {
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/api_host/api_create_host",
+        "/api/api_host/api_create_host",
         formData
       );
       console.log("Host created:", res.data);

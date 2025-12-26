@@ -58,7 +58,7 @@ export default function LatestDataPage() {
     };
 
     try {
-      const response = await axios.post('http://192.168.56.1:3000/api/zabbix-proxy', payload, {
+      const response = await axios.post('/api/zabbix-proxy', payload, {
         headers: { 'Content-Type': 'application/json', },
       });
 
@@ -101,7 +101,7 @@ export default function LatestDataPage() {
     };
 
     try {
-      const res = await axios.post('http://192.168.56.1:3000/api/zabbix-proxy', payload, {
+      const res = await axios.post('/api/zabbix-proxy', payload, {
         headers: { 'Content-Type': 'application/json' },
       });
 
@@ -153,7 +153,7 @@ export default function LatestDataPage() {
     };
 
     try {
-      const res = await axios.post('http://192.168.56.1:3000/api/zabbix-proxy', payload, {
+      const res = await axios.post('/api/zabbix-proxy', payload, {
         headers: { 'Content-Type': 'application/json', },
       });
 
