@@ -2,18 +2,33 @@
 
 import React, { useEffect, useState } from "react";
 import { Modal, Form, Input, Select, Radio } from "antd";
+import { v4 as uuid } from "uuid";
 
 /* ================= TYPES ================= */
 export interface ColumnConfig {
+  id: string;
   name: string;
   data: "Item value" | "Host Name";
-  itemId?: string;      // backend
-  itemName?: string;    // UI
-  display?: "as_is" | "bar" | "indicators";
+  hostId: string;
+  hostName: string;
+
+  itemId?: string;
+  itemName?: string;
+  display?: "as_is" | "bar";
   decimals?: number;
-  aggregation?: string;
-  history?: string;
-  displayValue?: string; // Host Name
+
+  // 🔑 SNAPSHOT (FIX)
+  itemSnapshot?: {
+    itemid: string;
+    name: string;
+    lastvalue?: string;
+    units?: string;
+  };
+}
+
+interface Host {
+  hostid: string;
+  name: string;
 }
 
 interface Item {
@@ -25,9 +40,10 @@ interface Item {
 
 interface Props {
   open: boolean;
+  hosts: Host[];
   items: Item[];
-  selectedHostNames: string[];
   initialData?: ColumnConfig | null;
+  onHostChange?: (hostId: string) => void;
   onCancel: () => void;
   onSubmit: (column: ColumnConfig) => void;
 }
@@ -35,9 +51,10 @@ interface Props {
 /* ================= COMPONENT ================= */
 const ColumnModal: React.FC<Props> = ({
   open,
+  hosts,
   items,
-  selectedHostNames,
   initialData,
+  onHostChange,
   onCancel,
   onSubmit,
 }) => {
@@ -47,16 +64,34 @@ const ColumnModal: React.FC<Props> = ({
 
   /* ================= PREFILL ================= */
   useEffect(() => {
-    if (initialData) {
+    if (open && initialData) {
       form.setFieldsValue(initialData);
       setDataType(initialData.data);
-    } else {
+    }
+
+    if (open && !initialData) {
       form.resetFields();
       setDataType("Item value");
     }
-  }, [initialData, form]);
+  }, [open, initialData, form]);
 
-  /* ================= ITEM SELECT ================= */
+  /* ================= HANDLERS ================= */
+
+  const handleHostChange = (hostId: string) => {
+    const host = hosts.find((h) => h.hostid === hostId);
+    if (!host) return;
+
+    onHostChange?.(hostId);
+
+    form.setFieldsValue({
+      hostId,
+      hostName: host.name,
+      itemId: undefined,
+      itemName: undefined,
+      itemSnapshot: undefined,
+    });
+  };
+
   const handleItemChange = (itemId: string) => {
     const item = items.find((i) => i.itemid === itemId);
     if (!item) return;
@@ -64,36 +99,47 @@ const ColumnModal: React.FC<Props> = ({
     form.setFieldsValue({
       itemId: item.itemid,
       itemName: item.name,
+      itemSnapshot: { ...item }, // 🔑 SNAPSHOT STORED
     });
   };
 
-  /* ================= SUBMIT ================= */
   const handleSubmit = () => {
     const values = form.getFieldsValue();
 
-    if (values.data === "Host Name") {
-      onSubmit({
-        name: values.name,
-        data: "Host Name",
-        displayValue: selectedHostNames.join(", "),
-      });
-      return;
-    }
-
-    onSubmit(values as ColumnConfig);
+    onSubmit({
+      id: initialData?.id ?? uuid(),
+      ...values,
+    });
   };
 
+  /* ================= UI ================= */
   return (
     <Modal
       title={initialData ? "Edit column" : "New column"}
       open={open}
       onCancel={onCancel}
       onOk={handleSubmit}
-      width={650}
       destroyOnClose
+      width={650}
     >
       <Form layout="vertical" form={form}>
         <Form.Item label="Name" name="name" required>
+          <Input />
+        </Form.Item>
+
+        <Form.Item label="Host" name="hostId" required>
+          <Select
+            showSearch
+            optionFilterProp="label"
+            onChange={handleHostChange}
+            options={hosts.map((h) => ({
+              label: h.name,
+              value: h.hostid,
+            }))}
+          />
+        </Form.Item>
+
+        <Form.Item name="hostName" hidden>
           <Input />
         </Form.Item>
 
@@ -106,7 +152,7 @@ const ColumnModal: React.FC<Props> = ({
 
         {dataType === "Item value" && (
           <>
-            <Form.Item label="Item name" name="itemId" required>
+            <Form.Item label="Item" name="itemId" required>
               <Select
                 showSearch
                 optionFilterProp="label"
@@ -118,29 +164,20 @@ const ColumnModal: React.FC<Props> = ({
               />
             </Form.Item>
 
-            {/* UI only */}
-            <Form.Item name="itemName" hidden>
-              <Input />
-            </Form.Item>
+            <Form.Item name="itemName" hidden />
+            <Form.Item name="itemSnapshot" hidden />
 
             <Form.Item label="Display" name="display" initialValue="as_is">
               <Radio.Group>
                 <Radio.Button value="as_is">As is</Radio.Button>
                 <Radio.Button value="bar">Bar</Radio.Button>
-                <Radio.Button value="indicators">Indicators</Radio.Button>
               </Radio.Group>
             </Form.Item>
 
-            <Form.Item label="Decimal places" name="decimals" initialValue={2}>
+            <Form.Item label="Decimals" name="decimals" initialValue={2}>
               <Input type="number" min={0} />
             </Form.Item>
           </>
-        )}
-
-        {dataType === "Host Name" && (
-          <Form.Item label="Selected hosts">
-            <Input disabled value={selectedHostNames.join(", ")} />
-          </Form.Item>
         )}
       </Form>
     </Modal>

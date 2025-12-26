@@ -1,187 +1,250 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  Form,
-  Select,
-  Row,
-  Col,
-  Button,
-  Space,
-  Table,
-  Checkbox,
-  Progress,
-} from "antd";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { Form, Select, Button, Table, Checkbox, Progress } from "antd";
 import useZabbixData from "../three";
 import ColumnModal, { ColumnConfig } from "./ColumnModal";
 
-/* ================= COMPONENT ================= */
+const formatBytes = (v: number) =>
+  `${(v / 1024 / 1024 / 1024).toFixed(2)} GB`;
+
 const TopHost: React.FC = () => {
   const { hostGroups, hosts, items, fetchZabbixData } = useZabbixData();
-  const [form] = Form.useForm();
 
-  const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
   const [columnsConfig, setColumnsConfig] = useState<ColumnConfig[]>([]);
-  const [editingColumn, setEditingColumn] = useState<ColumnConfig | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<ColumnConfig | null>(null);
+  const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(false);
 
-  /* ================= DERIVED ================= */
+  /* GROUP BY HOST */
+  const previewBlocks = useMemo(() => {
+    const map = new Map<string, ColumnConfig[]>();
 
-  const selectedHostNames = hosts
-    .filter((h) => selectedHosts.includes(h.hostid))
-    .map((h) => h.name);
+    columnsConfig.forEach((c) => {
+      if (!map.has(c.hostName)) map.set(c.hostName, []);
+      map.get(c.hostName)!.push(c);
+    });
 
-  /* ================= HANDLERS ================= */
+    return Array.from(map.entries());
+  }, [columnsConfig]);
 
-  const handleHostGroupChange = (groupIds: string[]) => {
-    fetchZabbixData("host", groupIds);
-    setSelectedHosts([]);
-  };
+  /* ====== DRAG ON TABLE BODY (STABLE METHOD) ====== */
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
-  const handleHostChange = (hostIds: string[]) => {
-    setSelectedHosts(hostIds);
-    if (hostIds.length) fetchZabbixData("item", hostIds);
-  };
+  useEffect(() => {
+    if (!tableWrapperRef.current) return;
 
-  const handleSubmitColumn = (column: ColumnConfig) => {
-    setColumnsConfig((prev) =>
-      editingColumn
-        ? prev.map((c) => (c.name === editingColumn.name ? column : c))
-        : [...prev, column]
-    );
-    setModalOpen(false);
-    setEditingColumn(null);
-  };
+    const body = tableWrapperRef.current.querySelector(
+      ".ant-table-body"
+    ) as HTMLDivElement | null;
 
-  /* ================= PREVIEW TABLE ================= */
+    if (!body) return;
 
-  const previewColumns = [
-    { title: "Hostname", dataIndex: "host" },
-    ...columnsConfig.map((c) => ({
-      title: c.name,
-      render: (_: any, row: any) => {
-        if (c.data === "Host Name") return row.host;
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
 
-        if (!c.itemId) return "-";
+    const handleDown = (e: MouseEvent) => {
+      isDown = true;
+      startX = e.pageX - body.offsetLeft;
+      scrollLeft = body.scrollLeft;
+      body.style.cursor = "grabbing";
+      body.style.userSelect = "none";
+    };
 
-        const item = items.find((i) => i.itemid === c.itemId);
-        const value = Number(item?.lastvalue ?? 0);
+    const handleMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - body.offsetLeft;
+      const walk = x - startX;
+      body.scrollLeft = scrollLeft - walk;
+    };
 
-        if (c.display === "bar") {
-          return <Progress percent={Math.min(value, 100)} size="small" />;
-        }
+    const handleUp = () => {
+      isDown = false;
+      body.style.cursor = "grab";
+      body.style.removeProperty("user-select");
+    };
 
-        return `${value}${(item as any)?.units ?? ""}`;
-      },
-    })),
-  ];
+    body.style.cursor = "grab";
 
-  const previewData = selectedHostNames.map((h) => ({
-    key: h,
-    host: h,
-  }));
+    body.addEventListener("mousedown", handleDown);
+    body.addEventListener("mousemove", handleMove);
+    body.addEventListener("mouseleave", handleUp);
+    body.addEventListener("mouseup", handleUp);
 
-  /* ================= UI ================= */
+    return () => {
+      body.removeEventListener("mousedown", handleDown);
+      body.removeEventListener("mousemove", handleMove);
+      body.removeEventListener("mouseleave", handleUp);
+      body.removeEventListener("mouseup", handleUp);
+    };
+  }, [preview, columnsConfig]);
 
   return (
     <>
-      <Form layout="vertical" form={form}>
-        <Row gutter={24}>
-          <Col span={8}>
-            <Form.Item label="Host groups">
-              <Select
-                mode="multiple"
-                onChange={handleHostGroupChange}
-                options={hostGroups.map((g) => ({
-                  label: g.name,
-                  value: g.groupid,
-                }))}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col span={8}>
-            <Form.Item label="Hosts">
-              <Select
-                mode="multiple"
-                value={selectedHosts}
-                onChange={handleHostChange}
-                options={hosts.map((h) => ({
-                  label: h.name,
-                  value: h.hostid,
-                }))}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        {/* ================= COLUMNS ================= */}
-        <Form.Item label="Columns">
-          <Button type="link" onClick={() => setModalOpen(true)}>
-            Add
-          </Button>
-
-          <Table
-            size="small"
-            rowKey="name"
-            pagination={false}
-            dataSource={columnsConfig}
-            columns={[
-              { title: "Name", dataIndex: "name" },
-              {
-                title: "Value",
-                render: (_, r: ColumnConfig) =>
-                  r.data === "Host Name"
-                    ? r.displayValue
-                    : r.itemName,
-              },
-              {
-                title: "Action",
-                render: (_, r: ColumnConfig) => (
-                  <Space>
-                    <a onClick={() => { setEditingColumn(r); setModalOpen(true); }}>
-                      Edit
-                    </a>
-                    <a onClick={() =>
-                      setColumnsConfig((p) =>
-                        p.filter((c) => c.name !== r.name)
-                      )
-                    }>
-                      Remove
-                    </a>
-                  </Space>
-                ),
-              },
-            ]}
+      <Form layout="vertical">
+        <Form.Item label="Host Groups">
+          <Select
+            mode="multiple"
+            onChange={(g) => fetchZabbixData("host", g)}
+            options={hostGroups.map((g) => ({
+              label: g.name,
+              value: g.groupid,
+            }))}
           />
         </Form.Item>
 
+        <Button
+          type="primary"
+          onClick={() => {
+            setEditing(null);
+            setOpen(true);
+          }}
+        >
+          Add Column
+        </Button>
+
+        <Table
+          style={{ marginTop: 12 }}
+          size="small"
+          pagination={false}
+          rowKey="id"
+          dataSource={columnsConfig}
+          columns={[
+            { title: "Name", dataIndex: "name" },
+            { title: "Host", dataIndex: "hostName" },
+            { title: "Item", dataIndex: "itemName" },
+            {
+              title: "Action",
+              render: (_, r) => (
+                <>
+                  <a
+                    onClick={() => {
+                      setEditing(r);
+                      setOpen(true);
+                    }}
+                  >
+                    Edit
+                  </a>{" "}
+                  |{" "}
+                  <a
+                    onClick={() =>
+                      setColumnsConfig((p) =>
+                        p.filter((x) => x.id !== r.id)
+                      )
+                    }
+                  >
+                    Remove
+                  </a>
+                </>
+              ),
+            },
+          ]}
+        />
+
         <Checkbox
+          style={{ marginTop: 12 }}
           checked={preview}
           onChange={(e) => setPreview(e.target.checked)}
         >
-          Show preview
+          Show Preview
         </Checkbox>
       </Form>
 
-      {preview && (
-        <Table
-          style={{ marginTop: 16 }}
-          bordered
-          size="small"
-          columns={previewColumns}
-          dataSource={previewData}
-        />
-      )}
+      {/* ===== PREVIEW ===== */}
+      {preview &&
+        (() => {
+          const rows = previewBlocks.map(([host, cols]) => {
+            const row: any = { key: host, host };
+
+            cols.forEach((c) => {
+              const snap = c.itemSnapshot;
+
+              if (!snap) {
+                row[c.name] = { raw: null, units: "" };
+                return;
+              }
+
+              const raw = Number(snap.lastvalue ?? 0);
+              const value = Number(raw.toFixed(c.decimals ?? 2));
+              const units = snap.units ?? "";
+
+              row[c.name] = { raw: value, units, config: c };
+            });
+
+            return row;
+          });
+
+          const columns: any = [
+            {
+              title: "host name",
+              dataIndex: "host",
+            },
+            ...columnsConfig.map((c) => ({
+              title: c.name,
+              dataIndex: c.name,
+              render: (v: any) => {
+                if (!v || v.raw === null) return "-";
+
+                const { raw, units, config } = v;
+
+                if (config.display === "bar" || units === "%") {
+                  return (
+                    <div style={{ minWidth: 120 }}>
+                      <Progress
+                        percent={Math.min(Number(raw), 100)}
+                        size="small"
+                      />
+                    </div>
+                  );
+                }
+
+                if (units?.toLowerCase().includes("b")) {
+                  return (
+                    <div style={{ textAlign: "right" }}>
+                      {formatBytes(Number(raw))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ textAlign: "right" }}>
+                    {raw} {units}
+                  </div>
+                );
+              },
+            })),
+          ];
+
+          return (
+            <div ref={tableWrapperRef} style={{ marginTop: 16 }}>
+              <Table
+                bordered
+                size="small"
+                pagination={false}
+                scroll={{ x: "max-content" }}
+                columns={columns}
+                dataSource={rows}
+              />
+            </div>
+          );
+        })()}
 
       <ColumnModal
-        open={modalOpen}
+        open={open}
+        hosts={hosts}
         items={items}
-        selectedHostNames={selectedHostNames}
-        initialData={editingColumn}
-        onCancel={() => setModalOpen(false)}
-        onSubmit={handleSubmitColumn}
+        initialData={editing}
+        onHostChange={(h) => fetchZabbixData("item", [h])}
+        onCancel={() => setOpen(false)}
+        onSubmit={(c) => {
+          setColumnsConfig((p) =>
+            editing ? p.map((x) => (x.id === c.id ? c : x)) : [...p, c]
+          );
+          setEditing(null);
+          setOpen(false);
+        }}
       />
     </>
   );
