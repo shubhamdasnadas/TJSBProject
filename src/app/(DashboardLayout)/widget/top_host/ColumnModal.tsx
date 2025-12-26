@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Select, Radio } from "antd";
+import { Modal, Form, Input, Select, Radio, Row, Col } from "antd";
 import { v4 as uuid } from "uuid";
 
 /* ================= TYPES ================= */
@@ -17,7 +17,12 @@ export interface ColumnConfig {
   display?: "as_is" | "bar";
   decimals?: number;
 
-  // 🔑 SNAPSHOT (FIX)
+  thresholds?: {
+    from: number;
+    to: number;
+    color: string;
+  }[];
+
   itemSnapshot?: {
     itemid: string;
     name: string;
@@ -61,21 +66,28 @@ const ColumnModal: React.FC<Props> = ({
   const [form] = Form.useForm();
   const [dataType, setDataType] =
     useState<"Item value" | "Host Name">("Item value");
+  const [display, setDisplay] = useState<"as_is" | "bar">("as_is");
 
-  /* ================= PREFILL ================= */
   useEffect(() => {
     if (open && initialData) {
       form.setFieldsValue(initialData);
       setDataType(initialData.data);
+      setDisplay(initialData.display ?? "as_is");
     }
 
     if (open && !initialData) {
       form.resetFields();
       setDataType("Item value");
+      setDisplay("as_is");
+      form.setFieldsValue({
+        thresholds: [
+          { from: 0, to: 30, color: "#52c41a" },
+          { from: 31, to: 70, color: "#faad14" },
+          { from: 71, to: 100, color: "#ff4d4f" },
+        ],
+      });
     }
   }, [open, initialData, form]);
-
-  /* ================= HANDLERS ================= */
 
   const handleHostChange = (hostId: string) => {
     const host = hosts.find((h) => h.hostid === hostId);
@@ -99,28 +111,26 @@ const ColumnModal: React.FC<Props> = ({
     form.setFieldsValue({
       itemId: item.itemid,
       itemName: item.name,
-      itemSnapshot: { ...item }, // 🔑 SNAPSHOT STORED
+      itemSnapshot: { ...item },
     });
   };
 
   const handleSubmit = () => {
     const values = form.getFieldsValue();
-
     onSubmit({
       id: initialData?.id ?? uuid(),
       ...values,
     });
   };
 
-  /* ================= UI ================= */
   return (
     <Modal
       title={initialData ? "Edit column" : "New column"}
       open={open}
       onCancel={onCancel}
       onOk={handleSubmit}
+      width={700}
       destroyOnClose
-      width={650}
     >
       <Form layout="vertical" form={form}>
         <Form.Item label="Name" name="name" required>
@@ -168,7 +178,7 @@ const ColumnModal: React.FC<Props> = ({
             <Form.Item name="itemSnapshot" hidden />
 
             <Form.Item label="Display" name="display" initialValue="as_is">
-              <Radio.Group>
+              <Radio.Group onChange={(e) => setDisplay(e.target.value)}>
                 <Radio.Button value="as_is">As is</Radio.Button>
                 <Radio.Button value="bar">Bar</Radio.Button>
               </Radio.Group>
@@ -177,6 +187,44 @@ const ColumnModal: React.FC<Props> = ({
             <Form.Item label="Decimals" name="decimals" initialValue={2}>
               <Input type="number" min={0} />
             </Form.Item>
+
+            {display === "bar" && (
+              <>
+                <h4>Thresholds</h4>
+
+                <Form.List name="thresholds">
+                  {(fields) =>
+                    fields.map((field, idx) => (
+                      <Row gutter={8} key={idx}>
+                        <Col span={6}>
+                          <Form.Item
+                            label="From"
+                            name={[field.name, "from"]}
+                          >
+                            <Input type="number" />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={6}>
+                          <Form.Item label="To" name={[field.name, "to"]}>
+                            <Input type="number" />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={8}>
+                          <Form.Item
+                            label="Color"
+                            name={[field.name, "color"]}
+                          >
+                            <Input type="color" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    ))
+                  }
+                </Form.List>
+              </>
+            )}
           </>
         )}
       </Form>

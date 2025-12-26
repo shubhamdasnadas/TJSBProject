@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [graphConfig, setGraphConfig] = useState<any>(null);
   const [pieConfig, setPieConfig] = useState<any>(null);
   const [itemConfig, setItemConfig] = useState<any>(null);
+  const [tophostConfig, setTophostConfig] = useState<any>(null);
   const [problemSeverityConfig, setProblemSeverityConfig] = useState<any>(null);
 
   const [rangeData, setRangeData] = useState({
@@ -227,7 +228,9 @@ export default function Dashboard() {
                 ? itemConfig
                 : selectType === "problems_by_severity"
                   ? problemSeverityConfig
-                  : graphConfig,
+                  : selectType == "top_host"
+                    ? tophostConfig
+                    : graphConfig,
         },
       ];
 
@@ -239,6 +242,7 @@ export default function Dashboard() {
     setGraphConfig(null);
     setPieConfig(null);
     setItemConfig(null);
+    setTophostConfig(null);
     setProblemSeverityConfig(null)
     setSelectType("");
   };
@@ -352,6 +356,10 @@ export default function Dashboard() {
               </div>
               <div className="dashboard-card-body">
                 {w.type === "graph" && <Graph rangeData={rangeData} initialConfig={w.config} />}
+                {w.type === "top_host" && (
+                  <TopHost mode="preview" initialConfig={w.config} />
+                )}
+
                 {w.type === "pie_chart" && <PieChart initialConfig={w.config} />}
                 {w.type === "item_value" && <ItemValue initialConfig={w.config} />}
                 {w.type === "problems_by_severity" && <ProblemSeverity rangeData={rangeData} groupID={groupID} initialConfig={w.config} />}
@@ -383,10 +391,13 @@ export default function Dashboard() {
           </Form.Item>
 
           {selectType === "graph" && <Graph rangeData={rangeData} onConfigChange={setGraphConfig} />}
-          {selectType === "top_host" && <TopHost />}
+          {selectType === "top_host" && (
+            <TopHost mode="widget" onConfigChange={setTophostConfig} />
+          )}
+
           {selectType === "pie_chart" && <PieChart onConfigChange={setPieConfig} />}
           {selectType === "item_value" && <ItemValue onConfigChange={setItemConfig} />}
-          {selectType === "problems_by_severity" && <ProblemSeverity rangeData={rangeData} groupID={groupID} onConfigChange={setProblemSeverityConfig}/>}
+          {selectType === "problems_by_severity" && <ProblemSeverity rangeData={rangeData} groupID={groupID} onConfigChange={setProblemSeverityConfig} />}
           {selectType === "action_log" && <ActionLog />}
         </Form>
       </Modal>
