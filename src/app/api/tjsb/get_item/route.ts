@@ -4,7 +4,7 @@ import https from "https";
 
 export async function POST(req: Request) {
   try {
-    const { groupids, auth } = await req.json();
+    const { hostids, auth } = await req.json();
 
     const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -12,10 +12,11 @@ export async function POST(req: Request) {
 
     const payload = {
       jsonrpc: "2.0",
-      method: "host.get",
+      method: "item.get",
       params: {
-        output: ["hostid", "host", "name"],
-        groupids,
+        hostids,
+        output: ["itemid", "name", "key_"],
+        sortfield: "name",
       },
       id: 1,
     };
@@ -30,9 +31,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ result: res.data?.result ?? [] });
   } catch (e: any) {
-    console.error("get_host error:", e?.message);
+    console.error("get_item error:", e?.message);
     return NextResponse.json(
-      { error: "Could not fetch hosts" },
+      { error: "Could not fetch items" },
       { status: 500 }
     );
   }

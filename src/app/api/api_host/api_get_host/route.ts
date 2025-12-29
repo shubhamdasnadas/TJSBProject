@@ -26,10 +26,9 @@ export async function POST(req: Request) {
       rejectUnauthorized: false, // for self-signed Zabbix cert
     });
 
+   
     const ZABBIX_URL =
-      process.env.NEXT_PUBLIC_ZABBIX_URL ||
-      "https://192.168.0.252/monitor/api_jsonrpc.php";
-
+      process.env.NEXT_PUBLIC_ZABBIX_URL as string;
     const payload = {
       jsonrpc: "2.0",
       method: "host.get",
@@ -45,9 +44,6 @@ export async function POST(req: Request) {
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
-        Host: "192.168.0.252",
-        Referer: "https://192.168.0.252",
-        Origin: "https://192.168.0.252",
         Authorization: `Bearer ${auth}`,
       },
       httpsAgent,
