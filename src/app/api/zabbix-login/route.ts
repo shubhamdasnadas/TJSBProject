@@ -12,8 +12,7 @@ export async function POST(req: Request) {
     
     console.log("Received login request for user:", username, password);
     const ZABBIX_URL =
-      process.env.NEXT_PUBLIC_ZABBIX_URL ||
-      "https://192.168.0.252/monitor/api_jsonrpc.php";
+      process.env.NEXT_PUBLIC_ZABBIX_URL as string ;
 
     const payload = {
       jsonrpc: "2.0",

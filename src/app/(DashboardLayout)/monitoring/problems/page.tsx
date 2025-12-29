@@ -1093,7 +1093,10 @@ const HostFilterCard = ({
 
         {/* Severity Checkboxes */}
         <div style={{ marginBottom: 28 }}>
-          <span className="spacious-label">Severity</span>
+          <span className="spacious-label">
+            
+            
+          </span>
           <Space wrap size={[16, 12]}>
             <Checkbox 
               checked={severityFilters.notClassified}
