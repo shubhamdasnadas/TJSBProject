@@ -18,6 +18,7 @@ import {
   ClockCircleOutlined,
   KeyOutlined,          // ✅ FIXED: MISSING IMPORT
 } from "@ant-design/icons";
+import { title } from "process";
 
 const Menuitems = [
   {
@@ -156,6 +157,14 @@ const Menuitems = [
           { title: "Queue Details", href: "/administration/Queue/queuedetails" },
         ],
       },
+
+    ],
+  },
+  {
+    title: "Availability",
+    icon: <FileTextOutlined />,
+    children: [
+      { title: "Availability Data", href: "/availability/ava_data", icon: <AuditOutlined /> },
     ],
   },
 ];
