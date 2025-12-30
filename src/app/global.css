@@ -406,3 +406,35 @@ body {
   overflow: hidden !important;
 }
 
+/* ========================================================= */
+/*                    SysReport Table Styles                 */
+/* ========================================================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background: var(--header-bg);
+  color: var(--active-color);
+}
+
+tr:nth-child(even) {
+  background: var(--card-bg);
+}
+
+.sev-0 { color: #22c55e; }
+.sev-1 { color: #84cc16; }
+.sev-2 { color: #eab308; }
+.sev-3 { color: #f97316; }
+.sev-4 { color: #ef4444; }
+.sev-5 { color: #dc2626; }
+
