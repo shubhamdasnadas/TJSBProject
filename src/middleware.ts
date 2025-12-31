@@ -5,15 +5,15 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("zabbix_token")?.value;
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
-  if (pathname === "/login" || pathname.startsWith("/api/auth/login")) {
-    return NextResponse.next();
-  }
+  // // Allow public routes
+  // if (pathname === "/login" || pathname.startsWith("/api/auth/login")) {
+  //   return NextResponse.next();
+  // }
 
-  // Redirect to login if no token
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+  // // Redirect to login if no token
+  // if (!token) {
+  //   return NextResponse.redirect(new URL("/login", request.url));
+  // }
 
   return NextResponse.next();
 }
