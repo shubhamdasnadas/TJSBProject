@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 const ZABBIX_URL =
   "https://tjsb-nms.techsecdigital.com/monitor/api_jsonrpc.php";
-const TOKEN = "YOUR_TOKEN_HERE";
+
+const TOKEN =
+  "60072263f8732381e8e87c7dc6655995d28742aea390672350f11d775f1ca5fc";
 
 export async function POST(req: Request) {
   try {
@@ -10,24 +12,13 @@ export async function POST(req: Request) {
 
     let action = 0;
 
-    // 1️⃣ Message
-    if (message && message.trim()) {
-      action += 1;
-    }
+    if (message && message.trim()) action |= 1;   // add message
+    if (closeProblem) action |= 2;                // close problem
+    if (severity !== null && severity !== "") action |= 4; // change severity
 
-    // 2️⃣ Close problem
-    if (closeProblem) {
-      action += 2;
-    }
-
-    // 3️⃣ Change severity
-    if (severity !== null && severity !== undefined && severity !== "") {
-      action += 4;
-    }
-
-    if (action === 0) {
+    if (!action) {
       return NextResponse.json(
-        { error: "At least one update operation or message must exist." },
+        { error: "No update action selected." },
         { status: 400 }
       );
     }
@@ -51,7 +42,7 @@ export async function POST(req: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json-rpc",
-        "Authorization": `Bearer ${TOKEN}`
+        Authorization: `Bearer ${TOKEN}` // ✅ SAME AS sysreport
       },
       body: JSON.stringify(body)
     });
@@ -59,7 +50,7 @@ export async function POST(req: Request) {
     const json = await res.json();
 
     if (json.error) {
-      throw new Error(json.error.data);
+      throw new Error(json.error.data || "Acknowledge failed");
     }
 
     return NextResponse.json({ success: true });
