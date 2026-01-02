@@ -36,6 +36,9 @@ export default function LatestDataPage() {
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
   const [value, setValue] = useState<string[]>([]);
   const [tableData, setTableData] = useState<any[]>([]);
+  const toUnix = (d: string, t: string) =>
+  Math.floor(new Date(`${d} ${t}`).getTime() / 1000);
+
   const [loadingTable, setLoadingTable] = useState(false);
   const user_token =
     typeof window !== "undefined" ? localStorage.getItem("zabbix_auth") : null;

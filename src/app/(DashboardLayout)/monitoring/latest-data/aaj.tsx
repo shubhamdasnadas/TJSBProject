@@ -1,12 +1,22 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Table, Button, Space, Modal } from "antd";
+import React, { useMemo, useState, useEffect } from "react";
+import { Table, Button, Modal } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import RangePickerDemo from "../../RangePickerDemo"; // <-- your given component
 
+/* =========================
+   HELPERS
+========================= */
+const toUnix = (d: string, t: string) =>
+  Math.floor(new Date(`${d} ${t}`).getTime() / 1000);
+
+/* =========================
+   TYPES
+========================= */
 type RowType = {
   key: string;
-  itemid: string;        // 🔑 REQUIRED
+  itemid: string;
   host: string;
   name: string;
   lastCheck: string;
@@ -21,6 +31,9 @@ interface LatestDataTableProps {
   loading?: boolean;
 }
 
+/* =========================
+   COMPONENT
+========================= */
 export default function LatestDataTable({
   data = [],
   loading = false,
@@ -32,11 +45,21 @@ export default function LatestDataTable({
   const [title, setTitle] = useState("");
   const [rows, setRows] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [currentRow, setCurrentRow] = useState<RowType | null>(null);
+
+  const [range, setRange] = useState<{
+    start?: number;
+    end?: number;
+  }>({
+    start: Math.floor(Date.now() / 1000) - 3600, // last 1 hour
+    end: Math.floor(Date.now() / 1000),
+  });
 
   /* =========================
-     LOAD HISTORY (NUMERIC)
+     LOAD HISTORY
   ========================= */
   const loadHistory = async (row: RowType) => {
+    setCurrentRow(row);
     setTitle(`${row.host} – ${row.name}`);
     setOpen(true);
     setRows([]);
@@ -45,19 +68,18 @@ export default function LatestDataTable({
     try {
       const res = await fetch("/api/zabbix-proxy", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "history.get",
           params: {
             output: "extend",
-            history: 0,              // ✅ NUMERIC (CPU usage)
-            itemids: [row.itemid],   // ✅ MUST be array
+            history: 0,
+            itemids: [row.itemid],
             sortfield: "clock",
             sortorder: "DESC",
-            limit: 10,
+            time_from: range.start,
+            time_till: range.end,
           },
           auth: localStorage.getItem("zabbix_auth"),
           id: 1,
@@ -75,6 +97,16 @@ export default function LatestDataTable({
       setLoadingHistory(false);
     }
   };
+
+  /* =========================
+     RELOAD ON TIME CHANGE
+  ========================= */
+  useEffect(() => {
+    if (open && currentRow) {
+      loadHistory(currentRow);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
 
   /* =========================
      TABLE COLUMNS
@@ -116,7 +148,7 @@ export default function LatestDataTable({
       />
 
       {/* =========================
-          HISTORY MODAL (TIME + VALUE ONLY)
+          HISTORY MODAL
       ========================= */}
       <Modal
         title={title}
@@ -127,8 +159,21 @@ export default function LatestDataTable({
             Close
           </Button>,
         ]}
-        width={600}
+        width={650}
       >
+        {/* TIME RANGE PICKER */}
+        <div style={{ marginBottom: 12 }}>
+          <RangePickerDemo
+            onRangeChange={({ startDate, startTime, endDate, endTime }) =>
+              setRange({
+                start: toUnix(startDate, startTime),
+                end: toUnix(endDate, endTime),
+              })
+            }
+          />
+        </div>
+
+        {/* HISTORY TABLE */}
         {loadingHistory ? (
           <div>Loading…</div>
         ) : rows.length === 0 ? (
