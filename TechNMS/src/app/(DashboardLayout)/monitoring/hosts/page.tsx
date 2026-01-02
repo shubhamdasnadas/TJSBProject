@@ -7,7 +7,12 @@ import Interface from "./Interface";
 import HostFilterCard from "./HostFilterCard";
 
 const Host = () => {
-  const user_token = localStorage.getItem("zabbix_auth");
+    let user_token = null;
+
+if (typeof window !== "undefined") {
+  user_token = localStorage.getItem("zabbix_auth");
+}
+
 
   const [title, setTitle] = useState("Create Host");
   const [modal2Open, setModal2Open] = useState(false);

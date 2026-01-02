@@ -80,7 +80,12 @@ const HostFilterCard = ({
   handleapply,
   updateFilter,
 }: Props) => {
-  const user_token = localStorage.getItem("zabbix_auth");
+  let user_token = null;
+
+if (typeof window !== "undefined") {
+  user_token = localStorage.getItem("zabbix_auth");
+}
+
   const [hostGroups, setHostGroups] = useState<any[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);

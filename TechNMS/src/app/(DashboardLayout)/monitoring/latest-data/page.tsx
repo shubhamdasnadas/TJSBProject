@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import {
   Button,
   Form,
@@ -459,7 +459,9 @@ export default function LatestDataPage() {
 
       {/* Render the table with filtered results when Apply is pressed */}
       <div style={{ marginTop: 24 }}>
+        <Suspense fallback={<div>Loading....</div>}>
         <LatestDataTable data={tableData} loading={loadingTable} />
+        </Suspense>
       </div>
     </div>
   );
