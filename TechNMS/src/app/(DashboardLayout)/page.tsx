@@ -95,6 +95,47 @@ export default function Dashboard() {
       ? localStorage.getItem("zabbix_auth")
       : null;
 
+  /* ================= SERVER SAVE + LOAD ================= */
+
+  const saveToServer = async () => {
+    try {
+      const layout = grid.current?.save(false) || [];
+
+      await axios.post("/api/dashboard_action_log/data_save", {
+        layout,
+        dynamicWidgets,
+        removedStatic: removedStaticIds,
+      });
+    } catch (e) {
+      console.warn("Save failed:", e);
+    }
+  };
+
+  const loadFromServer = async () => {
+    try {
+      const res = await axios.get("/api/dashboard_action_log/data_save");
+
+      const { layout = [], dynamicWidgets = [], removedStatic = [] } =
+        res.data || {};
+
+      if (layout.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+      }
+
+      if (dynamicWidgets.length) {
+        localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
+        setDynamicWidgets(dynamicWidgets);
+      }
+
+      if (removedStatic.length) {
+        localStorage.setItem(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
+        setRemovedStaticIds(removedStatic);
+      }
+    } catch (e) {
+      console.warn("Load failed:", e);
+    }
+  };
+
   /* ================= REMOVE HELPERS ================= */
 
   const removeWidgetFromLocalStorage = (widgetId: string) => {
@@ -113,9 +154,11 @@ export default function Dashboard() {
     }
   };
 
-  /* ================= LOAD FROM STORAGE ================= */
+  /* ================= LOAD FIRST ================= */
 
   useEffect(() => {
+    loadFromServer();
+
     const dyn = localStorage.getItem(DYNAMIC_WIDGETS_KEY);
     const removed = localStorage.getItem(REMOVED_STATIC_KEY);
 
@@ -135,6 +178,8 @@ export default function Dashboard() {
       DYNAMIC_WIDGETS_KEY,
       JSON.stringify(dynamicWidgets)
     );
+
+    saveToServer();
   }, [dynamicWidgets]);
 
   /* ================= SAVE REMOVED STATIC ================= */
@@ -144,6 +189,8 @@ export default function Dashboard() {
       REMOVED_STATIC_KEY,
       JSON.stringify(removedStaticIds)
     );
+
+    saveToServer();
   }, [removedStaticIds]);
 
   /* ================= FETCH HOST GROUPS ================= */
@@ -179,6 +226,20 @@ export default function Dashboard() {
     setGridReady(true);
   }, []);
 
+  /* === SAVE WHEN RESIZE / DRAG === */
+
+  useEffect(() => {
+    if (!grid.current) return;
+
+    const handler = () => saveToServer();
+
+    grid.current.on("change", handler);
+
+    return () => {
+      grid.current?.off("change", handler);
+    };
+  }, [gridReady]);
+
   /* ================= RESTORE GRID ================= */
 
   useEffect(() => {
@@ -211,6 +272,7 @@ export default function Dashboard() {
       const el = document.querySelector(
         `[gs-id="${w.id}"]`
       ) as HTMLElement | null;
+
       if (el) grid.current!.makeWidget(el);
     });
 
@@ -252,6 +314,9 @@ export default function Dashboard() {
       ];
 
       localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
+
+      saveToServer();
+
       return next;
     });
 
@@ -270,11 +335,11 @@ export default function Dashboard() {
   const removeWidget = (id: string) => {
     hasUserModifiedWidgets.current = true;
 
-    const dynamicWidgets: any[] = JSON.parse(
+    const dynamicWidgetsStored: any[] = JSON.parse(
       localStorage.getItem(DYNAMIC_WIDGETS_KEY) || "[]"
     );
 
-    const isDynamic = dynamicWidgets.some((w) => w.id === id);
+    const isDynamic = dynamicWidgetsStored.some((w) => w.id === id);
 
     if (isDynamic) {
       setDynamicWidgets((prev) => prev.filter((w) => w.id !== id));
@@ -290,19 +355,24 @@ export default function Dashboard() {
       }
 
       grid.current?.compact();
+
+      saveToServer();
     });
 
     removeWidgetFromLocalStorage(id);
   };
 
-  /* ================= SAVE LAYOUT ================= */
+  /* ================= SAVE LAYOUT BUTTON ================= */
 
   const saveLayout = () => {
     if (!grid.current) return;
+
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(grid.current.save(false))
     );
+
+    saveToServer();
     setEditMode(false);
   };
 
