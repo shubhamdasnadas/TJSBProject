@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Input, Select, Checkbox, Button } from "antd";
+import {
+  Modal,
+  Input,
+  Select,
+  Checkbox,
+  Button,
+  Row,
+  Col,
+  Space,
+  Radio,
+  Divider,
+} from "antd";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -18,28 +29,45 @@ interface Problem {
   duration: string;
   ack: string;
   message: string;
+   
 }
+
+
+// temp
+
+
 
 /* =========================
    PAGE
 ========================= */
-export default function SysReportPage() {
+export default   function SysReportPage() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  /* Modal state */
+  /* Update modal */
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Problem | null>(null);
   const [message, setMessage] = useState("");
   const [severity, setSeverity] = useState<string | null>(null);
   const [closeProblem, setCloseProblem] = useState(false);
 
+  /* History modal */
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyModalTitle, setHistoryModalTitle] = useState("");
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+
+  /* History cache */
+  const [historyMap, setHistoryMap] = useState<Record<string, any[]>>({});
+  const [historyLoading, setHistoryLoading] = useState<Record<string, boolean>>(
+    {}
+  );
+
   const pageSize = 10;
 
   /* =========================
-     FETCH DATA
+     FETCH BASE DATA
   ========================= */
   const loadData = async () => {
     setLoading(true);
@@ -53,9 +81,9 @@ export default function SysReportPage() {
       setPage(1);
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -63,46 +91,44 @@ export default function SysReportPage() {
   }, []);
 
   /* =========================
-     SORT (latest first)
+     SORT + PAGINATION
   ========================= */
-  const sorted = useMemo(() => {
-    return [...problems].sort(
-      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
-    );
-  }, [problems]);
+  const sorted = useMemo(
+    () =>
+      [...problems].sort(
+        (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+      ),
+    [problems]
+  );
 
-  /* =========================
-     PAGINATION
-  ========================= */
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const start = (page - 1) * pageSize;
   const pageItems = sorted.slice(start, start + pageSize);
 
-  /* =========================
-     EXPORT TO PDF  ✅ NEW
-  ========================= */
+/* =========================
+   EXPORT PDF
+========================= */
   const exportToPDF = () => {
-    const doc = new jsPDF("l", "pt", "a4"); // landscape
+    const doc = new jsPDF("l", "pt", "a4");
 
-    doc.setFontSize(14);
     doc.text("Zabbix Timeline Report", 40, 30);
-
-    doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 48);
 
     autoTable(doc, {
       startY: 60,
-      head: [[
-        "Time",
-        "Status",
-        "Host",
-        "Problem",
-        "Severity",
-        "Duration",
-        "Ack",
-        "Message"
-      ]],
-      body: sorted.map(r => [
+      head: [
+        [
+          "Time",
+          "Status",
+          "Host",
+          "Problem",
+          "Severity",
+          "Duration",
+          "Ack",
+          "Message",
+        ],
+      ],
+      body: sorted.map((r) => [
         r.time,
         r.status,
         r.host,
@@ -110,24 +136,16 @@ export default function SysReportPage() {
         r.severity,
         r.duration,
         r.ack,
-        r.message
+        r.message,
       ]),
-      styles: {
-        fontSize: 9,
-        cellPadding: 4,
-        overflow: "linebreak"
-      },
-      headStyles: {
-        fillColor: [41, 128, 185]
-      },
-      margin: { left: 40, right: 40 }
+      styles: { fontSize: 9 },
     });
 
     doc.save("zabbix_timeline_report.pdf");
   };
 
   /* =========================
-     MODAL HANDLERS
+     UPDATE PROBLEM
   ========================= */
   const openUpdateModal = (row: Problem) => {
     setSelected(row);
@@ -140,41 +158,40 @@ export default function SysReportPage() {
   const submitUpdate = async () => {
     if (!selected) return;
 
-    try {
-      const res = await fetch("/api/reports/update-problem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventid: selected.eventid,
-          message,
-          severity,
-          closeProblem
-        })
-      });
+    const res = await fetch("/api/reports/update-problem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventid: selected.eventid,
+        message,
+        severity,
+        closeProblem,
+      }),
+    });
 
-      const json = await res.json();
-      if (!res.ok || json.error) throw new Error(json.error);
-
-      setShowModal(false);
-      await loadData();
-    } catch (e: any) {
-      alert(e.message);
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      alert(json.error || "Update failed");
+      return;
     }
+
+    setShowModal(false);
+    loadData();
   };
 
+ 
+ 
+ 
   /* =========================
      RENDER
   ========================= */
   return (
-    <div style={{ padding: 12 }}>
+    <div style={{ padding: 24 }}>
       <h2>Zabbix Timeline</h2>
 
-      {/* EXPORT BUTTON */}
-      <div style={{ marginBottom: 10 }}>
-        <Button type="primary" onClick={exportToPDF}>
-          Export to PDF
-        </Button>
-      </div>
+      <Button type="primary" onClick={exportToPDF} style={{ marginBottom: 12 }}>
+        Export to PDF
+      </Button>
 
       <table width="100%" border={1} cellPadding={6}>
         <thead>
@@ -185,7 +202,7 @@ export default function SysReportPage() {
             <th>Problem</th>
             <th>Action</th>
             <th>Severity</th>
-            <th>Duration</th>
+             <th>Duration</th>
             <th>Ack</th>
             <th>Message</th>
           </tr>
@@ -193,13 +210,21 @@ export default function SysReportPage() {
 
         <tbody>
           {loading ? (
-            <tr><td colSpan={9}>Loading…</td></tr>
+            <tr>
+              <td colSpan={10}>Loading…</td>
+            </tr>
           ) : error ? (
-            <tr><td colSpan={9} style={{ color: "red" }}>{error}</td></tr>
+            <tr>
+              <td colSpan={10} style={{ color: "red" }}>
+                {error}
+              </td>
+            </tr>
           ) : pageItems.length === 0 ? (
-            <tr><td colSpan={9}>No data</td></tr>
+            <tr>
+              <td colSpan={10}>No data</td>
+            </tr>
           ) : (
-            pageItems.map(p => (
+            pageItems.map((p) => (
               <tr key={p.eventid}>
                 <td>{p.time}</td>
                 <td>{p.status}</td>
@@ -215,7 +240,7 @@ export default function SysReportPage() {
                   </Button>
                 </td>
                 <td>{p.severity}</td>
-                <td>{p.duration}</td>
+                 <td>{p.duration}</td>
                 <td>{p.ack}</td>
                 <td>{p.message}</td>
               </tr>
@@ -224,14 +249,17 @@ export default function SysReportPage() {
         </tbody>
       </table>
 
-      {/* PAGINATION */}
+      {/* Pagination */}
       <div style={{ marginTop: 10 }}>
-        <button accessKey="p" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
+        <button onClick={() => setPage((p) => p - 1)} disabled={page === 1}>
           Prev
         </button>
-        <span> Page {page} / {totalPages} </span>
-        <button accessKey="n"
-          onClick={() => setPage(p => p + 1)}
+        <span>
+          {" "}
+          Page {page} / {totalPages}{" "}
+        </span>
+        <button
+          onClick={() => setPage((p) => p + 1)}
           disabled={page === totalPages}
         >
           Next
@@ -244,7 +272,9 @@ export default function SysReportPage() {
         open={showModal}
         onCancel={() => setShowModal(false)}
         footer={[
-          <Button key="cancel" onClick={() => setShowModal(false)}>Cancel</Button>,
+          <Button key="cancel" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>,
           <Button
             key="update"
             type="primary"
@@ -252,7 +282,7 @@ export default function SysReportPage() {
             disabled={!message && !severity && !closeProblem}
           >
             Update
-          </Button>
+          </Button>,
         ]}
       >
         {selected && (
@@ -264,7 +294,7 @@ export default function SysReportPage() {
               rows={4}
               placeholder="Add acknowledge message"
               value={message}
-              onChange={e => setMessage(e.target.value)}
+              onChange={(e) => setMessage(e.target.value)}
             />
 
             <Select
@@ -272,25 +302,66 @@ export default function SysReportPage() {
               allowClear
               placeholder="Change severity"
               value={severity}
-              onChange={v => setSeverity(v)}
+              onChange={(v) => setSeverity(v)}
               options={[
                 { value: "0", label: "Not classified" },
                 { value: "1", label: "Information" },
                 { value: "2", label: "Warning" },
                 { value: "3", label: "Average" },
                 { value: "4", label: "High" },
-                { value: "5", label: "Disaster" }
+                { value: "5", label: "Disaster" },
               ]}
             />
 
             <Checkbox
               style={{ marginTop: 10 }}
               checked={closeProblem}
-              onChange={e => setCloseProblem(e.target.checked)}
+              onChange={(e) => setCloseProblem(e.target.checked)}
             >
               Close problem
             </Checkbox>
           </>
+        )}
+      </Modal>
+
+      {/* HISTORY MODAL */}
+      <Modal
+        title={historyModalTitle}
+        open={historyModalOpen}
+        onCancel={() => setHistoryModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setHistoryModalOpen(false)}>
+            Close
+          </Button>,
+        ]}
+        width={700}
+      >
+        {!activeEventId ? (
+          <div>No data</div>
+        ) : historyLoading[activeEventId] ? (
+          <div>Loading history…</div>
+        ) : !historyMap[activeEventId] ||
+          historyMap[activeEventId].length === 0 ? (
+          <div>No history found</div>
+        ) : (
+          <table width="100%" border={1} cellPadding={6}>
+            <thead>
+              <tr>
+                <th style={{ width: 220 }}>Timestamp</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyMap[activeEventId].map((h, i) => (
+                <tr key={i}>
+                  <td>
+                    {new Date(Number(h.clock) * 1000).toLocaleString()}
+                  </td>
+                  <td>{h.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </Modal>
     </div>

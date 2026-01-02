@@ -164,20 +164,18 @@ export default function LatestDataPage() {
         message.info('No items returned for the current filter.');
       }
 
-      const formatted = Array.isArray(items)
-        ? items.map((item: any) => ({
-          key: String(item.itemid ?? JSON.stringify(item)),
-          host: item.hosts?.[0]?.name ?? item.hosts?.[0]?.hostid ?? 'Unknown',
-          name: item.name ?? '',
-          lastValue: item.lastvalue ?? '',
-          lastCheck: item.lastclock ? new Date(Number(item.lastclock) * 1000).toLocaleString() : '-',
-          change: item.delta ? String(item.delta) : '-',
-          tags: Array.isArray(item.tags)
-            ? item.tags.map((t: any) => `${t.tag}:${t.value}`).join(', ')
-            : '-',
-          info: '-',
-        }))
-        : [];
+      const formatted = items.map((item: any) => ({
+        key: String(item.itemid),
+        itemid: String(item.itemid), // 🔑 REQUIRED
+        host: item.hosts?.[0]?.name,
+        name: item.name,
+        lastValue: item.lastvalue,
+        lastCheck: new Date(item.lastclock * 1000).toLocaleString(),
+        change: item.delta ?? "-",
+        tags: "...",
+        info: "-"
+}
+));
 
       setTableData(formatted);
     } catch (err: any) {

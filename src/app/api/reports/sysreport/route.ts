@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 const ZABBIX_URL =
   "https://tjsb-nms.techsecdigital.com/monitor/api_jsonrpc.php";
-const TOKEN ="60072263f8732381e8e87c7dc6655995d28742aea390672350f11d775f1ca5fc";
+const TOKEN =
+  "60072263f8732381e8e87c7dc6655995d28742aea390672350f11d775f1ca5fc";
 
 type Row = {
   eventid: string;
@@ -14,6 +15,7 @@ type Row = {
   duration: string;
   ack: string;
   message: string;
+  itemid?: string;
   clock: number;
 };
 
@@ -41,6 +43,7 @@ function formatDuration(sec: number) {
 
 export async function GET() {
   try {
+    /* 1️⃣ events */
     const eventRes = await zabbix({
       jsonrpc: "2.0",
       method: "event.get",
@@ -52,6 +55,7 @@ export async function GET() {
           "severity",
           "acknowledged",
           "name",
+          "objectid" // 🔑 triggerid
         ],
         selectHosts: ["name"],
         selectAcknowledges: ["message"],
@@ -63,6 +67,27 @@ export async function GET() {
     });
 
     if (eventRes.error) throw new Error(eventRes.error.data);
+
+    /* 2️⃣ triggers → itemid */
+    const triggerIds = eventRes.result.map((e: any) => e.objectid);
+
+    const triggerRes = await zabbix({
+      jsonrpc: "2.0",
+      method: "trigger.get",
+      params: {
+        triggerids: triggerIds,
+        output: ["triggerid"],
+        selectFunctions: ["itemid"],
+      },
+      id: 2,
+    });
+
+    const triggerItemMap: Record<string, string> = {};
+    triggerRes.result.forEach((t: any) => {
+      if (t.functions?.length) {
+        triggerItemMap[t.triggerid] = t.functions[0].itemid;
+      }
+    });
 
     const now = Math.floor(Date.now() / 1000);
 
@@ -84,6 +109,7 @@ export async function GET() {
           e.acknowledges?.length
             ? e.acknowledges[e.acknowledges.length - 1].message || "-"
             : "-",
+        itemid: triggerItemMap[e.objectid], // ✅ THIS FIXES EVERYTHING
       };
     });
 
@@ -93,9 +119,6 @@ export async function GET() {
       rows.map(({ clock, ...rest }) => rest)
     );
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

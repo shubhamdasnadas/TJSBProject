@@ -1,11 +1,12 @@
- "use client";
+"use client";
 
-import React, { useMemo } from "react";
-import { Table, Button, Space } from "antd";
+import React, { useMemo, useState } from "react";
+import { Table, Button, Space, Modal } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 type RowType = {
   key: string;
+  itemid: string;        // 🔑 REQUIRED
   host: string;
   name: string;
   lastCheck: string;
@@ -20,104 +21,139 @@ interface LatestDataTableProps {
   loading?: boolean;
 }
 
-export default function LatestDataTable({ data = [], loading = false }: LatestDataTableProps) {
+export default function LatestDataTable({
+  data = [],
+  loading = false,
+}: LatestDataTableProps) {
+  /* =========================
+     HISTORY STATE
+  ========================= */
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [rows, setRows] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  /* =========================
+     LOAD HISTORY (NUMERIC)
+  ========================= */
+  const loadHistory = async (row: RowType) => {
+    setTitle(`${row.host} – ${row.name}`);
+    setOpen(true);
+    setRows([]);
+    setLoadingHistory(true);
+
+    try {
+      const res = await fetch("/api/zabbix-proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "history.get",
+          params: {
+            output: "extend",
+            history: 0,              // ✅ NUMERIC (CPU usage)
+            itemids: [row.itemid],   // ✅ MUST be array
+            sortfield: "clock",
+            sortorder: "DESC",
+            limit: 10,
+          },
+          auth: localStorage.getItem("zabbix_auth"),
+          id: 1,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.data);
+
+      setRows(json.result ?? []);
+    } catch (err) {
+      console.error("history.get failed", err);
+      setRows([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  /* =========================
+     TABLE COLUMNS
+  ========================= */
   const columns: ColumnsType<RowType> = useMemo(
     () => [
+      { title: "Host", dataIndex: "host", width: 140 },
+      { title: "Name", dataIndex: "name", width: 220 },
+      { title: "Last check", dataIndex: "lastCheck", width: 160 },
+      { title: "Last value", dataIndex: "lastValue", width: 120 },
+      { title: "Change", dataIndex: "change", width: 100 },
       {
-        title: "Host",
-        dataIndex: "host",
-        key: "host",
-        width: 120,
-        sorter: (a, b) => String(a.host || "").localeCompare(String(b.host || "")),
-      },
-      {
-        title: "Name",
-        dataIndex: "name",
-        key: "name",
-        width: 150,
-        sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || "")),
-      },
-      {
-        title: "Last check",
-        dataIndex: "lastCheck",
-        key: "lastCheck",
-        width: 140,
-      },
-      {
-        title: "Last value",
-        dataIndex: "lastValue",
-        key: "lastValue",
-        width: 120,
-        sorter: (a, b) => Number(a.lastValue ?? 0) - Number(b.lastValue ?? 0),
-      },
-      {
-        title: "Change",
-        dataIndex: "change",
-        key: "change",
-        width: 100,
-      },
-      {
-        title: "Tags",
-        dataIndex: "tags",
-        key: "tags",
-        width: 150,
-      },
-      {
-        title: "Info",
-        dataIndex: "info",
-        key: "info",
+        title: "View",
+        width: 90,
+        render: (_, row) => (
+          <Button size="small" onClick={() => loadHistory(row)}>
+            View
+          </Button>
+        ),
       },
     ],
     []
   );
 
-  const exportCSV = () => {
-    if (!data.length) return;
-
-    const headers = Object.keys(data[0]).join(",");
-    const rows = data
-      .map((row) =>
-        Object.values(row)
-          .map((v) => String(v).replace(/\n/g, " "))
-          .join(",")
-      )
-      .join("\n");
-
-    const csvContent = `${headers}\n${rows}`;
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "latest_data.csv";
-    a.click();
-
-    window.URL.revokeObjectURL(url);
-  };
-
   return (
     <div>
-      <Space style={{ marginBottom: 12 }}>
-        <Button onClick={exportCSV} disabled={!data.length}>
-          Export CSV
-        </Button>
-      </Space>
-
       <Table<RowType>
         columns={columns}
         dataSource={data}
         loading={loading}
-        pagination={data.length > 0 ? {
-          pageSize: 50,
-          showSizeChanger: true,
-          pageSizeOptions: ['10', '20', '50', '100', '200'],
-          showTotal: (total, range) => `Displaying ${range[0]} to ${range[1]} of ${total}${total >= 1000 ? '+ found' : ''}`,
-        } : false}
         rowKey="key"
         size="small"
         bordered
-        locale={{ emptyText: data.length === 0 ? "Apply filter to view results" : "No data" }}
+        pagination={{
+          pageSize: 50,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+        }}
       />
+
+      {/* =========================
+          HISTORY MODAL (TIME + VALUE ONLY)
+      ========================= */}
+      <Modal
+        title={title}
+        open={open}
+        onCancel={() => setOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setOpen(false)}>
+            Close
+          </Button>,
+        ]}
+        width={600}
+      >
+        {loadingHistory ? (
+          <div>Loading…</div>
+        ) : rows.length === 0 ? (
+          <div>No history found</div>
+        ) : (
+          <table width="100%" border={1} cellPadding={6}>
+            <thead>
+              <tr>
+                <th style={{ width: 220 }}>Time</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    {new Date(Number(r.clock) * 1000).toLocaleString()}
+                  </td>
+                  <td>{r.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Modal>
     </div>
   );
 }
