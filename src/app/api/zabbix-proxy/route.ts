@@ -18,11 +18,23 @@ export async function POST(req: NextRequest) {
 
     console.log('Proxy received:', body);
 
+    const zabbixUrl = process.env.NEXT_PUBLIC_ZABBIX_URL || 'https://192.168.0.252/monitor/api_jsonrpc.php';
+
+    // Get Authorization header from the request
+    const authHeader = req.headers.get('Authorization');
+    
+    const headers: any = { 'Content-Type': 'application/json' };
+    
+    // Forward the Authorization header if present
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+
     const resp = await axios.post(
-      'https://192.168.0.252/monitor/api_jsonrpc.php',
+      zabbixUrl,
       body,
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         httpsAgent,
         // accept any status so we forward upstream status back
         // validateStatus: () => true,

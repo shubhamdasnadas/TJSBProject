@@ -119,19 +119,28 @@ const HostFilterCard = ({
   const handleGetHostGroups = async () => {
     setLoadingGroups(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingGroups(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'hostgroup.get',
       params: {
         output: ['groupid', 'name'],
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 1,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -157,6 +166,13 @@ const HostFilterCard = ({
 
     setLoadingHosts(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingHosts(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'host.get',
@@ -164,13 +180,15 @@ const HostFilterCard = ({
         output: ['hostid', 'name'],
         groupids: groupIds,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 2,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -196,6 +214,13 @@ const HostFilterCard = ({
 
     setLoadingTriggers(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingTriggers(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'trigger.get',
@@ -205,13 +230,15 @@ const HostFilterCard = ({
         groupids: groupIds,
         expandDescription: true,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 5,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -243,6 +270,13 @@ const HostFilterCard = ({
 
     setLoadingTriggers(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingTriggers(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'trigger.get',
@@ -252,13 +286,15 @@ const HostFilterCard = ({
         groupids: [groupId],
         expandDescription: true,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 5,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -289,6 +325,12 @@ const HostFilterCard = ({
       return;
     }
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'hostinterface.get',
@@ -296,13 +338,15 @@ const HostFilterCard = ({
         output: ['hostid', 'ip', 'dns', 'port', 'type', 'main'],
         hostids: hostIds,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 6,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -415,13 +459,15 @@ const HostFilterCard = ({
       jsonrpc: '2.0',
       method: 'problem.get',
       params: problemParams,
-      auth:  user_token ,
       id: 3,
     };
 
     try {
       const problemResponse = await axios.post('/api/zabbix-proxy', problemPayload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user_token}`,
+        },
       });
 
       const problems = problemResponse?.data?.result ?? [];
@@ -444,12 +490,14 @@ const HostFilterCard = ({
           triggerids: triggerIds,
           expandDescription: true,
         },
-        auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
         id: 4,
       };
 
       const triggerResponse = await axios.post('/api/zabbix-proxy', triggerPayload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user_token}`,
+        },
       });
 
       const triggers = triggerResponse?.data?.result ?? [];
