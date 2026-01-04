@@ -52,10 +52,10 @@
     }
     @keyframes lineMove {
       0%, 100% { 
-        d: path("M215 110 L260 85 L305 100 L350 75 L395 95 L440 70 L485 85 L530 65 L575 80 L620 60 L665 75");
+        d: path("M260 135 L305 125 L350 130 L395 120 L440 128 L485 118 L530 125 L575 115 L620 122 L665 112 L710 120 L755 108 L800 115 L845 105 L890 112 L935 102");
       }
       50% { 
-        d: path("M215 105 L260 90 L305 88 L350 80 L395 85 L440 78 L485 82 L530 72 L575 78 L620 68 L665 75");
+        d: path("M260 130 L305 120 L350 125 L395 115 L440 123 L485 113 L530 120 L575 110 L620 117 L665 107 L710 115 L755 103 L800 110 L845 100 L890 107 L935 97");
       }
     }
     @keyframes float {
@@ -67,14 +67,23 @@
       0%, 100% { stroke-dashoffset: 200; }
       50% { stroke-dashoffset: 0; }
     }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @keyframes stayVisible {
+      0%, 100% { opacity: 1; }
+    }
     
-    .logo-phase { animation: fadeInOut 4.5s ease-in-out forwards; }
+    /* Logo phase - fades out completely */
+    .logo-phase { animation: fadeInOut 4.5s ease-in-out forwards, fadeOut 0.5s 4s ease-in-out forwards; }
     .pulse-ring-1 { animation: pulseRing 4.5s ease-in-out forwards; }
     .pulse-ring-2 { animation: pulseRing 4.5s 0.15s ease-in-out forwards; }
     .pulse-ring-3 { animation: pulseRing 4.5s 0.3s ease-in-out forwards; }
     .pulse-ring-4 { animation: pulseRing 4.5s 0.45s ease-in-out forwards; }
     
-    .soc-phase { opacity: 0; animation: fadeInOut 20s 4s ease-in-out forwards; }
+    /* SOC phase - stays visible forever after appearing */
+    .soc-phase { opacity: 0; animation: stayVisible 1s 4s ease-in-out forwards; }
     .wall { animation: slideIn 0.8s 4.5s ease-out forwards; animation-fill-mode: both; }
     .main-screen { animation: scaleIn 0.6s 5s ease-out forwards; animation-fill-mode: both; }
     .top-left-0 { animation: slideLeft 0.6s 5.2s ease-out forwards; animation-fill-mode: both; }
@@ -89,6 +98,7 @@
     .operator { animation: slideUp 0.6s 6.2s ease-out forwards; animation-fill-mode: both; }
     .label { animation: slideUp 0.8s 6.5s ease-out forwards; animation-fill-mode: both; }
     
+    /* Continuous looping animations */
     .blink { animation: blink 1.5s infinite; }
     .pulse { animation: pulse 2s infinite; }
     .scan { animation: scan 4s 6.5s linear infinite; }
@@ -168,7 +178,7 @@
   </g>
 
   <!-- ================================================= -->
-  <!-- PHASE 2: SOC ROOM - NON-OVERLAPPING LAYOUT -->
+  <!-- PHASE 2: SOC ROOM -->
   <!-- ================================================= -->
   <g class="soc-phase">
     <!-- Monitor Wall Frame -->
@@ -179,12 +189,10 @@
     <g class="top-left-0" opacity="0">
       <rect x="80" y="60" width="140" height="90" rx="8" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
-      <!-- Red dots -->
       <circle cx="95" cy="72" r="4" fill="#ef4444" filter="url(#redGlow)"/>
       <circle cx="107" cy="72" r="4" fill="#ef4444" filter="url(#redGlow)"/>
       <circle cx="119" cy="72" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink"/>
       
-      <!-- Bar chart -->
       <rect x="100" y="115" width="10" height="25" fill="#38bdf8" rx="2"/>
       <rect x="115" y="105" width="10" height="35" fill="#38bdf8" rx="2"/>
       <rect x="130" y="120" width="10" height="20" fill="#38bdf8" rx="2"/>
@@ -194,12 +202,10 @@
     <g class="top-left-1" opacity="0">
       <rect x="80" y="165" width="140" height="90" rx="8" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
-      <!-- Red dots -->
       <circle cx="95" cy="177" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink"/>
       <circle cx="107" cy="177" r="4" fill="#ef4444" filter="url(#redGlow)"/>
       <circle cx="119" cy="177" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.3s"/>
       
-      <!-- Activity line -->
       <path d="M90 210 L105 200 L120 215 L135 195 L150 205 L165 200 L180 210 L195 205" 
             fill="none" stroke="#22c55e" stroke-width="2.5"/>
     </g>
@@ -217,20 +223,20 @@
     <!-- Grid overlay -->
     <rect x="240" y="60" width="720" height="190" rx="12" fill="url(#scrollGrid)" opacity="0.3"/>
 
-    <!-- Live Line Graph -->
-    <path d="M250 155 L295 130 L340 145 L385 120 L430 140 L475 115 L520 130 L565 110 L610 125 L655 105 L700 120 L745 100 L790 115 L835 95 L880 110 L925 90 L950 105" 
+    <!-- Green line positioned correctly in the top portion of the main screen -->
+    <path d="M260 135 L305 125 L350 130 L395 120 L440 128 L485 118 L530 125 L575 115 L620 122 L665 112 L710 120 L755 108 L800 115 L845 105 L890 112 L935 102" 
           fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" 
           filter="url(#softGlow)" class="line-graph"/>
 
-    <!-- Data points -->
-    <circle cx="295" cy="130" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="385" cy="120" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="475" cy="115" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="565" cy="110" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="655" cy="105" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="745" cy="100" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="835" cy="95" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
-    <circle cx="925" cy="90" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <!-- Data points aligned with the green line -->
+    <circle cx="305" cy="125" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="395" cy="120" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="485" cy="118" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="575" cy="115" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="665" cy="112" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="755" cy="108" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="845" cy="105" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
+    <circle cx="935" cy="102" r="4" fill="#22c55e" stroke="#0f1729" stroke-width="2"/>
 
     <!-- Scanning line -->
     <line x1="245" y1="250" x2="955" y2="250" stroke="#60a5fa" stroke-width="2" 
@@ -244,12 +250,10 @@
     <g class="top-right-0" opacity="0">
       <rect x="980" y="60" width="140" height="90" rx="8" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
-      <!-- Red dots -->
       <circle cx="995" cy="72" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.2s"/>
       <circle cx="1007" cy="72" r="4" fill="#ef4444" filter="url(#redGlow)"/>
       <circle cx="1019" cy="72" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.5s"/>
       
-      <!-- Network icon -->
       <circle cx="1015" cy="105" r="5" fill="#60a5fa"/>
       <circle cx="1035" cy="95" r="5" fill="#60a5fa"/>
       <circle cx="1055" cy="105" r="5" fill="#60a5fa"/>
@@ -263,19 +267,15 @@
     <g class="top-right-1" opacity="0">
       <rect x="980" y="165" width="140" height="90" rx="8" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
-      <!-- Red dots -->
       <circle cx="995" cy="177" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.4s"/>
       <circle cx="1007" cy="177" r="4" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.1s"/>
       <circle cx="1019" cy="177" r="4" fill="#ef4444" filter="url(#redGlow)"/>
       
-      <!-- Shield icon -->
       <path d="M1050 195 L1050 215 Q1050 225 1062 228 Q1074 225 1074 215 L1074 195 Z" 
             fill="#22c55e" opacity="0.3" stroke="#22c55e" stroke-width="2"/>
       <path d="M1056 208 L1060 215 L1068 202" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
     </g>
 
-    <!-- BOTTOM Section - Database, Server, Users (Non-overlapping) -->
-    
     <!-- Connection lines from main screen to bottom icons -->
     <line x1="350" y1="250" x2="200" y2="310" stroke="#3b82f6" stroke-width="2" 
           opacity="0.5" stroke-dasharray="5,5" class="connect-line"/>
@@ -291,7 +291,6 @@
       <rect x="100" y="310" width="200" height="75" rx="10" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
       
-      <!-- Database icon -->
       <g transform="translate(145, 340)">
         <ellipse cx="0" cy="0" rx="22" ry="7" fill="#2563eb" opacity="0.4"/>
         <rect x="-22" y="0" width="44" height="16" fill="#2563eb" opacity="0.4"/>
@@ -302,12 +301,13 @@
       </g>
       <text x="200" y="345" font-size="12" fill="#60a5fa" font-weight="600">DATABASE</text>
       
-      <!-- Red dots -->
       <circle cx="115" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink"/>
       <circle cx="128" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.2s"/>
       
-      <!-- Activity bar -->
-      <rect x="110" y="360" width="180" height="6" fill="#0f1729" rx="2" class="pulse"/>
+      <!-- Activity indicators -->
+      <circle cx="120" cy="375" r="3" fill="#22c55e" class="pulse"/>
+      <circle cx="135" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.2s"/>
+      <circle cx="150" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.4s"/>
     </g>
 
     <!-- Server Monitor -->
@@ -315,7 +315,6 @@
       <rect x="350" y="310" width="200" height="75" rx="10" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
       
-      <!-- Server icon -->
       <g transform="translate(395, 340)">
         <rect x="-25" y="0" width="50" height="11" rx="2" fill="#1e40af" stroke="#60a5fa" stroke-width="2"/>
         <circle cx="-16" cy="5.5" r="2" fill="#22c55e"/>
@@ -330,12 +329,13 @@
       </g>
       <text x="455" y="345" font-size="12" fill="#60a5fa" font-weight="600">SERVER</text>
       
-      <!-- Red dots -->
       <circle cx="365" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.3s"/>
       <circle cx="378" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.5s"/>
       
-      <!-- Activity bar -->
-      <rect x="360" y="360" width="180" height="6" fill="#0f1729" rx="2" class="pulse" style="animation-delay: 0.3s"/>
+      <!-- Activity indicators -->
+      <circle cx="370" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.1s"/>
+      <circle cx="385" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.3s"/>
+      <circle cx="400" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.5s"/>
     </g>
 
     <!-- Users Monitor -->
@@ -343,46 +343,41 @@
       <rect x="600" y="310" width="200" height="75" rx="10" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
       
-      <!-- Users icon -->
       <g transform="translate(645, 345)">
         <circle cx="-10" cy="-3" r="7" fill="#3b82f6" opacity="0.6"/>
         <path d="M-17 5 Q-17 -1 -10 1 Q-3 -1 -3 5 L-5 15 L-15 15 Z" fill="#3b82f6" opacity="0.6"/>
         <circle cx="10" cy="-3" r="7" fill="#60a5fa" opacity="0.8"/>
         <path d="M3 5 Q3 -1 10 1 Q17 -1 17 5 L15 15 L5 15 Z" fill="#60a5fa" opacity="0.8"/>
-        <text x="-25" y="25" font-size="11" fill="#60a5fa" font-weight="700">1,247</text>
       </g>
       <text x="715" y="345" font-size="12" fill="#60a5fa" font-weight="600">USERS</text>
       
-      <!-- Red dots -->
       <circle cx="615" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.4s"/>
       <circle cx="628" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.6s"/>
       
-      <!-- Activity bar -->
-      <rect x="610" y="360" width="180" height="6" fill="#0f1729" rx="2" class="pulse" style="animation-delay: 0.6s"/>
+      <!-- Activity indicators -->
+      <circle cx="620" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.2s"/>
+      <circle cx="635" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.4s"/>
+      <circle cx="650" cy="375" r="3" fill="#22c55e" class="pulse" style="animation-delay: 0.6s"/>
     </g>
 
-    <!-- Threats/Alerts Monitor -->
+    <!-- Threats Monitor -->
     <g class="bottom-monitor-3" opacity="0">
       <rect x="850" y="310" width="200" height="75" rx="10" fill="#1a2332" 
             stroke="#3b82f6" stroke-width="2.5"/>
       
-      <!-- Alert/Shield icon -->
       <g transform="translate(895, 345)">
-        <!-- Warning triangle -->
         <path d="M0 -8 L8 8 L-8 8 Z" fill="#fbbf24" opacity="0.3" stroke="#fbbf24" stroke-width="2"/>
         <text x="0" y="6" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="bold">!</text>
-        
-        <!-- Counter -->
-        <text x="-25" y="25" font-size="11" fill="#fbbf24" font-weight="700">24</text>
       </g>
       <text x="960" y="345" font-size="12" fill="#fbbf24" font-weight="600">THREATS</text>
       
-      <!-- Red dots -->
       <circle cx="865" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.5s"/>
       <circle cx="878" cy="323" r="3.5" fill="#ef4444" filter="url(#redGlow)" class="blink" style="animation-delay: 0.7s"/>
       
-      <!-- Activity bar with warning color -->
-      <rect x="860" y="360" width="180" height="6" fill="#78350f" rx="2" class="pulse" style="animation-delay: 0.9s"/>
+      <!-- Activity indicators -->
+      <circle cx="870" cy="375" r="3" fill="#fbbf24" class="pulse" style="animation-delay: 0.3s"/>
+      <circle cx="885" cy="375" r="3" fill="#fbbf24" class="pulse" style="animation-delay: 0.5s"/>
+      <circle cx="900" cy="375" r="3" fill="#fbbf24" class="pulse" style="animation-delay: 0.7s"/>
     </g>
 
     <!-- Desk Console -->
@@ -392,27 +387,12 @@
       <rect x="430" y="448" width="340" height="30" rx="6" fill="#0f172a" 
             stroke="#475569" stroke-width="2"/>
       
-      <!-- Keyboard keys -->
       <rect x="450" y="456" width="14" height="14" rx="2" fill="#334155"/>
       <rect x="470" y="456" width="14" height="14" rx="2" fill="#334155"/>
       <rect x="490" y="456" width="14" height="14" rx="2" fill="#334155"/>
     </g>
 
-    <!-- SOC Specialist -->
-    <g class="operator" opacity="0" transform="translate(600, 520)">
-      <circle cx="0" cy="-12" r="14" fill="#334155" stroke="#475569" stroke-width="2"/>
-      <path d="M -20 0 Q -20 -14 0 -8 Q 20 -14 20 0 L 16 30 L -16 30 Z" 
-            fill="#334155" stroke="#475569" stroke-width="2"/>
-      <!-- Headset -->
-      <path d="M-10 -15 Q-15 -15 -15 -10 L-15 -6" stroke="#60a5fa" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M10 -15 Q15 -15 15 -10 L15 -6" stroke="#60a5fa" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <line x1="-10" y1="-17" x2="10" y2="-17" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
-      <!-- Badge -->
-      <rect x="-7" y="4" width="14" height="10" rx="2" fill="#3b82f6" opacity="0.8"/>
-      <text x="0" y="12" font-size="7" fill="#ffffff" text-anchor="middle" font-weight="bold">SOC</text>
-    </g>
-
-    <!-- Bottom Label -->
+     <!-- Bottom Label -->
     <text x="600" y="565" font-family="Arial, sans-serif" font-size="22" font-weight="600" 
           fill="#60a5fa" text-anchor="middle" letter-spacing="10" class="label" opacity="0">
       SECURITY OPERATIONS CENTER
