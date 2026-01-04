@@ -1,48 +1,32 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { Filter, Upload, Plus, Loader2 } from 'lucide-react';
+import { Filter, Upload, Plus } from 'lucide-react';
 import CreateMapModal from './CreateMapModal';
 
 interface MapItem {
-  sysmapid: string;
+  id: string;
   name: string;
-  width: string;
-  height: string;
+  width: number;
+  height: number;
 }
 
-export default function MapsPage() {
-  const [maps, setMaps] = useState<MapItem[]>([]);
-  const [filteredMaps, setFilteredMaps] = useState<MapItem[]>([]);
+export default function MapsList() {
+  const [maps, setMaps] = useState<MapItem[]>([
+    {
+      id: '1',
+      name: 'automap',
+      width: 800,
+      height: 1000,
+    },
+  ]);
+
+  const [filteredMaps, setFilteredMaps] = useState<MapItem[]>(maps);
   const [searchName, setSearchName] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Fetch maps from Zabbix API
-  useEffect(() => {
-    fetchMaps();
-  }, []);
-
-  const fetchMaps = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/zabbix/maps');
-      const data = await response.json();
-      
-      if (data.result) {
-        setMaps(data.result);
-        setFilteredMaps(data.result);
-      }
-    } catch (error) {
-      console.error('Error fetching maps:', error);
-      alert('Error loading maps. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSearch = (value: string) => {
     setSearchName(value);
@@ -68,6 +52,7 @@ export default function MapsPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Check if file is YAML
     if (!file.name.endsWith('.yml') && !file.name.endsWith('.yaml')) {
       alert('Please select a valid YAML file (.yml or .yaml)');
       return;
@@ -76,8 +61,21 @@ export default function MapsPage() {
     setIsImporting(true);
     try {
       const fileContent = await file.text();
-      // TODO: Parse YAML and send to API
-      alert('Import functionality coming soon!');
+      // Parse YAML content here - you may need to add a YAML parser library
+      console.log('File content:', fileContent);
+      
+      // For now, create a basic map entry from the imported file
+      const newMap: MapItem = {
+        id: Date.now().toString(),
+        name: file.name.replace(/\.(yml|yaml)$/, ''),
+        width: 800,
+        height: 600,
+      };
+      
+      const updatedMaps = [...maps, newMap];
+      setMaps(updatedMaps);
+      setFilteredMaps(updatedMaps);
+      alert(`Map "${newMap.name}" imported successfully!`);
     } catch (error) {
       console.error('Error importing file:', error);
       alert('Error importing map file. Please try again.');
@@ -89,63 +87,27 @@ export default function MapsPage() {
     }
   };
 
-  const handleCreateMap = async (mapData: any) => {
-    try {
-      const response = await fetch('/api/zabbix/maps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: mapData.name,
-          width: mapData.width,
-          height: mapData.height,
-          // Add other properties from mapData
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (data.result) {
-        alert(`Map "${mapData.name}" created successfully!`);
-        setShowCreateModal(false);
-        fetchMaps(); // Refresh the list
-      } else {
-        alert('Error creating map: ' + (data.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error creating map:', error);
-      alert('Error creating map. Please try again.');
-    }
+  const handleCreateMap = (mapData: any) => {
+    const newMap: MapItem = {
+      id: Date.now().toString(),
+      name: mapData.name,
+      width: mapData.width,
+      height: mapData.height,
+    };
+    
+    const updatedMaps = [...maps, newMap];
+    setMaps(updatedMaps);
+    setFilteredMaps(updatedMaps);
+    setShowCreateModal(false);
   };
 
-  const handleDeleteMap = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete map "${name}"?`)) return;
-
-    try {
-      const response = await fetch(`/api/zabbix/maps?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-      
-      if (data.result) {
-        alert('Map deleted successfully!');
-        fetchMaps(); // Refresh the list
-      } else {
-        alert('Error deleting map: ' + (data.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error deleting map:', error);
-      alert('Error deleting map. Please try again.');
+  const handleDeleteMap = (id: string) => {
+    if (confirm('Are you sure you want to delete this map?')) {
+      const updatedMaps = maps.filter(map => map.id !== id);
+      setMaps(updatedMaps);
+      setFilteredMaps(updatedMaps);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="w-full flex items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin" size={48} />
-      </div>
-    );
-  }
 
   return (
     <div className="w-full">
@@ -153,7 +115,6 @@ export default function MapsPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Maps</h1>
-          <span className="text-sm text-gray-500">({maps.length} total)</span>
         </div>
         <div className="flex gap-2">
           <button
@@ -213,7 +174,7 @@ export default function MapsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg overflow-hidden shadow">
+      <div className="bg-white rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-100 border-b border-gray-200">
@@ -222,7 +183,9 @@ export default function MapsPage() {
                   <input type="checkbox" className="rounded" />
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                  Name
+                  <button className="flex items-center gap-1 hover:text-blue-600">
+                    Name <span className="text-xs">▲</span>
+                  </button>
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Width</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Height</th>
@@ -238,15 +201,12 @@ export default function MapsPage() {
                 </tr>
               ) : (
                 filteredMaps.map((map) => (
-                  <tr key={map.sysmapid} className="border-b border-gray-200 hover:bg-gray-50">
+                  <tr key={map.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <input type="checkbox" className="rounded" />
                     </td>
                     <td className="px-4 py-3">
-                      <Link 
-                        href={`/monitoring/maps/${map.sysmapid}`} 
-                        className="text-blue-600 hover:underline font-medium"
-                      >
+                      <Link href={`/monitoring/maps/${map.id}`} className="text-blue-600 hover:underline">
                         {map.name}
                       </Link>
                     </td>
@@ -255,19 +215,19 @@ export default function MapsPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-3">
                         <Link
-                          href={`/monitoring/maps/${map.sysmapid}`}
+                          href={`/monitoring/maps/${map.id}/properties`}
                           className="text-blue-600 hover:underline text-sm"
                         >
-                          View
+                          Properties
                         </Link>
                         <Link
-                          href={`/monitoring/maps/${map.sysmapid}/edit`}
+                          href={`/monitoring/maps/${map.id}/edit`}
                           className="text-blue-600 hover:underline text-sm"
                         >
                           Edit
                         </Link>
                         <button
-                          onClick={() => handleDeleteMap(map.sysmapid, map.name)}
+                          onClick={() => handleDeleteMap(map.id)}
                           className="text-red-600 hover:underline text-sm"
                         >
                           Delete
@@ -285,9 +245,12 @@ export default function MapsPage() {
         <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <span>0 selected</span>
-            <button className="text-red-600 hover:underline">Delete selected</button>
+            <select className="border border-gray-300 rounded px-2 py-1 text-gray-700">
+              <option>Export</option>
+            </select>
+            <button className="text-red-600 hover:underline">Delete</button>
           </div>
-          <span>Displaying {filteredMaps.length} of {maps.length} maps</span>
+          <span>Displaying {filteredMaps.length} of {maps.length} found</span>
         </div>
       </div>
 

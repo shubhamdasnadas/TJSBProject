@@ -37,6 +37,7 @@
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "lodash": "^4.17.21",
+    "lucide-react": "^0.562.0",
     "motion": "^12.23.26",
     "next": "^16.0.3",
     "postcss": "^8.5.6",
@@ -53,7 +54,7 @@
     "react-syntax-highlighter": "^16.1.0",
     "recharts": "^3.6.0",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

@@ -251,4 +251,3 @@ const HostFilterCard = ({
 };
 
 export default HostFilterCard;
-
