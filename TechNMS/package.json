@@ -50,6 +50,8 @@
     "react-resizable": "^3.0.5",
     "react-syntax-highlighter": "^16.1.0",
     "recharts": "^3.6.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17",
     "uuid": "^13.0.0"

@@ -8,12 +8,12 @@ import "gridstack/dist/gridstack.min.css";
 import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import { safeStorage } from "@/utils/safeStorage";
 
-/* ===================== LAZY LOAD WIDGETS ===================== */
+import { io } from "socket.io-client";
 
+/* ===================== LAZY LOAD WIDGETS ===================== */
 const DashboardSummaryCount = lazy(() => import("./DashboardSummaryCount"));
 const ProblemsTablePage = lazy(() => import("./ProblemsTable"));
 const RangePickerDemo = lazy(() => import("./RangePickerDemo"));
-
 const Graph = lazy(() => import("./widget/graph"));
 const PieChart = lazy(() => import("./widget/pie_chart"));
 const ItemValue = lazy(() => import("./widget/itemvalue"));
@@ -62,6 +62,8 @@ export default function Dashboard() {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const grid = useRef<GridStack | null>(null);
 
+  const socketRef = useRef<any>(null);
+
   const hasLoadedFromStorage = useRef(false);
   const hasUserModifiedWidgets = useRef(false);
 
@@ -95,13 +97,32 @@ export default function Dashboard() {
   const user_token =
     typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
-  /* ================= SAVE TO SERVER ================= */
+  /* ================= SOCKET INIT ================= */
+  useEffect(() => {
+    socketRef.current = io({
+      path: "/api/socket_io",
+    });
 
+    socketRef.current.on("dashboard:sync", (incomingLayout: any[]) => {
+      if (!grid.current) return;
+
+      safeStorage.set(STORAGE_KEY, JSON.stringify(incomingLayout));
+
+      requestAnimationFrame(() => {
+        grid.current!.load(incomingLayout);
+        window.dispatchEvent(new Event("resize"));
+      });
+    });
+
+    return () => socketRef.current?.disconnect();
+  }, []);
+
+
+  /* ================= SAVE TO SERVER ================= */
   const saveToServer = async () => {
     try {
       let layout = grid.current?.save(false) || [];
 
-      // clamp sizes so no zeros
       layout = layout.map((l: any) => ({
         ...l,
         w: Math.max(l.w || 2, 2),
@@ -115,13 +136,14 @@ export default function Dashboard() {
       });
 
       safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
+
+      socketRef.current?.emit("dashboard:update", layout);
     } catch (e) {
       console.warn("Save failed:", e);
     }
   };
 
   /* ================= LOAD FROM SERVER ================= */
-
   const loadFromServer = async () => {
     try {
       const storedLayout =
@@ -165,8 +187,6 @@ export default function Dashboard() {
     }
   };
 
-  /* ================= REMOVE HELPERS ================= */
-
   const removeWidgetFromLocalStorage = (widgetId: string) => {
     const dynRaw = safeStorage.get(DYNAMIC_WIDGETS_KEY);
     if (dynRaw) {
@@ -184,7 +204,6 @@ export default function Dashboard() {
   };
 
   /* ================= LOAD FIRST ================= */
-
   useEffect(() => {
     loadFromServer();
 
@@ -197,8 +216,7 @@ export default function Dashboard() {
     hasLoadedFromStorage.current = true;
   }, []);
 
-  /* ================= SAVE DYNAMIC WIDGETS ================= */
-
+  /* ================= SAVE DYNAMIC ================= */
   useEffect(() => {
     if (!hasLoadedFromStorage.current) return;
     if (!hasUserModifiedWidgets.current) return;
@@ -209,14 +227,12 @@ export default function Dashboard() {
   }, [dynamicWidgets]);
 
   /* ================= SAVE REMOVED STATIC ================= */
-
   useEffect(() => {
     safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStaticIds));
     saveToServer();
   }, [removedStaticIds]);
 
   /* ================= FETCH HOST GROUPS ================= */
-
   useEffect(() => {
     if (!user_token) return;
 
@@ -225,11 +241,10 @@ export default function Dashboard() {
       .then((res) =>
         setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
       )
-      .catch(() => {});
+      .catch(() => { });
   }, [user_token]);
 
   /* ================= GRID INIT ================= */
-
   useEffect(() => {
     if (!gridRef.current || grid.current) return;
 
@@ -250,7 +265,6 @@ export default function Dashboard() {
   }, []);
 
   /* === SAVE WHEN RESIZE / DRAG === */
-
   useEffect(() => {
     if (!grid.current) return;
 
@@ -261,13 +275,11 @@ export default function Dashboard() {
   }, [gridReady]);
 
   /* ================= RESTORE GRID ================= */
-
   useEffect(() => {
     if (!grid.current || !gridReady) return;
 
     let layout: any[] = JSON.parse(safeStorage.get(STORAGE_KEY) || "[]");
 
-    // always respect stored size — but still prevent 0 size
     layout = layout.map((l: any) => ({
       ...l,
       w: Math.max(l.w || 2, 2),
@@ -276,14 +288,12 @@ export default function Dashboard() {
 
     const existingIds = new Set(layout.map((l) => l.id));
 
-    // add static widgets ONLY if missing
     WIDGETS.forEach((w) => {
       if (!existingIds.has(w.id)) {
         layout.push({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h });
       }
     });
 
-    // add dynamic widgets ONLY if missing
     dynamicWidgets.forEach((w) => {
       if (!existingIds.has(w.id)) {
         layout.push({
@@ -305,7 +315,6 @@ export default function Dashboard() {
   }, [gridReady, dynamicWidgets]);
 
   /* ================= REGISTER DYNAMIC ================= */
-
   useEffect(() => {
     if (!grid.current) return;
 
@@ -321,14 +330,12 @@ export default function Dashboard() {
   }, [dynamicWidgets]);
 
   /* ================= EDIT MODE ================= */
-
   useEffect(() => {
     if (!grid.current) return;
     grid.current.setStatic(!editMode);
   }, [editMode]);
 
   /* ================= ADD WIDGET ================= */
-
   const handleAddWidget = () => {
     if (!selectType) return;
 
@@ -345,12 +352,12 @@ export default function Dashboard() {
             selectType === "pie_chart"
               ? pieConfig
               : selectType === "item_value"
-              ? itemConfig
-              : selectType === "problems_by_severity"
-              ? problemSeverityConfig
-              : selectType === "top_host"
-              ? tophostConfig
-              : graphConfig,
+                ? itemConfig
+                : selectType === "problems_by_severity"
+                  ? problemSeverityConfig
+                  : selectType === "top_host"
+                    ? tophostConfig
+                    : graphConfig,
         },
       ];
 
@@ -371,7 +378,6 @@ export default function Dashboard() {
   };
 
   /* ================= REMOVE ================= */
-
   const removeWidget = (id: string) => {
     hasUserModifiedWidgets.current = true;
 
@@ -402,7 +408,6 @@ export default function Dashboard() {
   };
 
   /* ================= SAVE LAYOUT BUTTON ================= */
-
   const saveLayout = () => {
     if (!grid.current) return;
 
@@ -422,7 +427,6 @@ export default function Dashboard() {
 
   return (
     <div style={{ width: "100%" }}>
-      {/* toolbar */}
       <div
         style={{
           display: "flex",
@@ -446,9 +450,7 @@ export default function Dashboard() {
         </Suspense>
       </div>
 
-      {/* grid */}
       <div className="grid-stack" ref={gridRef}>
-        {/* Static */}
         {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
           ({ id, title, component: Component, x, y, w, h }) => (
             <div
@@ -487,7 +489,6 @@ export default function Dashboard() {
           )
         )}
 
-        {/* Dynamic */}
         {dynamicWidgets.map((w) => (
           <div
             key={w.id}
