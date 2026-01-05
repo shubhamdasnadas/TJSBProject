@@ -1,21 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Input, Select, Checkbox, Button, message } from "antd";
+import { Modal, Select, Button } from "antd";
 import axios from "axios";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import RangePickerDemo from "../../RangePickerDemo";
-
-/* =========================
-   AXIOS CONFIG (FIXED)
-========================= */
-const getAxiosCfg = () => ({
-  headers: {
-    "Content-Type": "application/json-rpc",
-    Authorization: `Bearer ${localStorage.getItem("zabbix_auth")}`,
-  },
-});
 
 /* =========================
    TYPES
@@ -47,47 +35,29 @@ interface Host {
    PAGE
 ========================= */
 export default function SysReportPage() {
-  const [problems, setProblems] = useState<Problem[]>([]);
+  const [rows, setRows] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   /* pagination */
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  /* =========================
-     FILTER STATE
-  ========================= */
+  /* filters */
   const [hostGroups, setHostGroups] = useState<HostGroup[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
 
-  /* =========================
-     UPDATE MODAL
-  ========================= */
-  const [showModal, setShowModal] = useState(false);
-  const [selected, setSelected] = useState<Problem | null>(null);
-  const [messageText, setMessageText] = useState("");
-  const [severity, setSeverity] = useState<string | null>(null);
-  const [closeProblem, setCloseProblem] = useState(false);
+  /* history modal */
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTitle, setHistoryTitle] = useState("");
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [activeRow, setActiveRow] = useState<Problem | null>(null);
 
-  /* =========================
-     HISTORY MODAL
-  ========================= */
-  const [historyModalOpen, setHistoryModalOpen] = useState(false);
-  const [historyModalTitle, setHistoryModalTitle] = useState("");
-  const [activeEventId, setActiveEventId] = useState<string | null>(null);
-  const [historyMap, setHistoryMap] = useState<Record<string, any[]>>({});
-  const [historyLoading, setHistoryLoading] = useState<Record<string, boolean>>(
-    {}
-  );
-
-  /* =========================
-     RANGE PICKER
-  ========================= */
-  const [timeRange, setTimeRange] = useState<{
+  /* time range */
+  const [range, setRange] = useState<{
     startDate?: string;
     startTime?: string;
     endDate?: string;
@@ -95,25 +65,28 @@ export default function SysReportPage() {
   }>({});
 
   /* =========================
-     BASE DATA
+     AXIOS CONFIG (proxy)
   ========================= */
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/reports/sysreport");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setProblems(data);
-      setPage(1);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+  const axiosCfg = {
+    headers: {
+      "Content-Type": "application/json-rpc",
+      Authorization: `Bearer ${localStorage.getItem("zabbix_auth")}`,
+    },
   };
 
   /* =========================
-     HOST GROUPS (FIXED)
+     LOAD TABLE DATA
+  ========================= */
+  const loadData = async () => {
+    setLoading(true);
+    const res = await fetch("/api/reports/sysreport");
+    const data = await res.json();
+    setRows(data);
+    setLoading(false);
+  };
+
+  /* =========================
+     HOST GROUPS
   ========================= */
   const loadHostGroups = async () => {
     const payload = {
@@ -123,17 +96,12 @@ export default function SysReportPage() {
       id: 1,
     };
 
-    const res = await axios.post(
-      "/api/zabbix-proxy",
-      payload,
-      getAxiosCfg()
-    );
-
+    const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
     setHostGroups(res.data.result ?? []);
   };
 
   /* =========================
-     HOSTS (FIXED)
+     HOSTS
   ========================= */
   const loadHosts = async (groups: string[]) => {
     if (!groups.length) return setHosts([]);
@@ -148,12 +116,7 @@ export default function SysReportPage() {
       id: 2,
     };
 
-    const res = await axios.post(
-      "/api/zabbix-proxy",
-      payload,
-      getAxiosCfg()
-    );
-
+    const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
     setHosts(res.data.result ?? []);
   };
 
@@ -165,9 +128,7 @@ export default function SysReportPage() {
     setPage(1);
 
     if (selectedHosts.length) {
-      setProblems((p) =>
-        p.filter((r) => selectedHosts.includes(r.host))
-      );
+      setRows((r) => r.filter((x) => selectedHosts.includes(x.host)));
     } else {
       await loadData();
     }
@@ -192,66 +153,64 @@ export default function SysReportPage() {
   ========================= */
   const sorted = useMemo(
     () =>
-      [...problems].sort(
+      [...rows].sort(
         (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
       ),
-    [problems]
+    [rows]
   );
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const start = (page - 1) * pageSize;
   const pageItems = sorted.slice(start, start + pageSize);
 
-  
   /* =========================
-     HISTORY
+     VIEW → HISTORY (EXACT PAYLOAD)
   ========================= */
-const loadHistory = async (row: Problem) => {
-  const eventId = row.eventid;
+  const loadHistory = async (row: Problem) => {
+    setActiveRow(row);
+    setHistoryTitle(`${row.host} – ${row.problems}`);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
 
-  setHistoryModalTitle(`${row.host} – ${row.problems}`);
-  setActiveEventId(eventId);
-  setHistoryModalOpen(true);
+    const now = Math.floor(Date.now() / 1000);
+    const toUnix = (d?: string, t?: string) =>
+      d && t ? Math.floor(new Date(`${d} ${t}`).getTime() / 1000) : undefined;
 
-  // cache only when no custom range
-  if (historyMap[eventId] && !timeRange.startDate) return;
+    const time_from =
+      toUnix(range.startDate, range.startTime) ?? now - 3600;
+    const time_till =
+      toUnix(range.endDate, range.endTime) ?? now;
 
-  setHistoryLoading((p) => ({ ...p, [eventId]: true }));
+    try {
+      const payload = {
+        jsonrpc: "2.0",
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: 0,
+          itemids: [row.itemid],
+          time_from,
+          time_till,
+          sortfield: "clock",
+          sortorder: "DESC",
+        },
+        id: 1,
+      };
 
-  try {
-    const auth = localStorage.getItem("zabbix_auth");
-    if (!auth) throw new Error("Missing Zabbix auth token");
+      const res = await axios.post(
+        "/api/zabbix-proxy",
+        payload,
+        axiosCfg
+      );
 
-    const res = await fetch("/api/dashboard_action_log/history_get", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json-rpc", // 🔥 FIX
-      },
-      body: JSON.stringify({
-        itemids: [row.itemid],
-        auth,               // ✔ correct for this route
-        history: 0,
-        ...timeRange,       // ✔ picker driven
-      }),
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) {
-      throw new Error(json?.error || "history.get failed");
+      setHistoryData(res.data.result ?? []);
+    } catch (e) {
+      console.error("history.get failed:", e);
+      setHistoryData([]);
+    } finally {
+      setHistoryLoading(false);
     }
-
-    setHistoryMap((p) => ({
-      ...p,
-      [eventId]: json.result || [],
-    }));
-  } catch (e) {
-    console.error("history.get error:", e);
-    setHistoryMap((p) => ({ ...p, [eventId]: [] }));
-  } finally {
-    setHistoryLoading((p) => ({ ...p, [eventId]: false }));
-  }
-};
+  };
 
   /* =========================
      RENDER
@@ -265,8 +224,8 @@ const loadHistory = async (row: Problem) => {
         <Select
           mode="multiple"
           allowClear
-          placeholder="Select Host Groups"
-          style={{ width: 260 }}
+          placeholder="Host Groups"
+          style={{ width: 240 }}
           value={groupIds}
           onChange={setGroupIds}
           options={hostGroups.map((g) => ({
@@ -278,8 +237,8 @@ const loadHistory = async (row: Problem) => {
         <Select
           mode="multiple"
           allowClear
-          placeholder="Select Hosts"
-          style={{ width: 260 }}
+          placeholder="Hosts"
+          style={{ width: 240 }}
           value={selectedHosts}
           onChange={setSelectedHosts}
           options={hosts.map((h) => ({
@@ -301,47 +260,86 @@ const loadHistory = async (row: Problem) => {
             <th>Status</th>
             <th>Host</th>
             <th>Problem</th>
-            <th>Action</th>
             <th>Severity</th>
             <th>Duration</th>
             <th>View</th>
-            <th>Ack</th>
-            <th>Message</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={10}>Loading…</td></tr>
-          ) : error ? (
-            <tr><td colSpan={10}>{error}</td></tr>
-          ) : pageItems.length === 0 ? (
-            <tr><td colSpan={10}>No data</td></tr>
+            <tr><td colSpan={7}>Loading…</td></tr>
           ) : (
-            pageItems.map((p) => (
-              <tr key={p.eventid}>
-                <td>{p.time}</td>
-                <td>{p.status}</td>
-                <td>{p.host}</td>
-                <td>{p.problems}</td>
+            pageItems.map((r) => (
+              <tr key={r.eventid}>
+                <td>{r.time}</td>
+                <td>{r.status}</td>
+                <td>{r.host}</td>
+                <td>{r.problems}</td>
+                <td>{r.severity}</td>
+                <td>{r.duration}</td>
                 <td>
-                  <Button size="small" onClick={() => setSelected(p)}>
-                    Update
-                  </Button>
-                </td>
-                <td>{p.severity}</td>
-                <td>{p.duration}</td>
-                <td>
-                  <Button size="small" onClick={() => loadHistory(p)}>
+                  <Button size="small" onClick={() => loadHistory(r)}>
                     View
                   </Button>
                 </td>
-                <td>{p.ack}</td>
-                <td>{p.message}</td>
               </tr>
             ))
           )}
         </tbody>
       </table>
+
+      {/* PAGINATION */}
+      <div style={{ marginTop: 12 }}>
+        <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+          Prev
+        </Button>
+        <span style={{ margin: "0 10px" }}>
+          Page {page} / {totalPages}
+        </span>
+        <Button
+          disabled={page === totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+
+      {/* HISTORY MODAL */}
+      <Modal
+        title={historyTitle}
+        open={historyOpen}
+        onCancel={() => setHistoryOpen(false)}
+        footer={null}
+        width={800}
+      >
+        <RangePickerDemo
+          onRangeChange={(r) => {
+            setRange(r);
+            if (activeRow) loadHistory(activeRow);
+          }}
+        />
+
+        {historyLoading ? (
+          <div>Loading history…</div>
+        ) : (
+          <table width="100%" border={1} cellPadding={6}>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyData.map((h, i) => (
+                <tr key={i}>
+                  <td>{new Date(h.clock * 1000).toLocaleString()}</td>
+                  <td>{h.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Modal>
     </div>
   );
 }
