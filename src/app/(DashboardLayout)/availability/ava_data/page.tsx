@@ -1,144 +1,234 @@
 "use client";
 
-import axios from "axios";
-import { Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
+import { Card, Select, Button, Table, message } from "antd";
+import axios from "axios";
 
-/* =========================
-   Types
-========================= */
-type HostRow = {
-  key: string;
-  hostname: string;
-  groups?: string[];
-  primaryValue: number;
-  secondaryValue: number;
-};
+import branches from "../data/data";
 
-/* =========================
-   Config
-========================= */
-const CACHE_KEY = "if_status_cache";
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+const { Option } = Select;
 
-/* =========================
-   Helpers
-========================= */
-const to01 = (v?: string) => (v === "1" ? 1 : 0);
+/* ========= TYPES ========= */
 
-const render01 = (value: number) => (
-  <Tag
-    color={value === 1 ? "green" : "red"}
-    style={{ width: "100%", textAlign: "center" }}
-  >
-    {value}
-  </Tag>
-);
-
-/* =========================
-   Columns
-========================= */
-const columns = [
-  {
-    title: "Hostname",
-    dataIndex: "hostname",
-    key: "hostname",
-    ellipsis: true,
-  },
-  {
-    title: "Group",
-    dataIndex: "groups",
-    key: "groups",
-    width: 220,
-    render: (groups: string[] | undefined) => (
-      <span>{(groups && groups.length > 0) ? groups.join(", ") : "-"}</span>
-    ),
-  },
-  {
-    title: "Primary Link",
-    key: "primary",
-    width: 140,
-    render: (_: unknown, r: HostRow) => render01(r.primaryValue),
-  },
-  {
-    title: "Secondary Link",
-    key: "secondary",
-    width: 140,
-    render: (_: unknown, r: HostRow) => render01(r.secondaryValue),
-  },
-];
-
-/* =========================
-   API (via server route)
-========================= */
-async function fetchIfStatus(): Promise<HostRow[]> {
-  const res = await axios.get("/api/tjsb/if_status");
-  const rows: HostRow[] = res.data || [];
-
-  // Sort: any link with 1 first (problems)
-  rows.sort((a, b) => {
-    const sevA = Math.max(a.primaryValue, a.secondaryValue);
-    const sevB = Math.max(b.primaryValue, b.secondaryValue);
-    if (sevA !== sevB) return sevB - sevA; // 1 first
-    return a.hostname.localeCompare(b.hostname);
-  });
-  return rows;
+interface Branch {
+  name: string;
+  code: string;
+  ip?: string;
 }
 
-/* =========================
-   Main fetch (with cache)
-========================= */
-async function fetchTableDataWithCache(): Promise<HostRow[]> {
-  // 1️⃣ Try cache
-  const cachedRaw = localStorage.getItem(CACHE_KEY);
-  if (cachedRaw) {
-    const cached = JSON.parse(cachedRaw);
-    if (Date.now() - cached.timestamp < CACHE_TTL) {
-      return cached.data;
-    }
+interface Host {
+  hostid: string;
+  host: string;
+  name: string;
+  description?: string;
+  inventory?: Record<string, any>;
+  hostgroup?: string;
+}
+
+interface Item {
+  itemid: string;
+  name: string;
+}
+
+/* ========= SMART CODE MATCHING ========= */
+
+/**
+ * Extracts something like:
+ *   BR-C002-MAIN
+ *   BR-C058-KLYNR
+ * from ANY host fields.
+ */
+function extractCodeFromAny(h: any): string | null {
+  const textPool: string[] = [];
+
+  if (h.name) textPool.push(h.name);
+  if (h.host) textPool.push(h.host);
+  if (h.description) textPool.push(h.description);
+
+  // inventory (Zabbix stores rich metadata here)
+  if (h.inventory) {
+    Object.values(h.inventory).forEach((v: any) => {
+      if (typeof v === "string") textPool.push(v);
+    });
   }
 
-  // 2️⃣ Fetch fresh (from server API)
-  const rows: HostRow[] = await fetchIfStatus();
+  for (const text of textPool) {
+    const match = text.match(/BR-[A-Z0-9-]+/i);
+    if (match) return match[0].toUpperCase();
+  }
 
-  // 3️⃣ Save cache
-  localStorage.setItem(
-    CACHE_KEY,
-    JSON.stringify({
-      timestamp: Date.now(),
-      data: rows,
-    })
-  );
-
-  return rows;
+  return null;
 }
 
-/* =========================
-   Page
-========================= */
-export default function AvailabilityDataPage() {
-  const [data, setData] = useState<HostRow[]>([]);
-  const [loading, setLoading] = useState(false);
+function findBranchForHostObject(h: Host): Branch | undefined {
+  const code = extractCodeFromAny(h);
+  if (!code) return undefined;
+
+  return (branches as Branch[]).find(
+    (b) => b.code.toUpperCase() === code
+  );
+}
+
+/* ========= COMPONENT ========= */
+
+export default function ZabbixSelector() {
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+
+  const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+  const [pivotData, setPivotData] = useState<any[]>([]);
+  const [pivotCols, setPivotCols] = useState<any[]>([]);
+
+  const auth =
+    typeof window !== "undefined"
+      ? localStorage.getItem("zabbix_auth")
+      : null;
+
+  /* ===== LOAD HOSTS ===== */
 
   useEffect(() => {
-    setLoading(true);
-    fetchTableDataWithCache()
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
+    if (!auth) return;
+
+    axios
+      .post("/api/tjsb/get_host", { auth })
+      .then((res) => {
+        const apiHosts: Host[] = res.data?.result ?? [];
+
+        const enriched = apiHosts.map((h) => {
+          const matched = findBranchForHostObject(h);
+
+          return {
+            ...h,
+            hostgroup: matched?.name ?? "Unknown",
+          };
+        });
+
+        setHosts(enriched);
+      })
+      .catch(() => message.error("Failed to load hosts"));
+  }, [auth]);
+
+  /* ===== LOAD ITEMS ===== */
+
+  const loadItems = async (hostids: string[]) => {
+    const res = await axios.post("/api/tjsb/get_item", {
+      hostids,
+      auth,
+    });
+
+    setItems(res.data?.result ?? []);
+    setSelectedItems([]);
+    setPivotData([]);
+  };
+
+  /* ===== BUILD TABLE ===== */
+
+  const buildMatrix = async () => {
+    if (!selectedItems.length) {
+      message.error("Select item(s)");
+      return;
+    }
+
+    const res = await axios.post("/api/tjsb/get_item_matrix", {
+      hostids: selectedHosts,
+      itemids: selectedItems,
+      auth,
+    });
+
+    const data = res.data?.result ?? [];
+
+    const rows = hosts
+      .filter((h) => selectedHosts.includes(h.hostid))
+      .map((h) => ({
+        key: h.hostid,
+        host: h.name,
+        hostgroup: h.hostgroup,
+      }));
+
+    data.forEach((i: any) => {
+      const row = rows.find((r: any) => r.key === i.hostid);
+      if (row) (row as any)[i.itemid] = i.lastvalue;
+    });
+
+    const dynamicCols = selectedItems.map((id) => {
+      const it = items.find((x: any) => x.itemid === id);
+      return { title: it?.name || id, dataIndex: id };
+    });
+
+    setPivotData(rows);
+
+    setPivotCols([
+      { title: "Host", dataIndex: "host" },
+      { title: "Host Group", dataIndex: "hostgroup" },
+      ...dynamicCols,
+    ]);
+
+    message.success("Loaded");
+  };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={4}>Availability Data</Typography.Title>
+    <Card title="Zabbix Selector">
+      {/* HOST TABLE */}
+      {hosts.length > 0 && (
+        <Card title="Hosts" style={{ marginBottom: 16 }}>
+          <Table
+            pagination={false}
+            rowKey="hostid"
+            dataSource={hosts}
+            columns={[
+              { title: "Host", dataIndex: "name" },
+              { title: "Host Code (Zabbix)", dataIndex: "host" },
+              { title: "Host Group", dataIndex: "hostgroup" },
+            ]}
+          />
+        </Card>
+      )}
 
-      <Table
-        rowKey="key"
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        pagination={{ pageSize: 10 }}
-        size="small"
-      />
-    </div>
+      {/* HOST SELECT */}
+      <label>Hosts</label>
+      <Select
+        mode="multiple"
+        value={selectedHosts}
+        onChange={(v) => {
+          setSelectedHosts(v);
+          loadItems(v);
+        }}
+        style={{ width: "100%", marginBottom: 16 }}
+      >
+        {hosts.map((h) => (
+          <Option key={h.hostid} value={h.hostid}>
+            {h.name}
+          </Option>
+        ))}
+      </Select>
+
+      {/* ITEMS */}
+      <label>Items</label>
+      <Select
+        mode="multiple"
+        disabled={!selectedHosts.length}
+        value={selectedItems}
+        onChange={setSelectedItems}
+        style={{ width: "100%", marginBottom: 16 }}
+      >
+        {items.map((i) => (
+          <Option key={i.itemid} value={i.itemid}>
+            {i.name}
+          </Option>
+        ))}
+      </Select>
+
+      <Button type="primary" onClick={buildMatrix}>
+        Build table
+      </Button>
+
+      {pivotData.length > 0 && (
+        <Card style={{ marginTop: 16 }}>
+          <Table columns={pivotCols} dataSource={pivotData} />
+        </Card>
+      )}
+    </Card>
   );
 }
