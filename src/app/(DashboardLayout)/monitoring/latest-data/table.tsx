@@ -127,13 +127,13 @@ export default function LatestDataTable({
         dataSource={data}
         loading={loading}
         rowKey="key"
-        size="small"
-        pagination={{
-          current: currentPage,
-          pageSize: pageSize,
-          onChange: onPageChange,
-          showSizeChanger: false,
-        }}
+        size="middle"
+        // pagination={{
+        //   current: currentPage,
+        //   pageSize: pageSize,
+        //   onChange: onPageChange,
+        //   showSizeChanger: false,
+        // }}
       />
 
       {/* =========================

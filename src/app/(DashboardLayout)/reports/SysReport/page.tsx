@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { Select, Button, Table, Space, Modal, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import axios from "axios";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import RangePickerDemo from "../../RangePickerDemo";
 
 /* =========================
    TYPES
@@ -19,6 +22,59 @@ type TableRow = {
   lastValue: string;
   lastCheck: string;
   change: string;
+};
+
+type DateRange = {
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+};
+
+/**
+ * Exports table data to a PDF file.
+ * @param data - The array of TableRow objects to export
+ */
+const exportToPDF = (data: TableRow[]) => {
+  const doc = new jsPDF("l", "pt", "a4");
+
+  doc.setFontSize(18);
+  doc.text("System Report - Latest Data", 40, 40);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
+
+  const tableColumn = ["Host", "Item", "Last Value", "Last Check", "Change"];
+
+  const tableRows = data.map((item) => [
+    item.host,
+    item.name,
+    item.lastValue,
+    item.lastCheck,
+    item.change,
+  ]);
+
+  autoTable(doc, {
+    startY: 70,
+    head: [tableColumn],
+    body: tableRows,
+    theme: "striped",
+    styles: { 
+      fontSize: 8,
+      cellPadding: 3,
+      overflow: 'linebreak' 
+    },
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255,
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+  });
+
+  doc.save(`system_report_${new Date().getTime()}.pdf`);
 };
 
 /* =========================
@@ -39,6 +95,14 @@ export default function LatestDataPage() {
 
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
+
+  /* ===== DATE RANGE ===== */
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+  });
 
   /* ===== HISTORY MODAL ===== */
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -88,6 +152,11 @@ export default function LatestDataPage() {
      APPLY (LATEST DATA)
   ========================= */
   const handleApply = async () => {
+    if (!selectedHosts.length) {
+      message.warning("Please select at least one host");
+      return;
+    }
+
     setLoadingTable(true);
 
     const payload = {
@@ -116,6 +185,7 @@ export default function LatestDataPage() {
         })) ?? [];
 
       setTableData(formatted);
+      message.success("Data loaded successfully");
     } catch {
       message.error("item.get failed");
     } finally {
@@ -160,6 +230,15 @@ export default function LatestDataPage() {
   }, []);
 
   /* =========================
+     AUTO-FETCH DATA ON RANGE CHANGE
+  ========================= */
+  useEffect(() => {
+    if (selectedHosts.length && dateRange.startDate && dateRange.endDate) {
+      handleApply();
+    }
+  }, [dateRange, selectedHosts]);
+
+  /* =========================
      TABLE COLUMNS
   ========================= */
   const columns: ColumnsType<TableRow> = [
@@ -182,6 +261,8 @@ export default function LatestDataPage() {
   return (
     <Space direction="vertical" style={{ width: "100%" }}>
       <Space>
+        <RangePickerDemo onRangeChange={setDateRange} />
+        
         <Select
           mode="multiple"
           allowClear
@@ -219,6 +300,13 @@ export default function LatestDataPage() {
           disabled={!selectedHosts.length}
         >
           Apply
+        </Button>
+
+        <Button
+          onClick={() => exportToPDF(tableData)}
+          disabled={!tableData.length}
+        >
+          Export PDF
         </Button>
       </Space>
 
