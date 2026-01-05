@@ -121,27 +121,28 @@ export default function Dashboard() {
   /* ================= SAVE TO SERVER ================= */
   const saveToServer = async () => {
     try {
-      let layout = grid.current?.save(false) || [];
+      let layoutRaw = grid.current?.save(false) as any;
 
-      layout = layout.map((l: any) => ({
+      const layout: any[] = Array.isArray(layoutRaw) ? layoutRaw : [];
+
+      const normalized = layout.map((l: any) => ({
         ...l,
         w: Math.max(l.w || 2, 2),
         h: Math.max(l.h || 2, 2),
       }));
 
       await axios.post("/api/dashboard_action_log/data_save", {
-        layout,
+        layout: normalized,
         dynamicWidgets,
         removedStatic: removedStaticIds,
       });
 
-      safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
-
-      socketRef.current?.emit("dashboard:update", layout);
+      safeStorage.set(STORAGE_KEY, JSON.stringify(normalized));
     } catch (e) {
       console.warn("Save failed:", e);
     }
   };
+
 
   /* ================= LOAD FROM SERVER ================= */
   const loadFromServer = async () => {
@@ -268,11 +269,21 @@ export default function Dashboard() {
   useEffect(() => {
     if (!grid.current) return;
 
-    const handler = () => saveToServer();
+    const handler = () => {
+      saveToServer();
+    };
+
     grid.current.on("change", handler);
 
-    return () => grid.current?.off("change", handler);
+    return () => {
+      if (grid.current) {
+        grid.current.off(handler);   // <-- important change
+      }
+    };
   }, [gridReady]);
+
+
+
 
   /* ================= RESTORE GRID ================= */
   useEffect(() => {
