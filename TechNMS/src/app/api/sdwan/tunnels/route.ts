@@ -10,14 +10,12 @@ export async function GET() {
     // 1) login
     const res = await axios.post(
       `${base}/j_security_check`,
-      `j_username=${user}&j_password=${pass}`,
-      { withCredentials: true }
+      `j_username=${user}&j_password=${pass}`
+    
     );
     console.log("res", res)
     // 2) token
-    const tokenRes = await axios.post(`${base}/dataservice/client/token`, {
-      withCredentials: true,
-    });
+    const tokenRes = await axios.post(`${base}/dataservice/client/token`);
 
     const token = tokenRes.data;
     console.log("token", token)
@@ -26,7 +24,7 @@ export async function GET() {
       `${base}/dataservice/device`,
       {
         headers: { "X-XSRF-TOKEN": token },
-        withCredentials: true,
+
       }
     );
     console.log("Tunnel", tunnels);
