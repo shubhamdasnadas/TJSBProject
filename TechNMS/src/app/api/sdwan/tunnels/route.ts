@@ -15,14 +15,14 @@ export async function GET() {
     );
     console.log("res", res)
     // 2) token
-    const tokenRes = await axios.get(`${base}/dataservice/client/token`, {
+    const tokenRes = await axios.post(`${base}/dataservice/client/token`, {
       withCredentials: true,
     });
 
     const token = tokenRes.data;
     console.log("token", token)
     // 3) get tunnels
-    const tunnels = await axios.get(
+    const tunnels = await axios.post(
       `${base}/dataservice/device`,
       {
         headers: { "X-XSRF-TOKEN": token },
