@@ -1,16 +1,20 @@
 "use client";
+
 import Link from "next/link";
 import { Grid, Box, Card, Stack, Typography } from "@mui/material";
-// components
+
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
 import AuthLogin from "../auth/AuthLogin";
+
 import React from "react";
+
 const Login2 = () => {
   const [userData, setUserData] = React.useState({
     userName: "",
     password: "",
   });
+
   return (
     <PageContainer title="Login" description="this is Login page">
       <Box
@@ -38,12 +42,8 @@ const Login2 = () => {
             display="flex"
             justifyContent="center"
             alignItems="center"
-            size={{
-              xs: 12,
-              sm: 12,
-              lg: 4,
-              xl: 3
-            }}>
+            size={{ xs: 12, sm: 12, lg: 4, xl: 3 }}
+          >
             <Card
               elevation={9}
               sx={{ p: 4, zIndex: 1, width: "100%", maxWidth: "500px" }}
@@ -51,10 +51,10 @@ const Login2 = () => {
               <Box display="flex" alignItems="center" justifyContent="center">
                 <Logo />
               </Box>
+
               <AuthLogin
                 userData={userData}
                 setUserData={setUserData}
-                
                 subtext={
                   <Typography
                     variant="subtitle1"
@@ -79,6 +79,7 @@ const Login2 = () => {
                     >
                       New to Modernize?
                     </Typography>
+
                     <Typography
                       component={Link}
                       href="/authentication/register"
@@ -100,4 +101,5 @@ const Login2 = () => {
     </PageContainer>
   );
 };
+
 export default Login2;

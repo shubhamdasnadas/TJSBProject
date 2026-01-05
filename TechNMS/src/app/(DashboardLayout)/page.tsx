@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectType, setSelectType] = useState("");
 
+  const [layout, setLayout] = useState<any[]>([]);
   const [dynamicWidgets, setDynamicWidgets] = useState<any[]>([]);
   const [removedStaticIds, setRemovedStaticIds] = useState<string[]>([]);
 
@@ -78,8 +79,7 @@ export default function Dashboard() {
   const [tophostConfig, setTophostConfig] = useState<any>(null);
   const [problemSeverityConfig, setProblemSeverityConfig] = useState<any>(null);
 
-  const [editingTopHostConfig, setEditingTopHostConfig] =
-    useState<any>(null);
+  const [editingTopHostConfig, setEditingTopHostConfig] = useState<any>(null);
 
   const [rangeData, setRangeData] = useState({
     startDate: "",
@@ -95,42 +95,71 @@ export default function Dashboard() {
       ? localStorage.getItem("zabbix_auth")
       : null;
 
-  /* ================= SERVER SAVE + LOAD ================= */
+  /* ================= SAVE TO SERVER ================= */
 
   const saveToServer = async () => {
     try {
-      const layout = grid.current?.save(false) || [];
+      let layout = grid.current?.save(false) || [];
+
+      // ⭐ clamp before saving
+      layout = layout.map((l: any) => ({
+        ...l,
+        w: Math.max(l.w || 2, 2),
+        h: Math.max(l.h || 2, 2),
+      }));
 
       await axios.post("/api/dashboard_action_log/data_save", {
         layout,
         dynamicWidgets,
         removedStatic: removedStaticIds,
       });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
     } catch (e) {
       console.warn("Save failed:", e);
     }
   };
 
+  /* ================= LOAD FROM SERVER ================= */
+
   const loadFromServer = async () => {
     try {
+      const storedLayout =
+        JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") || [];
+
+      const storedDynamicWidgets =
+        JSON.parse(localStorage.getItem(DYNAMIC_WIDGETS_KEY) || "[]") || [];
+
+      const storedRemovedStatic =
+        JSON.parse(localStorage.getItem(REMOVED_STATIC_KEY) || "[]") || [];
+
       const res = await axios.get("/api/dashboard_action_log/data_save");
 
-      const { layout = [], dynamicWidgets = [], removedStatic = [] } =
-        res.data || {};
+      const {
+        layout = [],
+        dynamicWidgets = [],
+        removedStatic = [],
+      } = res.data || {};
 
-      if (layout.length) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
-      }
+      const finalLayout = layout.length ? layout : storedLayout;
+      const finalDynamicWidgets =
+        dynamicWidgets.length ? dynamicWidgets : storedDynamicWidgets;
+      const finalRemovedStatic =
+        removedStatic.length ? removedStatic : storedRemovedStatic;
 
-      if (dynamicWidgets.length) {
-        localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
-        setDynamicWidgets(dynamicWidgets);
-      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(finalLayout));
+      localStorage.setItem(
+        DYNAMIC_WIDGETS_KEY,
+        JSON.stringify(finalDynamicWidgets)
+      );
+      localStorage.setItem(
+        REMOVED_STATIC_KEY,
+        JSON.stringify(finalRemovedStatic)
+      );
 
-      if (removedStatic.length) {
-        localStorage.setItem(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
-        setRemovedStaticIds(removedStatic);
-      }
+      setLayout(finalLayout);
+      setDynamicWidgets(finalDynamicWidgets);
+      setRemovedStaticIds(finalRemovedStatic);
     } catch (e) {
       console.warn("Load failed:", e);
     }
@@ -218,7 +247,11 @@ export default function Dashboard() {
         margin: 12,
         staticGrid: false,
         draggable: { handle: ".dashboard-card-header" },
+
         resizable: { handles: "all" },
+
+        // ⭐ prevents zero-size widgets
+        minRow: 1,
       },
       gridRef.current
     );
@@ -232,12 +265,9 @@ export default function Dashboard() {
     if (!grid.current) return;
 
     const handler = () => saveToServer();
-
     grid.current.on("change", handler);
 
-    return () => {
-      grid.current?.off("change", handler);
-    };
+    return () => grid.current?.off("change", handler);
   }, [gridReady]);
 
   /* ================= RESTORE GRID ================= */
@@ -245,13 +275,31 @@ export default function Dashboard() {
   useEffect(() => {
     if (!grid.current || !gridReady) return;
 
-    const raw = localStorage.getItem(STORAGE_KEY);
-    let layout = raw ? JSON.parse(raw) : [];
+    let layout: any[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
-    const ids = new Set(layout.map((l: any) => l.id));
+    layout = layout.map((l: any) => ({
+      ...l,
+      w: Math.max(l.w || 2, 2),
+      h: Math.max(l.h || 2, 2),
+    }));
+
+    const existingIds = new Set(layout.map((l) => l.id));
+
     WIDGETS.forEach((w) => {
-      if (!ids.has(w.id)) {
+      if (!existingIds.has(w.id)) {
         layout.push({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h });
+      }
+    });
+
+    dynamicWidgets.forEach((w) => {
+      if (!existingIds.has(w.id)) {
+        layout.push({
+          id: w.id,
+          x: 0,
+          y: 0,
+          w: 6,
+          h: 4,
+        });
       }
     });
 
@@ -261,7 +309,7 @@ export default function Dashboard() {
       grid.current!.load(layout);
       window.dispatchEvent(new Event("resize"));
     });
-  }, [gridReady]);
+  }, [gridReady, dynamicWidgets]);
 
   /* ================= REGISTER DYNAMIC ================= */
 
@@ -314,7 +362,6 @@ export default function Dashboard() {
       ];
 
       localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
-
       saveToServer();
 
       return next;
@@ -355,7 +402,6 @@ export default function Dashboard() {
       }
 
       grid.current?.compact();
-
       saveToServer();
     });
 
@@ -367,10 +413,16 @@ export default function Dashboard() {
   const saveLayout = () => {
     if (!grid.current) return;
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(grid.current.save(false))
-    );
+    let current = grid.current.save(false);
+
+    // ⭐ clamp before storing (THIS WAS THE LAST MISSING PIECE)
+    current = current.map((l: any) => ({
+      ...l,
+      w: Math.max(l.w || 2, 2),
+      h: Math.max(l.h || 2, 2),
+    }));
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
 
     saveToServer();
     setEditMode(false);
@@ -378,7 +430,6 @@ export default function Dashboard() {
 
   return (
     <div style={{ width: "100%" }}>
-      {/* TOOLBAR */}
       <div
         style={{
           display: "flex",
@@ -402,7 +453,6 @@ export default function Dashboard() {
         </Suspense>
       </div>
 
-      {/* GRID */}
       <div className="grid-stack" ref={gridRef}>
         {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
           ({ id, title, component: Component, x, y, w, h }) => (
@@ -421,11 +471,7 @@ export default function Dashboard() {
                   {editMode && (
                     <span
                       onClick={() => removeWidget(id)}
-                      style={{
-                        float: "right",
-                        color: "red",
-                        cursor: "pointer",
-                      }}
+                      style={{ float: "right", color: "red", cursor: "pointer" }}
                     >
                       ✖
                     </span>
@@ -442,7 +488,6 @@ export default function Dashboard() {
           )
         )}
 
-        {/* DYNAMIC */}
         {dynamicWidgets.map((w) => (
           <div
             key={w.id}
@@ -499,7 +544,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* ADD MODAL */}
       <Modal
         title="Add Widget"
         open={showAddModal}

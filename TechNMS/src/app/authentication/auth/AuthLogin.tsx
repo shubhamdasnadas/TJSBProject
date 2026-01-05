@@ -47,24 +47,27 @@ const AuthLogin: React.FC<LoginProps> = ({
     console.log("Login submitted:", userData);
 
     try {
-      const response = await axios.post(
-        "/api/zabbix-login",
-        {
-          username: userData.userName,
-          password: userData.password,
-        }
-      );
+      const response = await axios.post("/api/zabbix-login", {
+        username: userData.userName,
+        password: userData.password,
+      });
 
       const data = response.data;
 
       if (data.result) {
         const token = data.result;
+
         console.log("User Token:", token);
 
+        // main app token
+        localStorage.setItem("auth_token", token);
+
+        // keep zabbix auth also
         localStorage.setItem("zabbix_auth", token);
         localStorage.setItem("zabbix_login_status", "true");
 
-        router.push("/");
+        // go root — layout controls dashboard
+        router.replace("/");
       } else {
         console.error("Login Failed:", data.error || "Unknown error");
       }
@@ -84,7 +87,6 @@ const AuthLogin: React.FC<LoginProps> = ({
       {subtext}
 
       <Stack>
-        {/* Username */}
         <Box>
           <Typography
             variant="subtitle1"
@@ -100,13 +102,12 @@ const AuthLogin: React.FC<LoginProps> = ({
             variant="outlined"
             fullWidth
             value={userData.userName}
-            onChange={(e:any) =>
+            onChange={(e: any) =>
               setUserData({ ...userData, userName: e.target.value })
             }
           />
         </Box>
 
-        {/* Password */}
         <Box mt="25px">
           <Typography
             variant="subtitle1"
@@ -123,13 +124,12 @@ const AuthLogin: React.FC<LoginProps> = ({
             variant="outlined"
             fullWidth
             value={userData.password}
-            onChange={(e:any) =>
+            onChange={(e: any) =>
               setUserData({ ...userData, password: e.target.value })
             }
           />
         </Box>
 
-        {/* Remember + Forgot */}
         <Stack
           justifyContent="space-between"
           direction="row"
@@ -154,7 +154,6 @@ const AuthLogin: React.FC<LoginProps> = ({
         </Stack>
       </Stack>
 
-      {/* Login Button */}
       <Box>
         <Button
           color="primary"
