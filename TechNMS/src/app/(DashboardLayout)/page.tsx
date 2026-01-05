@@ -273,14 +273,25 @@ export default function Dashboard() {
       saveToServer();
     };
 
+    // listen
     grid.current.on("change", handler);
 
+    // cleanup
     return () => {
       if (grid.current) {
-        grid.current.off(handler);   // <-- important change
+        try {
+          // some GridStack builds support off(event, cb)
+          // some support only off(cb)
+          // this handles both safely 👍
+          // @ts-ignore
+          grid.current.off("change", handler);
+        } catch {
+          grid.current?.off(handler as any);
+        }
       }
     };
   }, [gridReady]);
+
 
 
 
@@ -422,7 +433,7 @@ export default function Dashboard() {
   const saveLayout = () => {
     if (!grid.current) return;
 
-    let current = grid.current.save(false);
+    let current = grid.current.save(false) as any[];
 
     current = current.map((l: any) => ({
       ...l,
@@ -435,6 +446,7 @@ export default function Dashboard() {
     saveToServer();
     setEditMode(false);
   };
+
 
   return (
     <div style={{ width: "100%" }}>
