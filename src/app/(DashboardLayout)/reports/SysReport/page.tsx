@@ -287,7 +287,6 @@ export default function LatestDataPage() {
   return (
     <Space direction="vertical" style={{ width: "100%" }}>
       <Space>
-        <RangePickerDemo onRangeChange={setDateRange} />
         
         <Select
           mode="multiple"
