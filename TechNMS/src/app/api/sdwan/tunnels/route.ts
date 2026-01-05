@@ -23,7 +23,7 @@ export async function GET() {
     console.log("token", token)
     // 3) get tunnels
     const tunnels = await axios.get(
-      `${base}/dataservice/device/tunnel/summary`,
+      `${base}/dataservice/device`,
       {
         headers: { "X-XSRF-TOKEN": token },
         withCredentials: true,
