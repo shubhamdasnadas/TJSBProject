@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import { useEffect, useState } from "react";
 
 export default function TunnelsPage() {
@@ -8,8 +9,8 @@ export default function TunnelsPage() {
 
   async function load() {
     try {
-      const res = await fetch("/api/sdwan/tunnels");
-      const json = await res.json();
+      const res = await axios.post("/api/sdwan/tunnels");
+      const json = res;
       setData(json.data || []);
     } catch (e) {
       console.error(e);
