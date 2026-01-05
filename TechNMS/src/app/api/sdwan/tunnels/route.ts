@@ -1,7 +1,7 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function POST() {
   try {
     const base = process.env.VMANAGE_URL;
     const user = process.env.VMANAGE_USER;
