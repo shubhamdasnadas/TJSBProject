@@ -6,6 +6,7 @@ import axios from "axios";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import { WIDGET_TYPES } from "./widget/widgetRegistry";
+import { safeStorage } from "@/utils/safeStorage";
 
 /* ===================== LAZY LOAD WIDGETS ===================== */
 
@@ -77,7 +78,8 @@ export default function Dashboard() {
   const [pieConfig, setPieConfig] = useState<any>(null);
   const [itemConfig, setItemConfig] = useState<any>(null);
   const [tophostConfig, setTophostConfig] = useState<any>(null);
-  const [problemSeverityConfig, setProblemSeverityConfig] = useState<any>(null);
+  const [problemSeverityConfig, setProblemSeverityConfig] =
+    useState<any>(null);
 
   const [editingTopHostConfig, setEditingTopHostConfig] = useState<any>(null);
 
@@ -91,9 +93,7 @@ export default function Dashboard() {
   const [groupID, setGroupID] = useState<number[]>([]);
 
   const user_token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("zabbix_auth")
-      : null;
+    typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
   /* ================= SAVE TO SERVER ================= */
 
@@ -101,7 +101,7 @@ export default function Dashboard() {
     try {
       let layout = grid.current?.save(false) || [];
 
-      // ⭐ clamp before saving
+      // clamp sizes so no zeros
       layout = layout.map((l: any) => ({
         ...l,
         w: Math.max(l.w || 2, 2),
@@ -114,7 +114,7 @@ export default function Dashboard() {
         removedStatic: removedStaticIds,
       });
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+      safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
     } catch (e) {
       console.warn("Save failed:", e);
     }
@@ -125,13 +125,13 @@ export default function Dashboard() {
   const loadFromServer = async () => {
     try {
       const storedLayout =
-        JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") || [];
+        JSON.parse(safeStorage.get(STORAGE_KEY) || "[]") || [];
 
       const storedDynamicWidgets =
-        JSON.parse(localStorage.getItem(DYNAMIC_WIDGETS_KEY) || "[]") || [];
+        JSON.parse(safeStorage.get(DYNAMIC_WIDGETS_KEY) || "[]") || [];
 
       const storedRemovedStatic =
-        JSON.parse(localStorage.getItem(REMOVED_STATIC_KEY) || "[]") || [];
+        JSON.parse(safeStorage.get(REMOVED_STATIC_KEY) || "[]") || [];
 
       const res = await axios.get("/api/dashboard_action_log/data_save");
 
@@ -147,12 +147,12 @@ export default function Dashboard() {
       const finalRemovedStatic =
         removedStatic.length ? removedStatic : storedRemovedStatic;
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(finalLayout));
-      localStorage.setItem(
+      safeStorage.set(STORAGE_KEY, JSON.stringify(finalLayout));
+      safeStorage.set(
         DYNAMIC_WIDGETS_KEY,
         JSON.stringify(finalDynamicWidgets)
       );
-      localStorage.setItem(
+      safeStorage.set(
         REMOVED_STATIC_KEY,
         JSON.stringify(finalRemovedStatic)
       );
@@ -168,18 +168,18 @@ export default function Dashboard() {
   /* ================= REMOVE HELPERS ================= */
 
   const removeWidgetFromLocalStorage = (widgetId: string) => {
-    const dynRaw = localStorage.getItem(DYNAMIC_WIDGETS_KEY);
+    const dynRaw = safeStorage.get(DYNAMIC_WIDGETS_KEY);
     if (dynRaw) {
       const dyn = JSON.parse(dynRaw).filter((w: any) => w.id !== widgetId);
-      localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(dyn));
+      safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dyn));
     }
 
-    const layoutRaw = localStorage.getItem(STORAGE_KEY);
+    const layoutRaw = safeStorage.get(STORAGE_KEY);
     if (layoutRaw) {
       const layout = JSON.parse(layoutRaw).filter(
         (l: any) => l.id !== widgetId
       );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+      safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
     }
   };
 
@@ -188,8 +188,8 @@ export default function Dashboard() {
   useEffect(() => {
     loadFromServer();
 
-    const dyn = localStorage.getItem(DYNAMIC_WIDGETS_KEY);
-    const removed = localStorage.getItem(REMOVED_STATIC_KEY);
+    const dyn = safeStorage.get(DYNAMIC_WIDGETS_KEY);
+    const removed = safeStorage.get(REMOVED_STATIC_KEY);
 
     if (dyn) setDynamicWidgets(JSON.parse(dyn));
     if (removed) setRemovedStaticIds(JSON.parse(removed));
@@ -203,10 +203,7 @@ export default function Dashboard() {
     if (!hasLoadedFromStorage.current) return;
     if (!hasUserModifiedWidgets.current) return;
 
-    localStorage.setItem(
-      DYNAMIC_WIDGETS_KEY,
-      JSON.stringify(dynamicWidgets)
-    );
+    safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
 
     saveToServer();
   }, [dynamicWidgets]);
@@ -214,11 +211,7 @@ export default function Dashboard() {
   /* ================= SAVE REMOVED STATIC ================= */
 
   useEffect(() => {
-    localStorage.setItem(
-      REMOVED_STATIC_KEY,
-      JSON.stringify(removedStaticIds)
-    );
-
+    safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStaticIds));
     saveToServer();
   }, [removedStaticIds]);
 
@@ -247,10 +240,7 @@ export default function Dashboard() {
         margin: 12,
         staticGrid: false,
         draggable: { handle: ".dashboard-card-header" },
-
         resizable: { handles: "all" },
-
-        // ⭐ prevents zero-size widgets
         minRow: 1,
       },
       gridRef.current
@@ -275,8 +265,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (!grid.current || !gridReady) return;
 
-    let layout: any[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let layout: any[] = JSON.parse(safeStorage.get(STORAGE_KEY) || "[]");
 
+    // always respect stored size — but still prevent 0 size
     layout = layout.map((l: any) => ({
       ...l,
       w: Math.max(l.w || 2, 2),
@@ -285,12 +276,14 @@ export default function Dashboard() {
 
     const existingIds = new Set(layout.map((l) => l.id));
 
+    // add static widgets ONLY if missing
     WIDGETS.forEach((w) => {
       if (!existingIds.has(w.id)) {
         layout.push({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h });
       }
     });
 
+    // add dynamic widgets ONLY if missing
     dynamicWidgets.forEach((w) => {
       if (!existingIds.has(w.id)) {
         layout.push({
@@ -303,7 +296,7 @@ export default function Dashboard() {
       }
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
 
     requestAnimationFrame(() => {
       grid.current!.load(layout);
@@ -361,7 +354,7 @@ export default function Dashboard() {
         },
       ];
 
-      localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
+      safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
       saveToServer();
 
       return next;
@@ -383,7 +376,7 @@ export default function Dashboard() {
     hasUserModifiedWidgets.current = true;
 
     const dynamicWidgetsStored: any[] = JSON.parse(
-      localStorage.getItem(DYNAMIC_WIDGETS_KEY) || "[]"
+      safeStorage.get(DYNAMIC_WIDGETS_KEY) || "[]"
     );
 
     const isDynamic = dynamicWidgetsStored.some((w) => w.id === id);
@@ -415,14 +408,13 @@ export default function Dashboard() {
 
     let current = grid.current.save(false);
 
-    // ⭐ clamp before storing (THIS WAS THE LAST MISSING PIECE)
     current = current.map((l: any) => ({
       ...l,
       w: Math.max(l.w || 2, 2),
       h: Math.max(l.h || 2, 2),
     }));
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+    safeStorage.set(STORAGE_KEY, JSON.stringify(current));
 
     saveToServer();
     setEditMode(false);
@@ -430,6 +422,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ width: "100%" }}>
+      {/* toolbar */}
       <div
         style={{
           display: "flex",
@@ -453,7 +446,9 @@ export default function Dashboard() {
         </Suspense>
       </div>
 
+      {/* grid */}
       <div className="grid-stack" ref={gridRef}>
+        {/* Static */}
         {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
           ({ id, title, component: Component, x, y, w, h }) => (
             <div
@@ -471,7 +466,11 @@ export default function Dashboard() {
                   {editMode && (
                     <span
                       onClick={() => removeWidget(id)}
-                      style={{ float: "right", color: "red", cursor: "pointer" }}
+                      style={{
+                        float: "right",
+                        color: "red",
+                        cursor: "pointer",
+                      }}
                     >
                       ✖
                     </span>
@@ -488,6 +487,7 @@ export default function Dashboard() {
           )
         )}
 
+        {/* Dynamic */}
         {dynamicWidgets.map((w) => (
           <div
             key={w.id}
