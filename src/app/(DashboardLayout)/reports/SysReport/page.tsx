@@ -109,6 +109,13 @@ export default function LatestDataPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyItemId, setHistoryItemId] = useState("");
+  const [historyDateRange, setHistoryDateRange] = useState<DateRange>({
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+  });
 
   /* =========================
      HOST GROUPS
@@ -198,7 +205,9 @@ export default function LatestDataPage() {
   ========================= */
   const openHistory = async (itemid: string, name: string) => {
     setHistoryTitle(name);
+    setHistoryItemId(itemid);
     setHistoryOpen(true);
+    setHistoryDateRange({ startDate: "", startTime: "", endDate: "", endTime: "" });
     setHistoryLoading(true);
 
     const payload = {
@@ -206,7 +215,7 @@ export default function LatestDataPage() {
       method: "history.get",
       params: {
         output: "extend",
-        history: 0, // numeric float (CPU etc.)
+        history: 0,
         itemids: [itemid],
         sortfield: "clock",
         sortorder: "DESC",
@@ -223,6 +232,23 @@ export default function LatestDataPage() {
     } finally {
       setHistoryLoading(false);
     }
+  };
+
+  /* =========================
+     FILTER HISTORY BY DATE RANGE
+  ========================= */
+  const filterHistoryByDateRange = () => {
+    if (!historyDateRange.startDate || !historyDateRange.endDate) {
+      return historyData;
+    }
+
+    const startTime = new Date(`${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`).getTime() / 1000;
+    const endTime = new Date(`${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`).getTime() / 1000;
+
+    return historyData.filter((item: any) => {
+      const clock = parseInt(item.clock, 10);
+      return clock >= startTime && clock <= endTime;
+    });
   };
 
   useEffect(() => {
@@ -324,30 +350,34 @@ export default function LatestDataPage() {
         open={historyOpen}
         onCancel={() => setHistoryOpen(false)}
         footer={null}
-        width={520}
+        width={700}
       >
-        <Table
-          size="small"
-          loading={historyLoading}
-          pagination={false}
-          columns={[
-            {
-              title: "Time",
-              dataIndex: "clock",
-              render: (v) => new Date(v * 1000).toLocaleString(),
-            },
-            {
-              title: "Value",
-              dataIndex: "value",
-              render: (v) => Number(v).toFixed(2),
-            },
-          ]}
-          dataSource={historyData.map((r: any) => ({
-            key: r.clock,
-            clock: r.clock,
-            value: r.value,
-          }))}
-        />
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <RangePickerDemo onRangeChange={setHistoryDateRange} />
+
+          <Table
+            size="small"
+            loading={historyLoading}
+            pagination={false}
+            columns={[
+              {
+                title: "Time",
+                dataIndex: "clock",
+                render: (v) => new Date(v * 1000).toLocaleString(),
+              },
+              {
+                title: "Value",
+                dataIndex: "value",
+                render: (v) => Number(v).toFixed(2),
+              },
+            ]}
+            dataSource={filterHistoryByDateRange().map((r: any) => ({
+              key: r.clock,
+              clock: r.clock,
+              value: r.value,
+            }))}
+          />
+        </Space>
       </Modal>
     </Space>
   );
