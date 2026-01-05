@@ -11,6 +11,7 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
       const json = res;
+      console.log(json)
       setData(json.data || []);
     } catch (e) {
       console.error(e);
@@ -40,7 +41,7 @@ export default function TunnelsPage() {
           </tr>
         </thead>
 
-        <tbody>
+        {/* <tbody>
           {data.map((t: any, i) => (
             <tr key={i}>
               <td>{t["system-ip"]}</td>
@@ -50,7 +51,7 @@ export default function TunnelsPage() {
               <td>{t["site-id"]}</td>
             </tr>
           ))}
-        </tbody>
+        </tbody> */}
       </table>
     </div>
   );
