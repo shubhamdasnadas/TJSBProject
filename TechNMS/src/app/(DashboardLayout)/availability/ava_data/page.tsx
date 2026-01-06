@@ -11,7 +11,8 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
-      console.log("DEBUG from backend:", res.data.debug);
+      console.log("BACKEND DEBUG:", res.data.debug);
+      console.log("API DATA:", res.data.data);
 
       setData(res.data.data || []);
     } catch (e) {
@@ -20,6 +21,7 @@ export default function TunnelsPage() {
       setLoading(false);
     }
   }
+
 
   useEffect(() => {
     load();

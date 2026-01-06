@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 
 export async function POST() {
   try {
-    const base = process.env.VMANAGE_URL;
     const user = process.env.VMANAGE_USER;
     const pass = process.env.VMANAGE_PASS;
 
-    // ---------- 1) LOGIN ----------
+    const base = "https://vmanage-31949190.sdwan.cisco.com";
+
+    // ---------- 1) LOGIN (matches curl exactly) ----------
     const loginRes = await axios.post(
       `${base}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
@@ -25,21 +26,25 @@ export async function POST() {
       .find((c) => c.startsWith("JSESSIONID"))
       ?.split(";")[0];
 
-    if (!jsession) throw new Error("JSESSIONID cookie not found");
+    if (!jsession) {
+      throw new Error("JSESSIONID cookie not found");
+    }
 
-    // ---------- 2) TOKEN ----------
+    // ---------- 2) TOKEN (uses cookie like curl -b cookies.txt) ----------
     const tokenRes = await axios.post(
       `${base}/dataservice/client/token`,
       {},
       {
-        headers: { Cookie: jsession },
+        headers: {
+          Cookie: jsession,
+        },
         withCredentials: true,
       }
     );
 
     const token = tokenRes.data;
 
-    // ---------- 3) DEVICE API ----------
+    // ---------- 3) DEVICE API (matches curl exactly) ----------
     const tunnelsRes = await axios.post(
       `${base}/dataservice/device`,
       {},
@@ -52,10 +57,15 @@ export async function POST() {
       }
     );
 
-    // 👇 RETURN BOTH DATA + DEBUG OBJECT
+    // ---------- RESPONSE TO FRONTEND ----------
     return NextResponse.json({
+      success: true,
+      message: "SD-WAN device list fetched successfully",
       data: tunnelsRes.data,
       debug: {
+        loginUrl: `${base}/j_security_check`,
+        tokenUrl: `${base}/dataservice/client/token`,
+        devicesUrl: `${base}/dataservice/device`,
         jsession,
         token,
         loginStatus: loginRes.status,
@@ -63,10 +73,14 @@ export async function POST() {
       },
     });
   } catch (err: any) {
-    console.error(err?.response?.data || err);
+    console.error("SDWAN ERROR:", err?.response?.data || err);
 
     return NextResponse.json(
-      { error: "Failed to fetch tunnel status" },
+      {
+        success: false,
+        error: "Failed to fetch SD-WAN devices",
+        detail: err?.response?.data || err?.message,
+      },
       { status: 500 }
     );
   }
