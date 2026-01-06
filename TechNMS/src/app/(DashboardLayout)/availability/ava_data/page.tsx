@@ -21,24 +21,23 @@ export default function TunnelsPage() {
   async function load() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
-      console.log("res", res)
-      console.log("🔐 LOGIN:", res.data.api.login);
-      console.log("🪙 TOKEN:", res.data.api.token);
-      console.log("🖥 DEVICES:", res.data.api.devices);
-      console.log("📡 DEVICE IDS:", res.data.api.deviceIds);
+
       console.log("🔁 BFD SESSIONS:", res.data.api.bfdSessions);
 
-      const apiRows = res.data.api.devices || [];
+      const bfd = res.data.api.bfdSessions || [];
 
-      const rows: TunnelRow[] = apiRows.map((row: any) => ({
-        hostname: row["vdevice-host-name"],
-        vdeviceIP: row["vdevice-name"],
-        color: row["color"],
-        primary_color: row["local-color"] || "NA",
-        state: row["state"],
-      }));
+      // FLATTEN sessions
+      const sessionRows: TunnelRow[] = bfd.flatMap((item: any) =>
+        (item.sessions || []).map((s: any) => ({
+          hostname: s["vdevice-host-name"] || "NA",
+          vdeviceIP: item.deviceId,
+          color: s["color"] || "NA",
+          primary_color: s["local-color"] || "NA",
+          state: s["state"] || "unknown",
+        }))
+      );
 
-      setData(rows);
+      setData(sessionRows);
     } catch (e) {
       console.error("FRONTEND ERROR:", e);
     } finally {
@@ -50,7 +49,7 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // GROUP ROWS
+  // group host + device
   const grouped = data.reduce<Record<string, TunnelRow[]>>((acc, item) => {
     const key = `${item.hostname}-${item.vdeviceIP}`;
     if (!acc[key]) acc[key] = [];
@@ -119,7 +118,7 @@ export default function TunnelsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">SD-WAN Tunnel Status</h1>
+      <h1 className="text-xl font-bold mb-4">SD-WAN BFD Sessions</h1>
 
       <Table
         loading={loading}
