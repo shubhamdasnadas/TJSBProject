@@ -103,46 +103,68 @@ export default function Dashboard() {
       path: "/api/socket_io",
     });
 
-    socketRef.current.on("dashboard:sync", (incomingLayout: any[]) => {
-      if (!grid.current) return;
+    // when server broadcasts dashboard
+    socketRef.current.on("dashboard:sync", (serverState: any) => {
+      const { layout = [], dynamicWidgets = [], removedStatic = [] } =
+        serverState || {};
 
-      safeStorage.set(STORAGE_KEY, JSON.stringify(incomingLayout));
+      setLayout(layout);
+      setDynamicWidgets(dynamicWidgets);
+      setRemovedStaticIds(removedStatic);
 
-      requestAnimationFrame(() => {
-        grid.current!.load(incomingLayout);
-        window.dispatchEvent(new Event("resize"));
-      });
+      safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
+      safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
+      safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
+
+      if (grid.current) {
+        requestAnimationFrame(() => {
+          grid.current!.load(layout);
+          window.dispatchEvent(new Event("resize"));
+        });
+      }
     });
 
     return () => socketRef.current?.disconnect();
   }, []);
 
+  /* ================= BROADCAST TO SERVER (socket + api) ================= */
+  const broadcastDashboard = (normalized: any[]) => {
+    socketRef.current?.emit("dashboard:save", {
+      layout: normalized,
+      dynamicWidgets,
+      removedStatic: removedStaticIds,
+    });
+  };
 
   /* ================= SAVE TO SERVER ================= */
   const saveToServer = async () => {
     try {
-      let layoutRaw = grid.current?.save(false) as any;
+      let layoutRaw = grid.current?.save(false) as any[];
 
-      const layout: any[] = Array.isArray(layoutRaw) ? layoutRaw : [];
+      const normalized = (Array.isArray(layoutRaw) ? layoutRaw : []).map(
+        (l: any) => ({
+          ...l,
+          w: Math.max(l.w || 2, 2),
+          h: Math.max(l.h || 2, 2),
+        })
+      );
 
-      const normalized = layout.map((l: any) => ({
-        ...l,
-        w: Math.max(l.w || 2, 2),
-        h: Math.max(l.h || 2, 2),
-      }));
-
+      // existing API
       await axios.post("/api/dashboard_action_log/data_save", {
         layout: normalized,
         dynamicWidgets,
         removedStatic: removedStaticIds,
       });
 
+      // local
       safeStorage.set(STORAGE_KEY, JSON.stringify(normalized));
+
+      // NEW realtime sync
+      broadcastDashboard(normalized);
     } catch (e) {
       console.warn("Save failed:", e);
     }
   };
-
 
   /* ================= LOAD FROM SERVER ================= */
   const loadFromServer = async () => {
@@ -183,6 +205,13 @@ export default function Dashboard() {
       setLayout(finalLayout);
       setDynamicWidgets(finalDynamicWidgets);
       setRemovedStaticIds(finalRemovedStatic);
+
+      // notify sockets
+      socketRef.current?.emit("dashboard:save", {
+        layout: finalLayout,
+        dynamicWidgets: finalDynamicWidgets,
+        removedStatic: finalRemovedStatic,
+      });
     } catch (e) {
       console.warn("Load failed:", e);
     }
@@ -242,7 +271,7 @@ export default function Dashboard() {
       .then((res) =>
         setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
       )
-      .catch(() => { });
+      .catch(() => {});
   }, [user_token]);
 
   /* ================= GRID INIT ================= */
@@ -273,28 +302,17 @@ export default function Dashboard() {
       saveToServer();
     };
 
-    // listen
     grid.current.on("change", handler);
 
-    // cleanup
     return () => {
-      if (grid.current) {
-        try {
-          // some GridStack builds support off(event, cb)
-          // some support only off(cb)
-          // this handles both safely 👍
-          // @ts-ignore
-          grid.current.off("change", handler);
-        } catch {
-          grid.current?.off(handler as any);
-        }
+      try {
+        // @ts-ignore
+        grid.current?.off("change", handler);
+      } catch {
+        grid.current?.off(handler as any);
       }
     };
   }, [gridReady]);
-
-
-
-
 
   /* ================= RESTORE GRID ================= */
   useEffect(() => {
@@ -374,12 +392,12 @@ export default function Dashboard() {
             selectType === "pie_chart"
               ? pieConfig
               : selectType === "item_value"
-                ? itemConfig
-                : selectType === "problems_by_severity"
-                  ? problemSeverityConfig
-                  : selectType === "top_host"
-                    ? tophostConfig
-                    : graphConfig,
+              ? itemConfig
+              : selectType === "problems_by_severity"
+              ? problemSeverityConfig
+              : selectType === "top_host"
+              ? tophostConfig
+              : graphConfig,
         },
       ];
 
@@ -446,7 +464,6 @@ export default function Dashboard() {
     saveToServer();
     setEditMode(false);
   };
-
 
   return (
     <div style={{ width: "100%" }}>

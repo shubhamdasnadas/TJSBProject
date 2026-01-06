@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { Server as IOServer } from "socket.io";
+import { Server } from "socket.io";
 
-let io: any = null;
+let io: any;
 
-// In-memory dashboard (NO DB)
+// in-memory dashboard shared by all users
 let DASHBOARD_STATE = {
   layout: [] as any[],
   dynamicWidgets: [] as any[],
@@ -11,10 +11,11 @@ let DASHBOARD_STATE = {
 };
 
 export async function GET(req: NextRequest) {
+  // Only create server once
   // @ts-ignore
   if (!io) {
     // @ts-ignore
-    io = new IOServer({
+    io = new Server({
       path: "/api/socket_io",
       addTrailingSlash: false,
       cors: { origin: "*" },
@@ -23,22 +24,22 @@ export async function GET(req: NextRequest) {
     io.on("connection", (socket: any) => {
       console.log("client connected:", socket.id);
 
-      // send initial dashboard
+      // Send current dashboard to new user
       socket.emit("dashboard:sync", DASHBOARD_STATE);
 
-      // save full dashboard
+      // Save whole dashboard
       socket.on("dashboard:save", (payload: any) => {
         DASHBOARD_STATE = payload;
         io.emit("dashboard:sync", DASHBOARD_STATE);
       });
 
-      // add widget
+      // Add widget
       socket.on("widget:add", (widget: any) => {
         DASHBOARD_STATE.dynamicWidgets.push(widget);
         io.emit("dashboard:sync", DASHBOARD_STATE);
       });
 
-      // remove widget
+      // Remove widget
       socket.on("widget:remove", (id: string) => {
         DASHBOARD_STATE.dynamicWidgets =
           DASHBOARD_STATE.dynamicWidgets.filter((w) => w.id !== id);
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
         io.emit("dashboard:sync", DASHBOARD_STATE);
       });
 
-      // layout update (drag / resize)
+      // Layout update (drag / resize)
       socket.on("layout:update", (layout: any[]) => {
         DASHBOARD_STATE.layout = layout;
         io.emit("dashboard:sync", DASHBOARD_STATE);
@@ -62,7 +63,8 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return new Response("Socket Server Running");
+  return new Response("Socket server running");
 }
 
+// Disable caching
 export const dynamic = "force-dynamic";
