@@ -51,7 +51,7 @@ export async function POST() {
     const deviceIds: string[] = Array.from(
       new Set(
         tunnels
-          .map((d: any) => d["system-ip"])
+          .map((d: any) => d["deviceId"])
           
       )
     );
@@ -86,7 +86,7 @@ export async function POST() {
     // ---------- ADD deviceId INTO TUNNELS ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
-      deviceId: t["system-ip"],
+      deviceId: t["deviceId"],
     }));
 
     return NextResponse.json({
