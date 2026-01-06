@@ -26,8 +26,8 @@ export default function TunnelsPage() {
 
       const bfd = res.data.api.bfdSessions || [];
 
-      // FLATTEN sessions
-      const sessionRows: TunnelRow[] = bfd.flatMap((item: any) =>
+      // build rows from bfd sessions
+      let sessionRows: TunnelRow[] = bfd.flatMap((item: any) =>
         (item.sessions || []).map((s: any) => ({
           hostname: s["vdevice-host-name"] || "NA",
           vdeviceIP: item.deviceId,
@@ -36,6 +36,14 @@ export default function TunnelsPage() {
           state: s["state"] || "unknown",
         }))
       );
+
+      // ⭐ SORT — DOWN first, then UP, then others
+      sessionRows = sessionRows.sort((a, b) => {
+        const priority = (v: string) =>
+          v === "down" ? 0 : v === "up" ? 1 : 2;
+
+        return priority(a.state) - priority(b.state);
+      });
 
       setData(sessionRows);
     } catch (e) {
