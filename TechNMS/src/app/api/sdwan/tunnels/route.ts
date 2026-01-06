@@ -51,7 +51,7 @@ export async function POST() {
     const deviceIds: string[] = Array.from(
       new Set(
         tunnels
-          .map((d: any) => d["vdevice-name"])
+          .map((d: any) => d["system-ip"])
           
       )
     );
