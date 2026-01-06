@@ -42,61 +42,6 @@ type DateRange = {
 };
 
 /* =========================
-   PDF EXPORTS
-========================= */
-const exportToPDF = (data: TableRow[]) => {
-  const doc = new jsPDF("l", "pt", "a4");
-  doc.setFontSize(18);
-  doc.text("System Report - Latest Data", 40, 40);
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
-
-  const tableColumn = ["Host", "Item", "Last Value", "Last Check", "Change"];
-  const tableRows = data.map((item) => [
-    item.host,
-    item.name,
-    item.lastValue,
-    item.lastCheck,
-    item.change,
-  ]);
-
-  autoTable(doc, {
-    startY: 70,
-    head: [tableColumn],
-    body: tableRows,
-    theme: "striped",
-    styles: { fontSize: 8, cellPadding: 3 },
-  });
-
-  doc.save(`system_report_${Date.now()}.pdf`);
-};
-
-const exportHistoryToPDF = (title: string, data: any[]) => {
-  const doc = new jsPDF("l", "pt", "a4");
-  doc.setFontSize(18);
-  doc.text(`History Report - ${title}`, 40, 40);
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
-
-  const tableRows = data.map((item) => [
-    new Date(item.clock * 1000).toLocaleString(),
-    Number(item.value).toFixed(2),
-  ]);
-
-  autoTable(doc, {
-    startY: 70,
-    head: [["Time", "Value"]],
-    body: tableRows,
-    theme: "striped",
-    styles: { fontSize: 8, cellPadding: 3 },
-  });
-
-  doc.save(`history_${title}_${Date.now()}.pdf`);
-};
-
-/* =========================
    AXIOS CONFIG
 ========================= */
 const axiosCfg = {
@@ -104,6 +49,29 @@ const axiosCfg = {
     "Content-Type": "application/json",
     Authorization: "Bearer f367bb14b4c8d2cc37da595aabc75950",
   },
+};
+
+/* =========================
+   PDF EXPORT
+========================= */
+const exportHistoryToPDF = (title: string, data: any[]) => {
+  const doc = new jsPDF("l", "pt", "a4");
+  doc.setFontSize(18);
+  doc.text(`History Report - ${title}`, 40, 40);
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
+
+  autoTable(doc, {
+    startY: 70,
+    head: [["Time", "Value"]],
+    body: data.map((r) => [
+      new Date(r.clock * 1000).toLocaleString(),
+      Number(r.value).toFixed(2),
+    ]),
+    styles: { fontSize: 8 },
+  });
+
+  doc.save(`history_${Date.now()}.pdf`);
 };
 
 /* =========================
@@ -116,15 +84,13 @@ const HistoryLineChart = ({
 }) => {
   if (!data.length) return null;
 
-  const chartData = [...data]
-    .reverse()
-    .map((d) => ({
-      time: new Date(d.clock * 1000).toLocaleTimeString(),
-      value: Number(d.value),
-    }));
+  const chartData = [...data].reverse().map((d) => ({
+    time: new Date(d.clock * 1000).toLocaleTimeString(),
+    value: Number(d.value),
+  }));
 
   return (
-    <div style={{ width: "100%", height: 260 }}>
+    <div style={{ height: 260 }}>
       <ResponsiveContainer>
         <LineChart data={chartData}>
           <XAxis dataKey="time" minTickGap={30} />
@@ -151,6 +117,7 @@ export default function LatestDataPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTitle, setHistoryTitle] = useState("");
+  const [historyHost, setHistoryHost] = useState("");
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyDateRange, setHistoryDateRange] = useState<DateRange>({
     startDate: "",
@@ -159,23 +126,27 @@ export default function LatestDataPage() {
     endTime: "",
   });
 
-  const loadHostGroups = async () => {
-    const res = await axios.post(
-      "/api/zabbix-proxy",
-      {
-        jsonrpc: "2.0",
-        method: "hostgroup.get",
-        params: { output: ["groupid", "name"] },
-        id: 1,
-      },
-      axiosCfg
-    );
-    setHostGroups(res.data.result ?? []);
-  };
+  /* =========================
+     LOADERS
+  ========================= */
+  useEffect(() => {
+    axios
+      .post(
+        "/api/zabbix-proxy",
+        {
+          jsonrpc: "2.0",
+          method: "hostgroup.get",
+          params: { output: ["groupid", "name"] },
+          id: 1,
+        },
+        axiosCfg
+      )
+      .then((r) => setHostGroups(r.data.result ?? []));
+  }, []);
 
   const loadHosts = async (groups: string[]) => {
     if (!groups.length) return setHosts([]);
-    const res = await axios.post(
+    const r = await axios.post(
       "/api/zabbix-proxy",
       {
         jsonrpc: "2.0",
@@ -185,7 +156,7 @@ export default function LatestDataPage() {
       },
       axiosCfg
     );
-    setHosts(res.data.result ?? []);
+    setHosts(r.data.result ?? []);
   };
 
   const handleApply = async () => {
@@ -193,7 +164,7 @@ export default function LatestDataPage() {
     setLoadingTable(true);
 
     try {
-      const res = await axios.post(
+      const r = await axios.post(
         "/api/zabbix-proxy",
         {
           jsonrpc: "2.0",
@@ -209,7 +180,7 @@ export default function LatestDataPage() {
       );
 
       setTableData(
-        res.data.result.map((i: any) => ({
+        r.data.result.map((i: any) => ({
           key: i.itemid,
           itemid: i.itemid,
           host: i.hosts?.[0]?.name ?? "-",
@@ -224,12 +195,17 @@ export default function LatestDataPage() {
     }
   };
 
-  const openHistory = async (itemid: string, name: string) => {
+  const openHistory = async (
+    itemid: string,
+    name: string,
+    host: string
+  ) => {
     setHistoryTitle(name);
+    setHistoryHost(host);
     setHistoryOpen(true);
     setHistoryLoading(true);
 
-    const res = await axios.post(
+    const r = await axios.post(
       "/api/zabbix-proxy",
       {
         jsonrpc: "2.0",
@@ -240,20 +216,19 @@ export default function LatestDataPage() {
           itemids: [itemid],
           sortfield: "clock",
           sortorder: "DESC",
-          limit: 100,
+          limit: 1000,
         },
         id: 10,
       },
       axiosCfg
     );
 
-    setHistoryData(res.data.result ?? []);
+    setHistoryData(r.data.result ?? []);
     setHistoryLoading(false);
   };
 
-  const filterHistoryByDateRange = () => {
-    if (!historyDateRange.startDate || !historyDateRange.endDate)
-      return historyData;
+  const filterHistory = () => {
+    if (!historyDateRange.startDate) return historyData;
 
     const start =
       new Date(
@@ -274,10 +249,6 @@ export default function LatestDataPage() {
     );
   };
 
-  useEffect(() => {
-    loadHostGroups();
-  }, []);
-
   const columns: ColumnsType<TableRow> = [
     { title: "Host", dataIndex: "host", width: 160 },
     { title: "Item", dataIndex: "name", width: 280 },
@@ -287,7 +258,7 @@ export default function LatestDataPage() {
     {
       title: "History",
       render: (_, r) => (
-        <Button size="small" onClick={() => openHistory(r.itemid, r.name)}>
+        <Button size="small" onClick={() => openHistory(r.itemid, r.name, r.host)}>
           View
         </Button>
       ),
@@ -304,6 +275,12 @@ export default function LatestDataPage() {
             style={{ width: 260 }}
             listHeight={800} // Expanded height
 
+            showSearch
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              !!option &&
+              option.label.toLowerCase().includes(input.toLowerCase())
+            }
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -321,6 +298,12 @@ export default function LatestDataPage() {
             style={{ width: 260 }}
             listHeight={800} // Expanded height
 
+            showSearch
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              !!option &&
+              option.label.toLowerCase().includes(input.toLowerCase())
+            }
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -336,37 +319,32 @@ export default function LatestDataPage() {
         <Table columns={columns} dataSource={tableData} loading={loadingTable} />
 
         <Modal
-          title={`vmanage-0 – ${historyTitle}`}
+          title={`${historyHost} – ${historyTitle}`}
           open={historyOpen}
           onCancel={() => setHistoryOpen(false)}
           footer={null}
           width={800}
         >
           <Space direction="vertical" style={{ width: "100%" }}>
-            {/* 🔝 Top action bar */}
             <Space style={{ justifyContent: "space-between", width: "100%" }}>
               <RangePickerDemo onRangeChange={setHistoryDateRange} />
-
               <Button
                 type="primary"
                 onClick={() =>
-                  exportHistoryToPDF(historyTitle, filterHistoryByDateRange())
+                  exportHistoryToPDF(historyTitle, filterHistory())
                 }
-                disabled={!filterHistoryByDateRange().length}
               >
                 Export PDF
               </Button>
             </Space>
 
-            {/* 📈 Chart */}
             <HistoryLineChart
-              data={filterHistoryByDateRange().map((r: any) => ({
+              data={filterHistory().map((r: any) => ({
                 clock: r.clock,
                 value: r.value,
               }))}
             />
 
-            {/* 📋 Table */}
             <Table
               size="small"
               pagination={false}
@@ -383,7 +361,7 @@ export default function LatestDataPage() {
                   render: (v) => Number(v).toFixed(2),
                 },
               ]}
-              dataSource={filterHistoryByDateRange().map((r: any) => ({
+              dataSource={filterHistory().map((r: any) => ({
                 key: r.clock,
                 clock: r.clock,
                 value: r.value,

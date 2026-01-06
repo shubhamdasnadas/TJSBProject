@@ -16,27 +16,33 @@ const presetOptions = [
   { key: "6h", label: "Last 6 hours", minutes: 360 },
   { key: "12h", label: "Last 12 hours", minutes: 720 },
   { key: "1d", label: "Last 1 day", minutes: 1440 },
-  { key: '365d', label: 'Last 1 year', minutes: 525600 }
+  { key: "365d", label: "Last 1 year", minutes: 525600 },
 ];
 
-export default function RangePickerDemo({ onRangeChange }: { onRangeChange: (data: { startDate: string; startTime: string; endDate: string; endTime: string }) => void }) {
+export default function RangePickerDemo({
+  onRangeChange,
+}: {
+  onRangeChange: (data: {
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+  }) => void;
+}) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const [dates, setDates] = useState<[Dayjs, Dayjs] | null>(null);
 
-  // Send values to parent whenever dates change
+  /* 🔁 Notify parent AFTER dates are finalized */
   useEffect(() => {
-    if (dates && dates[0] && dates[1]) {
-      const start = dates[0];
-      const end = dates[1];
+    if (!dates) return;
 
-      onRangeChange({
-        startDate: start.format("YYYY-MM-DD"),
-        startTime: start.format("HH:mm:ss"),
-        endDate: end.format("YYYY-MM-DD"),
-        endTime: end.format("HH:mm:ss"),
-      });
-    }
+    onRangeChange({
+      startDate: dates[0].format("YYYY-MM-DD"),
+      startTime: dates[0].format("HH:mm:ss"),
+      endDate: dates[1].format("YYYY-MM-DD"),
+      endTime: dates[1].format("HH:mm:ss"),
+    });
   }, [dates]);
 
   const menuItems = [
@@ -52,7 +58,7 @@ export default function RangePickerDemo({ onRangeChange }: { onRangeChange: (dat
       key: "custom",
       label: (
         <div
-          style={{ paddingTop: 5, cursor: "pointer" }}
+          style={{ paddingTop: 6 }}
           onClick={(e) => {
             e.stopPropagation();
             setPanelVisible(true);
@@ -61,11 +67,15 @@ export default function RangePickerDemo({ onRangeChange }: { onRangeChange: (dat
           Custom Range
           <RangePicker
             open={panelVisible}
-            onOpenChange={(open) => setPanelVisible(open)}
+            value={dates}
+            onOpenChange={setPanelVisible}
             onChange={(range) => {
-              if (range?.[0] && range?.[1]) {
-                setDates([range[0], range[1]]);
-              }
+              if (!range || !range[0] || !range[1]) return;
+
+              // ✅ SAVE FIRST
+              setDates([range[0], range[1]]);
+
+              // ✅ THEN CLOSE EVERYTHING
               setPanelVisible(false);
               setPickerOpen(false);
             }}
