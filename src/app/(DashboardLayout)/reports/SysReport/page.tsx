@@ -113,6 +113,8 @@ export default function LatestDataPage() {
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -125,6 +127,32 @@ export default function LatestDataPage() {
     endDate: "",
     endTime: "",
   });
+
+  /* =========================
+     KEYBOARD SHORTCUTS
+  ========================= */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey) {
+        if (e.key === "n" || e.key === "N") {
+          e.preventDefault();
+          const maxPages = Math.ceil(tableData.length / pageSize);
+          if (currentPage < maxPages) {
+            setCurrentPage(currentPage + 1);
+          }
+        }
+        if (e.key === "p" || e.key === "P") {
+          e.preventDefault();
+          if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentPage, tableData.length, pageSize]);
 
   /* =========================
      LOADERS
@@ -316,7 +344,21 @@ export default function LatestDataPage() {
           </Button>
         </Space>
 
-        <Table columns={columns} dataSource={tableData} loading={loadingTable} />
+        <Table
+          columns={columns}
+          dataSource={tableData}
+          loading={loadingTable}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: tableData.length,
+            onChange: (page) => setCurrentPage(page),
+            onShowSizeChange: (_, size) => setPageSize(size),
+            showSizeChanger: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} of ${total} items | Alt+N: Next | Alt+P: Previous`,
+          }}
+        />
 
         <Modal
           title={`${historyHost} – ${historyTitle}`}
