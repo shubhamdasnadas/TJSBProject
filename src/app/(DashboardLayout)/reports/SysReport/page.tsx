@@ -7,6 +7,7 @@ import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import RangePickerDemo from "../../RangePickerDemo";
+import { Card } from "@mui/material";
 
 /* =========================
    TYPES
@@ -33,20 +34,16 @@ type DateRange = {
 
 /**
  * Exports table data to a PDF file.
- * @param data - The array of TableRow objects to export
  */
 const exportToPDF = (data: TableRow[]) => {
   const doc = new jsPDF("l", "pt", "a4");
-
   doc.setFontSize(18);
   doc.text("System Report - Latest Data", 40, 40);
-  
   doc.setFontSize(10);
   doc.setTextColor(100);
   doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
 
   const tableColumn = ["Host", "Item", "Last Value", "Last Check", "Change"];
-
   const tableRows = data.map((item) => [
     item.host,
     item.name,
@@ -60,26 +57,41 @@ const exportToPDF = (data: TableRow[]) => {
     head: [tableColumn],
     body: tableRows,
     theme: "striped",
-    styles: { 
-      fontSize: 8,
-      cellPadding: 3,
-      overflow: 'linebreak' 
-    },
-    headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
+    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
   });
 
   doc.save(`system_report_${new Date().getTime()}.pdf`);
 };
 
-/* =========================
-   AXIOS CONFIG
-========================= */
+const exportHistoryToPDF = (title: string, data: any[]) => {
+  const doc = new jsPDF("l", "pt", "a4");
+  doc.setFontSize(18);
+  doc.text(`History Report - ${title}`, 40, 40);
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
+
+  const tableColumn = ["Time", "Value"];
+  const tableRows = data.map((item) => [
+    new Date(item.clock * 1000).toLocaleString(),
+    Number(item.value).toFixed(2),
+  ]);
+
+  autoTable(doc, {
+    startY: 70,
+    head: [tableColumn],
+    body: tableRows,
+    theme: "striped",
+    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+  });
+
+  doc.save(`history_${title}_${new Date().getTime()}.pdf`);
+};
+
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
@@ -92,11 +104,9 @@ export default function LatestDataPage() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
-
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
 
-  /* ===== DATE RANGE ===== */
   const [dateRange, setDateRange] = useState<DateRange>({
     startDate: "",
     startTime: "",
@@ -104,7 +114,6 @@ export default function LatestDataPage() {
     endTime: "",
   });
 
-  /* ===== HISTORY MODAL ===== */
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTitle, setHistoryTitle] = useState("");
@@ -117,9 +126,6 @@ export default function LatestDataPage() {
     endTime: "",
   });
 
-  /* =========================
-     HOST GROUPS
-  ========================= */
   const loadHostGroups = async () => {
     const payload = {
       jsonrpc: "2.0",
@@ -127,45 +133,31 @@ export default function LatestDataPage() {
       params: { output: ["groupid", "name"] },
       id: 1,
     };
-
     const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
     setHostGroups(res.data.result ?? []);
   };
 
-  /* =========================
-     HOSTS
-  ========================= */
   const loadHosts = async (groups: string[]) => {
     if (!groups.length) {
       setHosts([]);
       return;
     }
-
     const payload = {
       jsonrpc: "2.0",
       method: "host.get",
-      params: {
-        output: ["hostid", "name"],
-        groupids: groups,
-      },
+      params: { output: ["hostid", "name"], groupids: groups },
       id: 2,
     };
-
     const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
     setHosts(res.data.result ?? []);
   };
 
-  /* =========================
-     APPLY (LATEST DATA)
-  ========================= */
   const handleApply = async () => {
     if (!selectedHosts.length) {
       message.warning("Please select at least one host");
       return;
     }
-
     setLoadingTable(true);
-
     const payload = {
       jsonrpc: "2.0",
       method: "item.get",
@@ -179,18 +171,15 @@ export default function LatestDataPage() {
 
     try {
       const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
-
-      const formatted =
-        res.data.result?.map((i: any) => ({
-          key: i.itemid,
-          itemid: i.itemid,
-          host: i.hosts?.[0]?.name ?? "-",
-          name: i.name,
-          lastValue: i.lastvalue,
-          lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
-          change: i.delta ?? "-",
-        })) ?? [];
-
+      const formatted = res.data.result?.map((i: any) => ({
+        key: i.itemid,
+        itemid: i.itemid,
+        host: i.hosts?.[0]?.name ?? "-",
+        name: i.name,
+        lastValue: i.lastvalue,
+        lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
+        change: i.delta ?? "-",
+      })) ?? [];
       setTableData(formatted);
       message.success("Data loaded successfully");
     } catch {
@@ -200,9 +189,6 @@ export default function LatestDataPage() {
     }
   };
 
-  /* =========================
-     OPEN HISTORY (VIEW BUTTON)
-  ========================= */
   const openHistory = async (itemid: string, name: string) => {
     setHistoryTitle(name);
     setHistoryItemId(itemid);
@@ -234,39 +220,24 @@ export default function LatestDataPage() {
     }
   };
 
-  /* =========================
-     FILTER HISTORY BY DATE RANGE
-  ========================= */
   const filterHistoryByDateRange = () => {
-    if (!historyDateRange.startDate || !historyDateRange.endDate) {
-      return historyData;
-    }
-
+    if (!historyDateRange.startDate || !historyDateRange.endDate) return historyData;
     const startTime = new Date(`${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`).getTime() / 1000;
     const endTime = new Date(`${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`).getTime() / 1000;
-
     return historyData.filter((item: any) => {
       const clock = parseInt(item.clock, 10);
       return clock >= startTime && clock <= endTime;
     });
   };
 
-  useEffect(() => {
-    loadHostGroups();
-  }, []);
+  useEffect(() => { loadHostGroups(); }, []);
 
-  /* =========================
-     AUTO-FETCH DATA ON RANGE CHANGE
-  ========================= */
   useEffect(() => {
     if (selectedHosts.length && dateRange.startDate && dateRange.endDate) {
       handleApply();
     }
   }, [dateRange, selectedHosts]);
 
-  /* =========================
-     TABLE COLUMNS
-  ========================= */
   const columns: ColumnsType<TableRow> = [
     { title: "Host", dataIndex: "host", width: 160 },
     { title: "Item", dataIndex: "name", width: 280 },
@@ -277,107 +248,99 @@ export default function LatestDataPage() {
       title: "History",
       width: 90,
       render: (_, row) => (
-        <Button size="small" onClick={() => openHistory(row.itemid, row.name)}>
-          View
-        </Button>
+        <Button size="small" onClick={() => openHistory(row.itemid, row.name)}>View</Button>
       ),
     },
   ];
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
-      <Space>
-        
-        <Select
-          mode="multiple"
-          allowClear
-          placeholder="Host Groups"
-          style={{ width: 260 }}
-          options={hostGroups.map((g) => ({
-            label: g.name,
-            value: g.groupid,
-          }))}
-          value={selectedGroups}
-          onChange={(groupIds) => {
-            setSelectedGroups(groupIds);
-            setSelectedHosts([]);
-            loadHosts(groupIds);
-          }}
-        />
-
-        <Select
-          mode="multiple"
-          allowClear
-          placeholder="Hosts"
-          style={{ width: 260 }}
-          options={hosts.map((h) => ({
-            label: h.name,
-            value: h.hostid,
-          }))}
-          value={selectedHosts}
-          onChange={setSelectedHosts}
-          disabled={!selectedGroups.length}
-        />
-
-        <Button
-          type="primary"
-          onClick={handleApply}
-          disabled={!selectedHosts.length}
-        >
-          Apply
-        </Button>
-
-        <Button
-          onClick={() => exportToPDF(tableData)}
-          disabled={!tableData.length}
-        >
-          Export PDF
-        </Button>
-      </Space>
-
-      <Table
-        columns={columns}
-        dataSource={tableData}
-        loading={loadingTable}
-        size="small"
-        scroll={{ x: true }}
-      />
-
-      {/* ================= HISTORY MODAL ================= */}
-      <Modal
-        title={`vmanage-0 – ${historyTitle}`}
-        open={historyOpen}
-        onCancel={() => setHistoryOpen(false)}
-        footer={null}
-        width={700}
-      >
-        <Space direction="vertical" style={{ width: "100%" }}>
-          <RangePickerDemo onRangeChange={setHistoryDateRange} />
-
-          <Table
-            size="small"
-            loading={historyLoading}
-            pagination={false}
-            columns={[
-              {
-                title: "Time",
-                dataIndex: "clock",
-                render: (v) => new Date(v * 1000).toLocaleString(),
-              },
-              {
-                title: "Value",
-                dataIndex: "value",
-                render: (v) => Number(v).toFixed(2),
-              },
-            ]}
-            dataSource={filterHistoryByDateRange().map((r: any) => ({
-              key: r.clock,
-              clock: r.clock,
-              value: r.value,
-            }))}
+    <Card style={{ padding: 35, height: "100%" }}>
+      <Space direction="vertical" style={{ width: "100%" }}>
+        <Space>
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Host Groups"
+            style={{ width: 260 }}
+            listHeight={800} // Expanded height
+            options={hostGroups.map((g) => ({ label: g.name, value: g.groupid }))}
+            dropdownStyle={{ minWidth: 400 }}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            }
+            value={selectedGroups}
+            onChange={(groupIds) => {
+              setSelectedGroups(groupIds);
+              setSelectedHosts([]);
+              loadHosts(groupIds);
+            }}
           />
+
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Hosts"
+            style={{ width: 260 }}
+            listHeight={800} // Expanded height
+            options={hosts.map((h) => ({ label: h.name, value: h.hostid }))}
+            dropdownStyle={{ minWidth: 400 }}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            }
+            value={selectedHosts}
+            onChange={setSelectedHosts}
+            disabled={!selectedGroups.length}
+          />
+
+          <Button type="primary" onClick={handleApply} disabled={!selectedHosts.length}>
+            Apply
+          </Button>
         </Space>
-      </Modal>
-    </Space>
+
+        <Table
+          columns={columns}
+          dataSource={tableData}
+          loading={loadingTable}
+          size="small"
+          scroll={{ x: true }}
+        />
+
+        <Modal
+          title={`vmanage-0 – ${historyTitle}`}
+          open={historyOpen}
+          onCancel={() => setHistoryOpen(false)}
+          footer={null}
+          width={700}
+        >
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Space>
+              <RangePickerDemo onRangeChange={setHistoryDateRange} />
+              <Button
+                onClick={() => exportHistoryToPDF(historyTitle, filterHistoryByDateRange())}
+                disabled={!filterHistoryByDateRange().length}
+              >
+                Export PDF
+              </Button>
+            </Space>
+            <Table
+              size="small"
+              loading={historyLoading}
+              pagination={false}
+              columns={[
+                { title: "Time", dataIndex: "clock", render: (v) => new Date(v * 1000).toLocaleString() },
+                { title: "Value", dataIndex: "value", render: (v) => Number(v).toFixed(2) },
+              ]}
+              dataSource={filterHistoryByDateRange().map((r: any) => ({
+                key: r.clock,
+                clock: r.clock,
+                value: r.value,
+              }))}
+            />
+          </Space>
+        </Modal>
+      </Space>
+    </Card>
   );
 }
