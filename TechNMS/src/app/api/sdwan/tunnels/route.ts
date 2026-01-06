@@ -6,58 +6,70 @@ export async function POST() {
     const user = process.env.VMANAGE_USER;
     const pass = process.env.VMANAGE_PASS;
 
-    const base = process.env.VMANAGE_URL;
+    const base = "https://vmanage-31949190.sdwan.cisco.com";
 
-    // ---------- 1) LOGIN (matches curl exactly) ----------
+    // ---------- 1) LOGIN ----------
     const loginRes = await axios.post(
-      `curl -k \
-          ${base}/j_security_check`,
+      `${base}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        // withCredentials: true,
+        withCredentials: true,
       }
     );
 
+    // full cookie list
     const cookies = loginRes.headers["set-cookie"] || [];
 
-    const jsession = cookies
-      .find((c) => c.startsWith("JSESSIONID"))
-      ?.split(";")[0];
+    // build cookies.txt style string
+    const cookieHeader = cookies
+      .map((c: string) => c.split(";")[0])
+      .join("; ");
 
-    if (!jsession) {
-      throw new Error("JSESSIONID cookie not found");
-    }
-    console.log("data res", jsession)
-    // ---------- 2) TOKEN (uses cookie like curl -b cookies.txt) ----------
+    if (!cookieHeader) throw new Error("No cookies returned from vManage");
+
+    console.log("COOKIES HEADER:", cookieHeader);
+
+    // ---------- 2) TOKEN ----------
     const tokenRes = await axios.post(
-      `curl -k \
-      ${base}/dataservice/client/token \
-      -b cookies.txt`,
+      `${base}/dataservice/client/token`,
+      {},
+      {
+        headers: {
+          Cookie: cookieHeader,
+        },
+        withCredentials: true,
+      }
     );
 
     const token = tokenRes.data;
-    console.log("token", token)
-    // ---------- 3) DEVICE API (matches curl exactly) ----------
+    console.log("TOKEN:", token);
+
+    // ---------- 3) DEVICE LIST ----------
     const tunnelsRes = await axios.post(
-      `curl -k \ 
-      ${base}/dataservice/device \
-      -b cookies.txt \
-      -H "X-XSRF-TOKEN: ${token}"`,
+      `${base}/dataservice/device`,
+      {},
+      {
+        headers: {
+          Cookie: cookieHeader,
+          "X-XSRF-TOKEN": token,
+        },
+        withCredentials: true,
+      }
     );
-    console.log("tunnelsRes", tunnelsRes)
-    // ---------- RESPONSE TO FRONTEND ----------
+
+    console.log("DEVICES RESPONSE:", tunnelsRes.data);
+
     return NextResponse.json({
       success: true,
-      message: "SD-WAN device list fetched successfully",
       data: tunnelsRes.data,
       debug: {
         loginUrl: `${base}/j_security_check`,
         tokenUrl: `${base}/dataservice/client/token`,
         devicesUrl: `${base}/dataservice/device`,
-        jsession,
+        cookieHeader,
         token,
         loginStatus: loginRes.status,
         deviceCount: tunnelsRes.data?.data?.length,
