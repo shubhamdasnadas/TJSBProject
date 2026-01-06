@@ -9,6 +9,15 @@ import autoTable from "jspdf-autotable";
 import RangePickerDemo from "../../RangePickerDemo";
 import { Card } from "@mui/material";
 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
 /* =========================
    TYPES
 ========================= */
@@ -32,9 +41,9 @@ type DateRange = {
   endTime: string;
 };
 
-/**
- * Exports table data to a PDF file.
- */
+/* =========================
+   PDF EXPORTS
+========================= */
 const exportToPDF = (data: TableRow[]) => {
   const doc = new jsPDF("l", "pt", "a4");
   doc.setFontSize(18);
@@ -57,12 +66,10 @@ const exportToPDF = (data: TableRow[]) => {
     head: [tableColumn],
     body: tableRows,
     theme: "striped",
-    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
+    styles: { fontSize: 8, cellPadding: 3 },
   });
 
-  doc.save(`system_report_${new Date().getTime()}.pdf`);
+  doc.save(`system_report_${Date.now()}.pdf`);
 };
 
 const exportHistoryToPDF = (title: string, data: any[]) => {
@@ -73,7 +80,6 @@ const exportHistoryToPDF = (title: string, data: any[]) => {
   doc.setTextColor(100);
   doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
 
-  const tableColumn = ["Time", "Value"];
   const tableRows = data.map((item) => [
     new Date(item.clock * 1000).toLocaleString(),
     Number(item.value).toFixed(2),
@@ -81,17 +87,18 @@ const exportHistoryToPDF = (title: string, data: any[]) => {
 
   autoTable(doc, {
     startY: 70,
-    head: [tableColumn],
+    head: [["Time", "Value"]],
     body: tableRows,
     theme: "striped",
-    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
+    styles: { fontSize: 8, cellPadding: 3 },
   });
 
-  doc.save(`history_${title}_${new Date().getTime()}.pdf`);
+  doc.save(`history_${title}_${Date.now()}.pdf`);
 };
 
+/* =========================
+   AXIOS CONFIG
+========================= */
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
@@ -99,6 +106,40 @@ const axiosCfg = {
   },
 };
 
+/* =========================
+   HISTORY CHART
+========================= */
+const HistoryLineChart = ({
+  data,
+}: {
+  data: { clock: number; value: number }[];
+}) => {
+  if (!data.length) return null;
+
+  const chartData = [...data]
+    .reverse()
+    .map((d) => ({
+      time: new Date(d.clock * 1000).toLocaleTimeString(),
+      value: Number(d.value),
+    }));
+
+  return (
+    <div style={{ width: "100%", height: 260 }}>
+      <ResponsiveContainer>
+        <LineChart data={chartData}>
+          <XAxis dataKey="time" minTickGap={30} />
+          <YAxis />
+          <Tooltip />
+          <Line type="monotone" dataKey="value" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+/* =========================
+   PAGE
+========================= */
 export default function LatestDataPage() {
   const [hostGroups, setHostGroups] = useState<HostGroup[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
@@ -107,18 +148,10 @@ export default function LatestDataPage() {
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
 
-  const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: "",
-    startTime: "",
-    endDate: "",
-    endTime: "",
-  });
-
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyData, setHistoryData] = useState<any[]>([]);
-  const [historyItemId, setHistoryItemId] = useState("");
   const [historyDateRange, setHistoryDateRange] = useState<DateRange>({
     startDate: "",
     startTime: "",
@@ -127,63 +160,65 @@ export default function LatestDataPage() {
   });
 
   const loadHostGroups = async () => {
-    const payload = {
-      jsonrpc: "2.0",
-      method: "hostgroup.get",
-      params: { output: ["groupid", "name"] },
-      id: 1,
-    };
-    const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
+    const res = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "hostgroup.get",
+        params: { output: ["groupid", "name"] },
+        id: 1,
+      },
+      axiosCfg
+    );
     setHostGroups(res.data.result ?? []);
   };
 
   const loadHosts = async (groups: string[]) => {
-    if (!groups.length) {
-      setHosts([]);
-      return;
-    }
-    const payload = {
-      jsonrpc: "2.0",
-      method: "host.get",
-      params: { output: ["hostid", "name"], groupids: groups },
-      id: 2,
-    };
-    const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
+    if (!groups.length) return setHosts([]);
+    const res = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "host.get",
+        params: { output: ["hostid", "name"], groupids: groups },
+        id: 2,
+      },
+      axiosCfg
+    );
     setHosts(res.data.result ?? []);
   };
 
   const handleApply = async () => {
-    if (!selectedHosts.length) {
-      message.warning("Please select at least one host");
-      return;
-    }
+    if (!selectedHosts.length) return message.warning("Select host");
     setLoadingTable(true);
-    const payload = {
-      jsonrpc: "2.0",
-      method: "item.get",
-      params: {
-        output: ["itemid", "name", "lastvalue", "lastclock", "delta"],
-        selectHosts: ["name"],
-        ...(selectedHosts.length && { hostids: selectedHosts }),
-      },
-      id: 3,
-    };
 
     try {
-      const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
-      const formatted = res.data.result?.map((i: any) => ({
-        key: i.itemid,
-        itemid: i.itemid,
-        host: i.hosts?.[0]?.name ?? "-",
-        name: i.name,
-        lastValue: i.lastvalue,
-        lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
-        change: i.delta ?? "-",
-      })) ?? [];
-      setTableData(formatted);
-      message.success("Data loaded successfully");
-    } catch {
-      message.error("item.get failed");
+      const res = await axios.post(
+        "/api/zabbix-proxy",
+        {
+          jsonrpc: "2.0",
+          method: "item.get",
+          params: {
+            output: ["itemid", "name", "lastvalue", "lastclock", "delta"],
+            selectHosts: ["name"],
+            hostids: selectedHosts,
+          },
+          id: 3,
+        },
+        axiosCfg
+      );
+
+      setTableData(
+        res.data.result.map((i: any) => ({
+          key: i.itemid,
+          itemid: i.itemid,
+          host: i.hosts?.[0]?.name ?? "-",
+          name: i.name,
+          lastValue: i.lastvalue,
+          lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
+          change: i.delta ?? "-",
+        }))
+      );
     } finally {
       setLoadingTable(false);
     }
@@ -191,52 +226,57 @@ export default function LatestDataPage() {
 
   const openHistory = async (itemid: string, name: string) => {
     setHistoryTitle(name);
-    setHistoryItemId(itemid);
     setHistoryOpen(true);
-    setHistoryDateRange({ startDate: "", startTime: "", endDate: "", endTime: "" });
     setHistoryLoading(true);
 
-    const payload = {
-      jsonrpc: "2.0",
-      method: "history.get",
-      params: {
-        output: "extend",
-        history: 0,
-        itemids: [itemid],
-        sortfield: "clock",
-        sortorder: "DESC",
-        limit: 100,
+    const res = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: 0,
+          itemids: [itemid],
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 100,
+        },
+        id: 10,
       },
-      id: 10,
-    };
+      axiosCfg
+    );
 
-    try {
-      const res = await axios.post("/api/zabbix-proxy", payload, axiosCfg);
-      setHistoryData(res.data.result ?? []);
-    } catch {
-      message.error("history.get failed");
-    } finally {
-      setHistoryLoading(false);
-    }
+    setHistoryData(res.data.result ?? []);
+    setHistoryLoading(false);
   };
 
   const filterHistoryByDateRange = () => {
-    if (!historyDateRange.startDate || !historyDateRange.endDate) return historyData;
-    const startTime = new Date(`${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`).getTime() / 1000;
-    const endTime = new Date(`${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`).getTime() / 1000;
-    return historyData.filter((item: any) => {
-      const clock = parseInt(item.clock, 10);
-      return clock >= startTime && clock <= endTime;
-    });
+    if (!historyDateRange.startDate || !historyDateRange.endDate)
+      return historyData;
+
+    const start =
+      new Date(
+        `${historyDateRange.startDate} ${
+          historyDateRange.startTime || "00:00:00"
+        }`
+      ).getTime() / 1000;
+
+    const end =
+      new Date(
+        `${historyDateRange.endDate} ${
+          historyDateRange.endTime || "23:59:59"
+        }`
+      ).getTime() / 1000;
+
+    return historyData.filter(
+      (r: any) => r.clock >= start && r.clock <= end
+    );
   };
 
-  useEffect(() => { loadHostGroups(); }, []);
-
   useEffect(() => {
-    if (selectedHosts.length && dateRange.startDate && dateRange.endDate) {
-      handleApply();
-    }
-  }, [dateRange, selectedHosts]);
+    loadHostGroups();
+  }, []);
 
   const columns: ColumnsType<TableRow> = [
     { title: "Host", dataIndex: "host", width: 160 },
@@ -246,91 +286,102 @@ export default function LatestDataPage() {
     { title: "Change", dataIndex: "change", width: 100 },
     {
       title: "History",
-      width: 90,
-      render: (_, row) => (
-        <Button size="small" onClick={() => openHistory(row.itemid, row.name)}>View</Button>
+      render: (_, r) => (
+        <Button size="small" onClick={() => openHistory(r.itemid, r.name)}>
+          View
+        </Button>
       ),
     },
   ];
 
   return (
-    <Card style={{ padding: 35, height: "100%" }}>
+    <Card style={{ padding: 35 }}>
       <Space direction="vertical" style={{ width: "100%" }}>
         <Space>
           <Select
             mode="multiple"
-            allowClear
             placeholder="Host Groups"
             style={{ width: 260 }}
             listHeight={800} // Expanded height
-            options={hostGroups.map((g) => ({ label: g.name, value: g.groupid }))}
-            dropdownStyle={{ minWidth: 400 }}
-            showSearch
-            filterOption={(input, option) =>
-              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-            }
-            value={selectedGroups}
-            onChange={(groupIds) => {
-              setSelectedGroups(groupIds);
+
+            options={hostGroups.map((g) => ({
+              label: g.name,
+              value: g.groupid,
+            }))}
+            onChange={(g) => {
+              setSelectedGroups(g);
               setSelectedHosts([]);
-              loadHosts(groupIds);
+              loadHosts(g);
             }}
           />
 
           <Select
             mode="multiple"
-            allowClear
             placeholder="Hosts"
             style={{ width: 260 }}
             listHeight={800} // Expanded height
-            options={hosts.map((h) => ({ label: h.name, value: h.hostid }))}
-            dropdownStyle={{ minWidth: 400 }}
-            showSearch
-            filterOption={(input, option) =>
-              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-            }
-            value={selectedHosts}
+
+            options={hosts.map((h) => ({
+              label: h.name,
+              value: h.hostid,
+            }))}
             onChange={setSelectedHosts}
-            disabled={!selectedGroups.length}
           />
 
-          <Button type="primary" onClick={handleApply} disabled={!selectedHosts.length}>
+          <Button type="primary" onClick={handleApply}>
             Apply
           </Button>
         </Space>
 
-        <Table
-          columns={columns}
-          dataSource={tableData}
-          loading={loadingTable}
-          size="small"
-          scroll={{ x: true }}
-        />
+        <Table columns={columns} dataSource={tableData} loading={loadingTable} />
 
         <Modal
           title={`vmanage-0 – ${historyTitle}`}
           open={historyOpen}
           onCancel={() => setHistoryOpen(false)}
           footer={null}
-          width={700}
+          width={800}
         >
           <Space direction="vertical" style={{ width: "100%" }}>
-            <Space>
+            {/* 🔝 Top action bar */}
+            <Space style={{ justifyContent: "space-between", width: "100%" }}>
               <RangePickerDemo onRangeChange={setHistoryDateRange} />
+
               <Button
-                onClick={() => exportHistoryToPDF(historyTitle, filterHistoryByDateRange())}
+                type="primary"
+                onClick={() =>
+                  exportHistoryToPDF(historyTitle, filterHistoryByDateRange())
+                }
                 disabled={!filterHistoryByDateRange().length}
               >
                 Export PDF
               </Button>
             </Space>
+
+            {/* 📈 Chart */}
+            <HistoryLineChart
+              data={filterHistoryByDateRange().map((r: any) => ({
+                clock: r.clock,
+                value: r.value,
+              }))}
+            />
+
+            {/* 📋 Table */}
             <Table
               size="small"
-              loading={historyLoading}
               pagination={false}
+              loading={historyLoading}
               columns={[
-                { title: "Time", dataIndex: "clock", render: (v) => new Date(v * 1000).toLocaleString() },
-                { title: "Value", dataIndex: "value", render: (v) => Number(v).toFixed(2) },
+                {
+                  title: "Time",
+                  dataIndex: "clock",
+                  render: (v) => new Date(v * 1000).toLocaleString(),
+                },
+                {
+                  title: "Value",
+                  dataIndex: "value",
+                  render: (v) => Number(v).toFixed(2),
+                },
               ]}
               dataSource={filterHistoryByDateRange().map((r: any) => ({
                 key: r.clock,
