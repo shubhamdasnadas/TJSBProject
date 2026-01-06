@@ -97,35 +97,35 @@ export default function Dashboard() {
   const user_token =
     typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
-  /* ================= SOCKET INIT ================= */
-  useEffect(() => {
-    socketRef.current = io({
-      path: "/app/api/socket_io",
-    });
+  // /* ================= SOCKET INIT ================= */
+  // useEffect(() => {
+  //   socketRef.current = io({
+  //     path: "/app/api/socket_io",
+  //   });
 
-    // when server broadcasts dashboard
-    socketRef.current.on("dashboard:sync", (serverState: any) => {
-      const { layout = [], dynamicWidgets = [], removedStatic = [] } =
-        serverState || {};
+  //   // when server broadcasts dashboard
+  //   socketRef.current.on("dashboard:sync", (serverState: any) => {
+  //     const { layout = [], dynamicWidgets = [], removedStatic = [] } =
+  //       serverState || {};
 
-      setLayout(layout);
-      setDynamicWidgets(dynamicWidgets);
-      setRemovedStaticIds(removedStatic);
+  //     setLayout(layout);
+  //     setDynamicWidgets(dynamicWidgets);
+  //     setRemovedStaticIds(removedStatic);
 
-      safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
-      safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
-      safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
+  //     safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
+  //     safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
+  //     safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
 
-      if (grid.current) {
-        requestAnimationFrame(() => {
-          grid.current!.load(layout);
-          window.dispatchEvent(new Event("resize"));
-        });
-      }
-    });
+  //     if (grid.current) {
+  //       requestAnimationFrame(() => {
+  //         grid.current!.load(layout);
+  //         window.dispatchEvent(new Event("resize"));
+  //       });
+  //     }
+  //   });
 
-    return () => socketRef.current?.disconnect();
-  }, []);
+  //   return () => socketRef.current?.disconnect();
+  // }, []);
 
   /* ================= BROADCAST TO SERVER (socket + api) ================= */
   const broadcastDashboard = (normalized: any[]) => {
