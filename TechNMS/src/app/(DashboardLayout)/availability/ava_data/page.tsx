@@ -22,7 +22,13 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
-      const apiRows = res?.data?.data?.data || [];
+      console.log("🔐 LOGIN:", res.data.api.login);
+      console.log("🪙 TOKEN:", res.data.api.token);
+      console.log("🖥 DEVICES:", res.data.api.devices);
+      console.log("📡 DEVICE IDS:", res.data.api.deviceIds);
+      console.log("🔁 BFD SESSIONS:", res.data.api.bfdSessions);
+
+      const apiRows = res.data.api.devices || [];
 
       const rows: TunnelRow[] = apiRows.map((row: any) => ({
         hostname: row["vdevice-host-name"],
@@ -34,7 +40,7 @@ export default function TunnelsPage() {
 
       setData(rows);
     } catch (e) {
-      console.error(e);
+      console.error("FRONTEND ERROR:", e);
     } finally {
       setLoading(false);
     }
@@ -44,12 +50,10 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // ====== GROUP DATA (FIXED TYPES) ======
+  // GROUP ROWS
   const grouped = data.reduce<Record<string, TunnelRow[]>>((acc, item) => {
     const key = `${item.hostname}-${item.vdeviceIP}`;
-
     if (!acc[key]) acc[key] = [];
-
     acc[key].push(item);
     return acc;
   }, {});
@@ -102,7 +106,7 @@ export default function TunnelsPage() {
           style={{
             padding: "2px 8px",
             borderRadius: 6,
-            background: state === "up" ? "#3c7708ff" : "#e21d0cff",
+            background: state === "up" ? "#d7ffd7" : "#ffd6d6",
             color: state === "up" ? "green" : "red",
             fontWeight: 600,
           }}

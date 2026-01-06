@@ -56,8 +56,8 @@ export async function POST() {
       )
     );
 
-    // ---------- 5) CALL BFD SESSIONS ----------
-    const sessionResults: any[] = [];
+    // ---------- 5) BFD SESSIONS ----------
+    const bfdSessions: any[] = [];
 
     await Promise.all(
       deviceIds.map(async (deviceId) => {
@@ -73,31 +73,33 @@ export async function POST() {
             }
           );
 
-          sessionResults.push({
+          bfdSessions.push({
             deviceId,
             sessions: res.data?.data || [],
           });
-        } catch (err) {
-          console.error("BFD ERROR for", deviceId, err);
+        } catch (e) {
+          console.error("BFD ERROR:", deviceId, e);
         }
       })
     );
 
-    // ---------- 6) ADD deviceId FIELD INTO TUNNELS ----------
+    // ---------- ADD deviceId INTO TUNNELS ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
-      deviceId: t["vdevice-name"],   // 👈 expose clearly
+      deviceId: t["vdevice-name"],
     }));
 
-    // ---------- RESPONSE ----------
     return NextResponse.json({
       success: true,
 
-      devicesQueried: deviceIds,   // 👈 list only device IDs
-
-      tunnels: tunnelsWithIds,     // 👈 every row has deviceId now
-
-      bfdSessions: sessionResults, // 👈 grouped results
+      // send EVERYTHING to frontend
+      api: {
+        login: { status: loginRes.status },
+        token,
+        devices: tunnelsWithIds,
+        deviceIds,
+        bfdSessions,
+      },
     });
   } catch (err: any) {
     console.error("SDWAN ERROR:", err?.response?.data || err);
@@ -105,7 +107,7 @@ export async function POST() {
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch SD-WAN devices",
+        error: "Failed to fetch SD-WAN data",
         detail: err?.response?.data || err?.message,
       },
       { status: 500 }
