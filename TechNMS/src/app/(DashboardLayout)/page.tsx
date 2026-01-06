@@ -100,7 +100,7 @@ export default function Dashboard() {
   /* ================= SOCKET INIT ================= */
   useEffect(() => {
     socketRef.current = io({
-      path: "/api/socket_io",
+      path: "/app/api/socket_io",
     });
 
     // when server broadcasts dashboard
