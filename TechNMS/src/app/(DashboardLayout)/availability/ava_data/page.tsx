@@ -10,9 +10,10 @@ export default function TunnelsPage() {
   async function load() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
-      const json = res;
-      console.log(json)
-      setData(json.data || []);
+
+      console.log("DEBUG from backend:", res.data.debug);
+
+      setData(res.data.data || []);
     } catch (e) {
       console.error(e);
     } finally {
