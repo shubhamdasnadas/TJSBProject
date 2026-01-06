@@ -8,9 +8,7 @@ export async function POST() {
 
     const base = "https://vmanage-31949190.sdwan.cisco.com";
 
-    //
     // ---------- 1) LOGIN ----------
-    //
     const loginRes = await axios.post(
       `${base}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
@@ -22,7 +20,6 @@ export async function POST() {
       }
     );
 
-    // collect ALL cookies returned from server
     const cookies = loginRes.headers["set-cookie"] || [];
 
     const cookieHeader = cookies
@@ -33,9 +30,7 @@ export async function POST() {
 
     console.log("COOKIES:", cookieHeader);
 
-    //
-    // ---------- 2) GET TOKEN (MUST BE GET!) ----------
-    //
+    // ---------- 2) TOKEN ----------
     const tokenRes = await axios.get(`${base}/dataservice/client/token`, {
       headers: {
         Cookie: cookieHeader,
@@ -46,10 +41,8 @@ export async function POST() {
     const token = tokenRes.data;
     console.log("TOKEN:", token);
 
-    //
-    // ---------- 3) DEVICE LIST (MUST BE GET!) ----------
-    //
-    const tunnelsRes = await axios.get(`${base}/dataservice/device/bfd/sessions?deviceId=192.168.222.146`, {
+    // ---------- 3) DEVICE LIST ----------
+    const tunnelsRes = await axios.get(`${base}/dataservice/device`, {
       headers: {
         Cookie: cookieHeader,
         "X-XSRF-TOKEN": token,
@@ -57,20 +50,51 @@ export async function POST() {
       withCredentials: true,
     });
 
-    console.log("DEVICES:", tunnelsRes.data);
+    const tunnels = tunnelsRes.data?.data || [];
+
+    // ---------- 4) COLLECT vdevice-name ARRAY ----------
+    const deviceIds: string[] = Array.from(
+      new Set(
+        tunnels
+          .map((d: any) => d["vdevice-name"])
+          .filter((x: any) => !!x)
+      )
+    );
+
+    console.log("DEVICE IDS:", deviceIds);
+
+    // ---------- 5) CALL BFD SESSIONS PER DEVICE ----------
+    const sessionResults: any[] = [];
+
+    await Promise.all(
+      deviceIds.map(async (deviceId) => {
+        try {
+          const res = await axios.get(
+            `${base}/dataservice/device/bfd/sessions?deviceId=${deviceId}`,
+            {
+              headers: {
+                Cookie: cookieHeader,
+                "X-XSRF-TOKEN": token,
+              },
+              withCredentials: true,
+            }
+          );
+
+          sessionResults.push({
+            deviceId,
+            sessions: res.data?.data || [],
+          });
+        } catch (err) {
+          console.error("BFD ERROR for", deviceId, err);
+        }
+      })
+    );
 
     return NextResponse.json({
       success: true,
-      data: tunnelsRes.data,
-      debug: {
-        loginUrl: `${base}/j_security_check`,
-        tokenUrl: `${base}/dataservice/client/token`,
-        devicesUrl: `${base}/dataservice/device`,
-        cookieHeader,
-        token,
-        loginStatus: loginRes.status,
-        deviceCount: tunnelsRes.data?.data?.length,
-      },
+      tunnels: tunnelsRes.data,
+      bfdSessions: sessionResults,
+      devicesQueried: deviceIds,
     });
   } catch (err: any) {
     console.error("SDWAN ERROR:", err?.response?.data || err);

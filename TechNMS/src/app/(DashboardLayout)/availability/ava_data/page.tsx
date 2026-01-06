@@ -102,7 +102,7 @@ export default function TunnelsPage() {
           style={{
             padding: "2px 8px",
             borderRadius: 6,
-            background: state === "up" ? "#d9f7be" : "#ffccc7",
+            background: state === "up" ? "#3c7708ff" : "#e21d0cff",
             color: state === "up" ? "green" : "red",
             fontWeight: 600,
           }}
