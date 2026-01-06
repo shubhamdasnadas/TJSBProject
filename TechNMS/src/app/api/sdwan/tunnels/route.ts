@@ -25,7 +25,7 @@ export async function POST() {
     const jsession = cookies
       .find((c) => c.startsWith("JSESSIONID"))
       ?.split(";")[0];
-
+    console.log("data session", jsession);
     if (!jsession) {
       throw new Error("JSESSIONID cookie not found");
     }
@@ -42,7 +42,7 @@ export async function POST() {
     );
 
     const token = tokenRes.data;
-
+    console.log("token", token);
     // ---------- 3) CALL API ----------
     const tunnelsRes = await axios.post(
       `${base}/dataservice/device`,
@@ -54,7 +54,7 @@ export async function POST() {
         withCredentials: true,
       }
     );
-
+    console.log("tunnelsRes", tunnelsRes)
     return NextResponse.json(tunnelsRes.data);
   } catch (err: any) {
     console.error(err?.response?.data || err);
