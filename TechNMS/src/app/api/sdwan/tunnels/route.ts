@@ -8,7 +8,9 @@ export async function POST() {
 
     const base = "https://vmanage-31949190.sdwan.cisco.com";
 
+    //
     // ---------- 1) LOGIN ----------
+    //
     const loginRes = await axios.post(
       `${base}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
@@ -20,47 +22,42 @@ export async function POST() {
       }
     );
 
-    // full cookie list
+    // collect ALL cookies returned from server
     const cookies = loginRes.headers["set-cookie"] || [];
 
-    // build cookies.txt style string
     const cookieHeader = cookies
       .map((c: string) => c.split(";")[0])
       .join("; ");
 
     if (!cookieHeader) throw new Error("No cookies returned from vManage");
 
-    console.log("COOKIES HEADER:", cookieHeader);
+    console.log("COOKIES:", cookieHeader);
 
-    // ---------- 2) TOKEN ----------
-    const tokenRes = await axios.post(
-      `${base}/dataservice/client/token`,
-      {},
-      {
-        headers: {
-          Cookie: cookieHeader,
-        },
-        withCredentials: true,
-      }
-    );
+    //
+    // ---------- 2) GET TOKEN (MUST BE GET!) ----------
+    //
+    const tokenRes = await axios.get(`${base}/dataservice/client/token`, {
+      headers: {
+        Cookie: cookieHeader,
+      },
+      withCredentials: true,
+    });
 
     const token = tokenRes.data;
     console.log("TOKEN:", token);
 
-    // ---------- 3) DEVICE LIST ----------
-    const tunnelsRes = await axios.post(
-      `${base}/dataservice/device`,
-      {},
-      {
-        headers: {
-          Cookie: cookieHeader,
-          "X-XSRF-TOKEN": token,
-        },
-        withCredentials: true,
-      }
-    );
+    //
+    // ---------- 3) DEVICE LIST (MUST BE GET!) ----------
+    //
+    const tunnelsRes = await axios.get(`${base}/dataservice/device`, {
+      headers: {
+        Cookie: cookieHeader,
+        "X-XSRF-TOKEN": token,
+      },
+      withCredentials: true,
+    });
 
-    console.log("DEVICES RESPONSE:", tunnelsRes.data);
+    console.log("DEVICES:", tunnelsRes.data);
 
     return NextResponse.json({
       success: true,
