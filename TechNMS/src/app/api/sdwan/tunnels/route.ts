@@ -7,28 +7,55 @@ export async function POST() {
     const user = process.env.VMANAGE_USER;
     const pass = process.env.VMANAGE_PASS;
 
-    // 1) login
-    const res = await axios.post(
+    // ---------- 1) LOGIN ----------
+    const loginRes = await axios.post(
       `${base}/j_security_check`,
-      `j_username=${user}&j_password=${pass}`
-    
-    );
-    console.log("res", res)
-    // 2) token
-    const tokenRes = await axios.post(`${base}/dataservice/client/token`);
-
-    const token = tokenRes.data;
-    console.log("token", token)
-    // 3) get tunnels
-    const tunnels = await axios.post(
-      `${base}/dataservice/device`,
+      `j_username=${user}&j_password=${pass}`,
       {
-        headers: { "X-XSRF-TOKEN": token },
-
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        withCredentials: true,
       }
     );
-    console.log("Tunnel", tunnels);
-    return NextResponse.json(tunnels.data);
+
+    // read cookies returned by vManage
+    const cookies = loginRes.headers["set-cookie"] || [];
+
+    const jsession = cookies
+      .find((c) => c.startsWith("JSESSIONID"))
+      ?.split(";")[0];
+
+    if (!jsession) {
+      throw new Error("JSESSIONID cookie not found");
+    }
+
+    // ---------- 2) GET TOKEN ----------
+    const tokenRes = await axios.post(
+      `${base}/dataservice/client/token`,
+      {
+        headers: {
+          Cookie: jsession,
+        },
+        withCredentials: true,
+      }
+    );
+
+    const token = tokenRes.data;
+
+    // ---------- 3) CALL API ----------
+    const tunnelsRes = await axios.post(
+      `${base}/dataservice/device`,
+      {
+        headers: {
+          Cookie: jsession,
+          "X-XSRF-TOKEN": token,
+        },
+        withCredentials: true,
+      }
+    );
+
+    return NextResponse.json(tunnelsRes.data);
   } catch (err: any) {
     console.error(err?.response?.data || err);
     return NextResponse.json(
