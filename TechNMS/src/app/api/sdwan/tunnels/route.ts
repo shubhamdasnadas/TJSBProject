@@ -10,13 +10,14 @@ export async function POST() {
 
     // ---------- 1) LOGIN (matches curl exactly) ----------
     const loginRes = await axios.post(
-      `${base}/j_security_check`,
+      `curl -k \
+          ${base}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        withCredentials: true,
+        // withCredentials: true,
       }
     );
 
@@ -29,34 +30,24 @@ export async function POST() {
     if (!jsession) {
       throw new Error("JSESSIONID cookie not found");
     }
-
+    console.log("data res", jsession)
     // ---------- 2) TOKEN (uses cookie like curl -b cookies.txt) ----------
     const tokenRes = await axios.post(
-      `${base}/dataservice/client/token`,
-      {},
-      {
-        headers: {
-          Cookie: jsession,
-        },
-        withCredentials: true,
-      }
+      `curl -k \
+      ${base}/dataservice/client/token \
+      -b cookies.txt`,
     );
 
     const token = tokenRes.data;
-
+    console.log("token", token)
     // ---------- 3) DEVICE API (matches curl exactly) ----------
     const tunnelsRes = await axios.post(
-      `${base}/dataservice/device`,
-      {},
-      {
-        headers: {
-          Cookie: jsession,
-          "X-XSRF-TOKEN": token,
-        },
-        withCredentials: true,
-      }
+      `curl -k \ 
+      ${base}/dataservice/device \
+      -b cookies.txt \
+      -H "X-XSRF-TOKEN: ${token}"`,
     );
-
+    console.log("tunnelsRes", tunnelsRes)
     // ---------- RESPONSE TO FRONTEND ----------
     return NextResponse.json({
       success: true,
