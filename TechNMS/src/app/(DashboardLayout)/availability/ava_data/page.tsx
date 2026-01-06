@@ -22,7 +22,7 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
-      console.log("🔁 BFD SESSIONS:", res.data.api.bfdSessions);
+      console.log("🔁 BFD SESSIONS:", (res.data.api.bfdSessions).length());
 
       const bfd = res.data.api.bfdSessions || [];
 
