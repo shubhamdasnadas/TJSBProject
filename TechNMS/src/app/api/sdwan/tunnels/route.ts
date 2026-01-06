@@ -86,7 +86,7 @@ export async function POST() {
     // ---------- ADD deviceId INTO TUNNELS ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
-      deviceId: t["vdevice-name"],
+      deviceId: t["system-ip"],
     }));
 
     return NextResponse.json({
