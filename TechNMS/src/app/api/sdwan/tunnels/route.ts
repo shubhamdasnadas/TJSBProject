@@ -49,7 +49,7 @@ export async function POST() {
     //
     // ---------- 3) DEVICE LIST (MUST BE GET!) ----------
     //
-    const tunnelsRes = await axios.get(`${base}/dataservice/device`, {
+    const tunnelsRes = await axios.get(`${base}/dataservice/device/bfd/sessions?deviceId=192.168.222.164`, {
       headers: {
         Cookie: cookieHeader,
         "X-XSRF-TOKEN": token,
