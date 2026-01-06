@@ -28,18 +28,13 @@ export async function POST() {
 
     if (!cookieHeader) throw new Error("No cookies returned from vManage");
 
-    console.log("COOKIES:", cookieHeader);
-
     // ---------- 2) TOKEN ----------
     const tokenRes = await axios.get(`${base}/dataservice/client/token`, {
-      headers: {
-        Cookie: cookieHeader,
-      },
+      headers: { Cookie: cookieHeader },
       withCredentials: true,
     });
 
     const token = tokenRes.data;
-    console.log("TOKEN:", token);
 
     // ---------- 3) DEVICE LIST ----------
     const tunnelsRes = await axios.get(`${base}/dataservice/device`, {
@@ -52,7 +47,7 @@ export async function POST() {
 
     const tunnels = tunnelsRes.data?.data || [];
 
-    // ---------- 4) COLLECT vdevice-name ARRAY ----------
+    // ---------- 4) COLLECT deviceIds ----------
     const deviceIds: string[] = Array.from(
       new Set(
         tunnels
@@ -61,9 +56,7 @@ export async function POST() {
       )
     );
 
-    console.log("DEVICE IDS:", deviceIds);
-
-    // ---------- 5) CALL BFD SESSIONS PER DEVICE ----------
+    // ---------- 5) CALL BFD SESSIONS ----------
     const sessionResults: any[] = [];
 
     await Promise.all(
@@ -90,11 +83,21 @@ export async function POST() {
       })
     );
 
+    // ---------- 6) ADD deviceId FIELD INTO TUNNELS ----------
+    const tunnelsWithIds = tunnels.map((t: any) => ({
+      ...t,
+      deviceId: t["vdevice-name"],   // 👈 expose clearly
+    }));
+
+    // ---------- RESPONSE ----------
     return NextResponse.json({
       success: true,
-      tunnels: tunnelsRes.data,
-      bfdSessions: sessionResults,
-      devicesQueried: deviceIds,
+
+      devicesQueried: deviceIds,   // 👈 list only device IDs
+
+      tunnels: tunnelsWithIds,     // 👈 every row has deviceId now
+
+      bfdSessions: sessionResults, // 👈 grouped results
     });
   } catch (err: any) {
     console.error("SDWAN ERROR:", err?.response?.data || err);
