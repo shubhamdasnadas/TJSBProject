@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import html2canvas from "html2canvas";
+
 import { Select, Button, Table, Space, Modal, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import axios from "axios";
@@ -54,12 +56,76 @@ const axiosCfg = {
 /* =========================
    PDF EXPORT
 ========================= */
-const exportHistoryToPDF = (title: string, data: any[]) => {
+const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
+
+/** SVG → PNG for jsPDF */
+const loadSvgAsPng = async (url: string) => {
+  const svgText = await fetch(url).then((r) => r.text());
+  const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+  const svgUrl = URL.createObjectURL(svgBlob);
+
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * 3;
+      canvas.height = img.height * 3;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(svgUrl);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.src = svgUrl;
+  });
+};
+
+const exportHistoryToPDF = async (
+  title: string,
+  data: any[],
+  chartEl: HTMLDivElement | null
+) => {
   const doc = new jsPDF("l", "pt", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  /* PAGE 1 – COVER */
+  const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
+
+  doc.addImage(logoPng, "PNG", pageWidth / 2 - 300, 80, 600, 220);
+
+  doc.setFontSize(26);
+  doc.text("Techsec NMS – History Report", pageWidth / 2, 340, {
+    align: "center",
+  });
+
+  doc.setFontSize(16);
+  doc.text(`Metric: ${title}`, pageWidth / 2, 380, { align: "center" });
+
+  doc.setFontSize(12);
+  doc.setTextColor(90);
+  doc.text(
+    `Generated: ${new Date().toLocaleString()}`,
+    pageWidth / 2,
+    410,
+    { align: "center" }
+  );
+
+  /* PAGE 2 – CHART */
+  if (chartEl) {
+    const canvas = await html2canvas(chartEl, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+    });
+
+    doc.addPage();
+    doc.setFontSize(18);
+    doc.text("Utilization Graph", 40, 40);
+    doc.addImage(canvas.toDataURL("image/png"), "PNG", 40, 60, 760, 320);
+  }
+
+  /* PAGE 3 – TABLE */
+  doc.addPage();
   doc.setFontSize(18);
-  doc.text(`History Report - ${title}`, 40, 40);
-  doc.setFontSize(10);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 55);
+  doc.text("History Data", 40, 40);
 
   autoTable(doc, {
     startY: 70,
@@ -68,10 +134,11 @@ const exportHistoryToPDF = (title: string, data: any[]) => {
       new Date(r.clock * 1000).toLocaleString(),
       Number(r.value).toFixed(2),
     ]),
-    styles: { fontSize: 8 },
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [30, 30, 30] },
   });
 
-  doc.save(`history_${Date.now()}.pdf`);
+  doc.save(`techsec_history_${Date.now()}.pdf`);
 };
 
 /* =========================
@@ -113,8 +180,6 @@ export default function LatestDataPage() {
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -128,35 +193,9 @@ export default function LatestDataPage() {
     endTime: "",
   });
 
-  /* =========================
-     KEYBOARD SHORTCUTS
-  ========================= */
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey) {
-        if (e.key === "n" || e.key === "N") {
-          e.preventDefault();
-          const maxPages = Math.ceil(tableData.length / pageSize);
-          if (currentPage < maxPages) {
-            setCurrentPage(currentPage + 1);
-          }
-        }
-        if (e.key === "p" || e.key === "P") {
-          e.preventDefault();
-          if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-          }
-        }
-      }
-    };
+  const chartRef = useRef<HTMLDivElement>(null);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentPage, tableData.length, pageSize]);
-
-  /* =========================
-     LOADERS
-  ========================= */
+  /* LOAD HOST GROUPS */
   useEffect(() => {
     axios
       .post(
@@ -223,11 +262,7 @@ export default function LatestDataPage() {
     }
   };
 
-  const openHistory = async (
-    itemid: string,
-    name: string,
-    host: string
-  ) => {
+  const openHistory = async (itemid: string, name: string, host: string) => {
     setHistoryTitle(name);
     setHistoryHost(host);
     setHistoryOpen(true);
@@ -260,16 +295,12 @@ export default function LatestDataPage() {
 
     const start =
       new Date(
-        `${historyDateRange.startDate} ${
-          historyDateRange.startTime || "00:00:00"
-        }`
+        `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`
       ).getTime() / 1000;
 
     const end =
       new Date(
-        `${historyDateRange.endDate} ${
-          historyDateRange.endTime || "23:59:59"
-        }`
+        `${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`
       ).getTime() / 1000;
 
     return historyData.filter(
@@ -278,8 +309,8 @@ export default function LatestDataPage() {
   };
 
   const columns: ColumnsType<TableRow> = [
-    { title: "Host", dataIndex: "host", width: 160 },
-    { title: "Item", dataIndex: "name", width: 280 },
+    { title: "Host", dataIndex: "host", width: 180 },
+    { title: "Item", dataIndex: "name", width: 300 },
     { title: "Last Value", dataIndex: "lastValue", width: 120 },
     { title: "Last Check", dataIndex: "lastCheck", width: 180 },
     { title: "Change", dataIndex: "change", width: 100 },
@@ -301,14 +332,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
-            listHeight={800} // Expanded height
-
-            showSearch
-            optionFilterProp="label"
-            filterOption={(input, option) =>
-              !!option &&
-              option.label.toLowerCase().includes(input.toLowerCase())
-            }
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -324,14 +347,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
-            listHeight={800} // Expanded height
-
-            showSearch
-            optionFilterProp="label"
-            filterOption={(input, option) =>
-              !!option &&
-              option.label.toLowerCase().includes(input.toLowerCase())
-            }
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -344,28 +359,14 @@ export default function LatestDataPage() {
           </Button>
         </Space>
 
-        <Table
-          columns={columns}
-          dataSource={tableData}
-          loading={loadingTable}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: tableData.length,
-            onChange: (page) => setCurrentPage(page),
-            onShowSizeChange: (_, size) => setPageSize(size),
-            showSizeChanger: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} items | Alt+N: Next | Alt+P: Previous`,
-          }}
-        />
+        <Table columns={columns} dataSource={tableData} loading={loadingTable} />
 
         <Modal
           title={`${historyHost} – ${historyTitle}`}
           open={historyOpen}
           onCancel={() => setHistoryOpen(false)}
           footer={null}
-          width={800}
+          width={900}
         >
           <Space direction="vertical" style={{ width: "100%" }}>
             <Space style={{ justifyContent: "space-between", width: "100%" }}>
@@ -373,19 +374,25 @@ export default function LatestDataPage() {
               <Button
                 type="primary"
                 onClick={() =>
-                  exportHistoryToPDF(historyTitle, filterHistory())
+                  exportHistoryToPDF(
+                    historyTitle,
+                    filterHistory(),
+                    chartRef.current
+                  )
                 }
               >
                 Export PDF
               </Button>
             </Space>
 
-            <HistoryLineChart
-              data={filterHistory().map((r: any) => ({
-                clock: r.clock,
-                value: r.value,
-              }))}
-            />
+            <div ref={chartRef} style={{ background: "#fff", padding: 12 }}>
+              <HistoryLineChart
+                data={filterHistory().map((r: any) => ({
+                  clock: r.clock,
+                  value: r.value,
+                }))}
+              />
+            </div>
 
             <Table
               size="small"
