@@ -6,7 +6,7 @@ export async function POST() {
     const user = process.env.VMANAGE_USER;
     const pass = process.env.VMANAGE_PASS;
 
-    const base = "https://vmanage-31949190.sdwan.cisco.com";
+    const base = process.env.VMANAGE_URL;
 
     // ---------- 1) LOGIN (matches curl exactly) ----------
     const loginRes = await axios.post(
