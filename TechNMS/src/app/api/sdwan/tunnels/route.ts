@@ -52,7 +52,7 @@ export async function POST() {
       new Set(
         tunnels
           .map((d: any) => d["vdevice-name"])
-          .filter((x: any) => !!x)
+          
       )
     );
 

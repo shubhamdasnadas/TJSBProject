@@ -21,7 +21,7 @@ export default function TunnelsPage() {
   async function load() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
-
+      console.log("res", res)
       console.log("🔐 LOGIN:", res.data.api.login);
       console.log("🪙 TOKEN:", res.data.api.token);
       console.log("🖥 DEVICES:", res.data.api.devices);
