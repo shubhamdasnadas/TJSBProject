@@ -4,19 +4,35 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { Table } from "antd";
 
+type TunnelRow = {
+  hostname: string;
+  vdeviceIP: string;
+  color: string;
+  primary_color: string;
+  state: string;
+  hostRowSpan?: number;
+  deviceRowSpan?: number;
+};
+
 export default function TunnelsPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<TunnelRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
-      console.log("BACKEND DEBUG:", res.data.debug);
-      console.log("API DATA:", res.data.data.data);
+      const apiRows = res?.data?.data?.data || [];
 
-      // usually Cisco returns: { data: [ ...rows ] }
-      setData(res?.data?.data?.data || []);
+      const rows: TunnelRow[] = apiRows.map((row: any) => ({
+        hostname: row["vdevice-host-name"],
+        vdeviceIP: row["vdevice-name"],
+        color: row["color"],
+        primary_color: row["local-color"] || "NA",
+        state: row["state"],
+      }));
+
+      setData(rows);
     } catch (e) {
       console.error(e);
     } finally {
@@ -28,33 +44,72 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // Ant Design column definitions
-  const columns = [
+  // ====== GROUP DATA (FIXED TYPES) ======
+  const grouped = data.reduce<Record<string, TunnelRow[]>>((acc, item) => {
+    const key = `${item.hostname}-${item.vdeviceIP}`;
+
+    if (!acc[key]) acc[key] = [];
+
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const finalRows: TunnelRow[] = [];
+
+  Object.values(grouped).forEach((group) => {
+    group.forEach((row, index) => {
+      finalRows.push({
+        ...row,
+        hostRowSpan: index === 0 ? group.length : 0,
+        deviceRowSpan: index === 0 ? group.length : 0,
+      });
+    });
+  });
+
+  const columns: any = [
     {
-      title: "Hostname",
+      title: "hostname",
       dataIndex: "hostname",
       key: "hostname",
+      onCell: (row: TunnelRow) => ({
+        rowSpan: row.hostRowSpan,
+      }),
     },
     {
-      title: "vDevice IP",
+      title: "VdeviceIP",
       dataIndex: "vdeviceIP",
       key: "vdeviceIP",
+      onCell: (row: TunnelRow) => ({
+        rowSpan: row.deviceRowSpan,
+      }),
     },
     {
-      title: "Color",
+      title: "color",
       dataIndex: "color",
       key: "color",
     },
     {
-      title: "Primary Color",
+      title: "primary color",
       dataIndex: "primary_color",
       key: "primary_color",
-      render: (v: any) => v || "NA",
     },
     {
-      title: "State",
+      title: "state",
       dataIndex: "state",
       key: "state",
+      render: (state: string) => (
+        <span
+          style={{
+            padding: "2px 8px",
+            borderRadius: 6,
+            background: state === "up" ? "#d9f7be" : "#ffccc7",
+            color: state === "up" ? "green" : "red",
+            fontWeight: 600,
+          }}
+        >
+          {state}
+        </span>
+      ),
     },
   ];
 
@@ -65,10 +120,7 @@ export default function TunnelsPage() {
       <Table
         loading={loading}
         columns={columns}
-        dataSource={data}
-        rowKey={(row: any) =>
-          `${row.hostname}-${row.vdeviceIP}-${row.color}-${Math.random()}`
-        }
+        dataSource={finalRows}
         bordered
         pagination={false}
       />
