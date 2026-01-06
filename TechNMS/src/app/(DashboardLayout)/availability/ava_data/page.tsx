@@ -12,28 +12,11 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
-      const apiRows = res?.data?.data?.data || [];
+      console.log("BACKEND DEBUG:", res.data.debug);
+      console.log("API DATA:", res.data.data.data);
 
-      console.log("RAW API ROWS:", apiRows);
-
-      // ---- TRANSFORM + REMOVE DUPLICATES ----
-      const map = new Map();
-
-      const transformed = apiRows.map((row: any) => ({
-        hostname: row["vdevice-host-name"],
-        vdeviceIP: row["vdevice-name"],
-        color: row["color"],
-        primary_color: row["local-color"],
-        state: row["state"],
-      }));
-
-      // Deduplicate by hostname + vdeviceIP
-      transformed.forEach((r:any) => {
-        const key = `${r.hostname}|${r.vdeviceIP}`;
-        if (!map.has(key)) map.set(key, r);
-      });
-
-      setData(Array.from(map.values()));
+      // usually Cisco returns: { data: [ ...rows ] }
+      setData(res?.data?.data?.data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -45,30 +28,31 @@ export default function TunnelsPage() {
     load();
   }, []);
 
+  // Ant Design column definitions
   const columns = [
     {
-      title: "vdevice-host-name",
+      title: "Hostname",
       dataIndex: "hostname",
       key: "hostname",
     },
     {
-      title: "vdevice-name",
+      title: "vDevice IP",
       dataIndex: "vdeviceIP",
       key: "vdeviceIP",
     },
     {
-      title: "color",
+      title: "Color",
       dataIndex: "color",
       key: "color",
     },
     {
-      title: "local-color",
+      title: "Primary Color",
       dataIndex: "primary_color",
       key: "primary_color",
       render: (v: any) => v || "NA",
     },
     {
-      title: "state",
+      title: "State",
       dataIndex: "state",
       key: "state",
     },
@@ -83,7 +67,7 @@ export default function TunnelsPage() {
         columns={columns}
         dataSource={data}
         rowKey={(row: any) =>
-          `${row.hostname}-${row.vdeviceIP}-${row.color}`
+          `${row.hostname}-${row.vdeviceIP}-${row.color}-${Math.random()}`
         }
         bordered
         pagination={false}
