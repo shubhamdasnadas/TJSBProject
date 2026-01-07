@@ -330,6 +330,7 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
+            listHeight={600}
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -345,6 +346,7 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
+            listHeight={600}
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,

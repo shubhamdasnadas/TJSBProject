@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 
-const ZABBIX_URL =
-  "https://tjsb-nms.techsecdigital.com/monitor/api_jsonrpc.php";
-const TOKEN =
-  "60072263f8732381e8e87c7dc6655995d28742aea390672350f11d775f1ca5fc";
+/* =========================
+   ENV
+========================= */
+const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL;
 
+if (!ZABBIX_URL) {
+  throw new Error("NEXT_PUBLIC_ZABBIX_URL is not defined");
+}
+
+/* =========================
+   TYPES
+========================= */
 type Row = {
   eventid: string;
   time: string;
@@ -19,18 +26,25 @@ type Row = {
   clock: number;
 };
 
+/* =========================
+   HELPERS
+========================= */
 async function zabbix(body: any) {
-  const r = await fetch(ZABBIX_URL, {
+  const res = await fetch(ZABBIX_URL as string, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json-rpc",
-      Authorization: "Bearer " + TOKEN,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
 
-  if (!r.ok) throw new Error(`Zabbix API failed: ${r.status}`);
-  return r.json();
+  const json = await res.json();
+
+  if (json.error) {
+    throw new Error(json.error.data || "Zabbix API error");
+  }
+
+  return json;
 }
 
 function formatDuration(sec: number) {
@@ -41,9 +55,26 @@ function formatDuration(sec: number) {
   return `${h} hr ${m % 60} min`;
 }
 
+/* =========================
+   POST (test / ping)
+========================= */
+export async function POST() {
+  const data = await zabbix({
+    jsonrpc: "2.0",
+    method: "apiinfo.version",
+    params: {},
+    id: 1,
+  });
+
+  return NextResponse.json(data);
+}
+
+/* =========================
+   GET (Problems table)
+========================= */
 export async function GET() {
   try {
-    /* 1️⃣ events */
+    /* 1️⃣ Events */
     const eventRes = await zabbix({
       jsonrpc: "2.0",
       method: "event.get",
@@ -55,7 +86,7 @@ export async function GET() {
           "severity",
           "acknowledged",
           "name",
-          "objectid" // 🔑 triggerid
+          "objectid", // triggerid
         ],
         selectHosts: ["name"],
         selectAcknowledges: ["message"],
@@ -66,9 +97,7 @@ export async function GET() {
       id: 1,
     });
 
-    if (eventRes.error) throw new Error(eventRes.error.data);
-
-    /* 2️⃣ triggers → itemid */
+    /* 2️⃣ Trigger → Item map */
     const triggerIds = eventRes.result.map((e: any) => e.objectid);
 
     const triggerRes = await zabbix({
@@ -89,6 +118,7 @@ export async function GET() {
       }
     });
 
+    /* 3️⃣ Build rows */
     const now = Math.floor(Date.now() / 1000);
 
     const rows: Row[] = eventRes.result.map((e: any) => {
@@ -109,7 +139,7 @@ export async function GET() {
           e.acknowledges?.length
             ? e.acknowledges[e.acknowledges.length - 1].message || "-"
             : "-",
-        itemid: triggerItemMap[e.objectid], // ✅ THIS FIXES EVERYTHING
+        itemid: triggerItemMap[e.objectid],
       };
     });
 
@@ -119,6 +149,9 @@ export async function GET() {
       rows.map(({ clock, ...rest }) => rest)
     );
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json(
+      { error: e.message },
+      { status: 500 }
+    );
   }
 }
