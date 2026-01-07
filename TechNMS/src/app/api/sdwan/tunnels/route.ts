@@ -65,7 +65,7 @@ export async function POST() {
                 Cookie: cookieHeader,
                 "X-XSRF-TOKEN": token,
               },
-              withCredentials: true,
+              withCredentials: false,
             }
           );
 
