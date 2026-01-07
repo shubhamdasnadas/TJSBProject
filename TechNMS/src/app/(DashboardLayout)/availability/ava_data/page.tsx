@@ -85,7 +85,7 @@ export default function TunnelsPage() {
       localStorage.setItem("exportData", JSON.stringify(res.data));
 
       // go to preview page
-      router.push("/export-preview");
+      router.push("/preview");
     } catch (e) {
       console.error("EXPORT ERROR:", e);
     }
