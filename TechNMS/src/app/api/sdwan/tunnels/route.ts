@@ -13,18 +13,13 @@ export async function POST() {
       `${base}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
       {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         withCredentials: true,
       }
     );
 
     const cookies = loginRes.headers["set-cookie"] || [];
-
-    const cookieHeader = cookies
-      .map((c: string) => c.split(";")[0])
-      .join("; ");
+    const cookieHeader = cookies.map((c: string) => c.split(";")[0]).join("; ");
 
     if (!cookieHeader) throw new Error("No cookies returned from vManage");
 
@@ -47,23 +42,24 @@ export async function POST() {
 
     const tunnels = tunnelsRes.data?.data || [];
 
-    // ---------- 4) COLLECT ALL system-ip ----------
-    const deviceIds: string[] = Array.from(
-      new Set(
-        tunnels
-          .map((d: any) => d["system-ip"])
-          .filter((ip: any) => typeof ip === "string" && ip.length > 0)
-      )
-    );
+    // ---------- 4) COLLECT device info ----------
+    const devices = tunnels.map((d: any) => ({
+      systemIp: d["system-ip"],
+      uuid: d["uuid"] || d["deviceId"],
+      hostname: d["host-name"],
+      raw: d,
+    }));
 
-    // ---------- 5) BFD SESSIONS FOR EACH DEVICE ----------
+    const deviceIds = devices
+      .map((d:any) => d.uuid)
+      .filter(Boolean);
 
-
+    // ---------- 5) BFD SESSIONS ----------
     const bfdSessions = await Promise.all(
-      deviceIds.map(async (deviceId) => {
+      deviceIds.map(async (uuid:any) => {
         try {
           const res = await axios.get(
-            `${base}/dataservice/device/bfd/sessions?deviceId=${deviceId}`,
+            `${base}/dataservice/device/bfd/sessions?deviceId=${uuid}`,
             {
               headers: {
                 Cookie: cookieHeader,
@@ -74,24 +70,22 @@ export async function POST() {
           );
 
           return {
-            deviceId,
-            sessions: res || [],
+            deviceId: uuid,
+            sessions: res.data?.data || [],
           };
         } catch (err: any) {
-          console.error("FAILED BFD:", deviceId, err?.response?.status);
-          return { deviceId, sessions: [] };
+          console.error("FAILED BFD:", uuid, err?.response?.status);
+          return { deviceId: uuid, sessions: [] };
         }
       })
     );
 
-
-    // ---------- 6) ADD deviceId INTO DEVICES ----------
+    // ---------- 6) ADD deviceId back into tunnels ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
-      deviceId: t["system-ip"],
+      deviceId: t["uuid"] || t["deviceId"] || t["system-ip"],
     }));
 
-    // ---------- 7) SEND EVERYTHING TO FRONTEND ----------
     return NextResponse.json({
       success: true,
       api: {
