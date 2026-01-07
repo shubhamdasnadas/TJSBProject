@@ -2,9 +2,10 @@
 
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { Table, Button } from "antd";
+import { Table, Button, Modal } from "antd";
 import branches from "../data/data";
-import { useRouter } from "next/navigation";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type IpRow = {
   hostname: string;
@@ -27,7 +28,9 @@ function getBranchNameByHostname(hostname: string) {
 export default function TunnelsPage() {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+
+  // 👇 for preview popup
+  const [showPreview, setShowPreview] = useState(false);
 
   async function load() {
     try {
@@ -77,13 +80,29 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  async function handleExport() {
-    try {
-      localStorage.setItem("exportRows", JSON.stringify(rows));
-      router.push("/preview");
-    } catch (e) {
-      console.error("EXPORT ERROR:", e);
-    }
+  // 👇 instead of routing — just open preview popup
+  function handleExport() {
+    setShowPreview(true);
+  }
+
+  function downloadPdf() {
+    const doc = new jsPDF();
+
+    doc.setFontSize(14);
+    doc.text("SD-WAN Tunnel Report", 14, 16);
+
+    autoTable(doc, {
+      startY: 22,
+      head: [["Branch", "Hostname", "System IP", "Tunnels"]],
+      body: rows.map((r: any) => [
+        r.branchName,
+        r.hostname,
+        r.systemIp,
+        r.tunnels.length,
+      ]),
+    });
+
+    doc.save("sdwan_report.pdf");
   }
 
   const columns: any = [
@@ -193,6 +212,38 @@ export default function TunnelsPage() {
         pagination={false}
         rowKey={(r) => r.systemIp}
       />
+
+      {/* PREVIEW MODAL */}
+      <Modal
+        open={showPreview}
+        title="Export Preview"
+        onCancel={() => setShowPreview(false)}
+        width={900}
+        footer={[
+          <Button key="close" onClick={() => setShowPreview(false)}>
+            Close
+          </Button>,
+          <Button key="pdf" type="primary" onClick={downloadPdf}>
+            Download PDF
+          </Button>,
+        ]}
+      >
+        <Table
+          columns={[
+            { title: "Branch", dataIndex: "branchName" },
+            { title: "Hostname", dataIndex: "hostname" },
+            { title: "System IP", dataIndex: "systemIp" },
+            {
+              title: "Tunnels",
+              render: (_: any, row: any) => row.tunnels.length,
+            },
+          ]}
+          dataSource={rows}
+          bordered
+          pagination={false}
+          rowKey={(r: any) => r.systemIp}
+        />
+      </Modal>
     </div>
   );
 }

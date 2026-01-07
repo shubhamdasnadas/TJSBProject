@@ -2,17 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { Table, Button } from "antd";
+import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function Preview() {
   const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    try {
+      const res = await axios.post("/api/sdwan/tunnels");
+
+      const devices = res.data.devices || {};
+
+      const formatted = Object.entries(devices).map(
+        ([systemIp, tunnels]: any) => {
+          const first = tunnels[0];
+
+          return {
+            hostname: first?.hostname || "NA",
+            systemIp,
+            branchName: first?.branchName || "Unknown",
+            tunnels,
+          };
+        }
+      );
+
+      setRows(formatted);
+    } catch (e) {
+      console.error("PREVIEW ERROR:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const raw = localStorage.getItem("exportRows");
-    if (!raw) return;
-
-    setRows(JSON.parse(raw));
+    load();
   }, []);
 
   function downloadPdf() {
@@ -56,6 +82,7 @@ export default function Preview() {
       </div>
 
       <Table
+        loading={loading}
         columns={columns}
         dataSource={rows}
         bordered
