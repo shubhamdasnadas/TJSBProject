@@ -10,7 +10,7 @@ type IpRow = {
   systemIp: string;
   branchName: string;
   tunnels: any[];
-  rowState: "up" | "down" | "mixed";
+  rowState: "up" | "down" | "partial";
 };
 
 function getBranchNameByHostname(hostname: string) {
@@ -30,18 +30,16 @@ export default function TunnelsPage() {
   async function load() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
-      console.log(res);
+
       const devices = res.data.devices || {};
 
       const final: IpRow[] = Object.entries(devices).map(
         ([systemIp, tunnels]: any) => {
           const first = tunnels[0];
-
           const hostname = first?.hostname || "NA";
-
           const branchName = getBranchNameByHostname(hostname);
 
-          // sort tunnels (down first)
+          // sort tunnels (DOWN first)
           const sortedTunnels = tunnels.sort((a: any, b: any) => {
             const priority = (v: string) =>
               v === "down" ? 0 : v === "up" ? 1 : 2;
@@ -49,11 +47,11 @@ export default function TunnelsPage() {
             return priority(a.state) - priority(b.state);
           });
 
-          // compute row state
+          // ROW STATE BASED ONLY ON LOCAL SIDE STATE
           const allUp = sortedTunnels.every((t: any) => t.state === "up");
           const allDown = sortedTunnels.every((t: any) => t.state === "down");
 
-          let rowState: "up" | "down" | "mixed" = "mixed";
+          let rowState: "up" | "down" | "partial" = "partial";
           if (allUp) rowState = "up";
           if (allDown) rowState = "down";
 
@@ -80,26 +78,57 @@ export default function TunnelsPage() {
   }, []);
 
   const columns: any = [
+    // BRANCH with COLOR BASED ON STATE
     {
       title: "Branch",
       dataIndex: "branchName",
       key: "branchName",
+      render: (_: any, row: IpRow) => {
+        let bg = "#ddd";
+        let color = "#000";
+
+        if (row.rowState === "up") {
+          bg = "#d7ffd7";
+          color = "green";
+        }
+
+        if (row.rowState === "down") {
+          bg = "#ffd6d6";
+          color = "red";
+        }
+
+        return (
+          <span
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: bg,
+              color,
+              fontWeight: 700,
+            }}
+          >
+            {row.branchName}
+          </span>
+        );
+      },
     },
+
     {
       title: "Hostname",
       dataIndex: "hostname",
       key: "hostname",
     },
+
     {
       title: "System IP",
       dataIndex: "systemIp",
       key: "systemIp",
     },
 
-    // LOCAL COLOR DROPDOWN
+    // TUNNEL NAME + UPTIME DROPDOWN
     {
-      title: "Local Color",
-      key: "localColor",
+      title: "Tunnels (Name + Uptime)",
+      key: "tunnelInfo",
       render: (_: any, row: IpRow) => (
         <select style={{ padding: 4 }}>
           {row.tunnels.map((t: any, i: number) => (
@@ -110,35 +139,14 @@ export default function TunnelsPage() {
                 fontWeight: t.state === "down" ? 700 : 400,
               }}
             >
-              {t.localColor} ({t.state})
+              {t.tunnelName} — {t.uptime}
             </option>
           ))}
         </select>
       ),
     },
 
-    // REMOTE COLOR DROPDOWN
-    {
-      title: "Remote Color",
-      key: "remoteColor",
-      render: (_: any, row: IpRow) => (
-        <select style={{ padding: 4 }}>
-          {row.tunnels.map((t: any, i: number) => (
-            <option
-              key={i}
-              style={{
-                color: t.state === "down" ? "red" : "black",
-                fontWeight: t.state === "down" ? 700 : 400,
-              }}
-            >
-              {t.remoteColor} ({t.state})
-            </option>
-          ))}
-        </select>
-      ),
-    },
-
-    // STATE COLUMN (DEPENDS ON ALL TUNNELS)
+    // STATE COLUMN
     {
       title: "State",
       key: "state",
