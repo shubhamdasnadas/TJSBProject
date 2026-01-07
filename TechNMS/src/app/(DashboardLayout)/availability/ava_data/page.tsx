@@ -31,7 +31,7 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
       console.log(res);
-      const devices = res.data.api.devices || {};
+      const devices = res.data.devices || {};
 
       const final: IpRow[] = Object.entries(devices).map(
         ([systemIp, tunnels]: any) => {
