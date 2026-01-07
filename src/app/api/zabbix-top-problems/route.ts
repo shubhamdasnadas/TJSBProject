@@ -3,12 +3,11 @@ import { NextResponse } from "next/server";
 const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL!;
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Missing Bearer token" }, { status: 401 });
-  }
+  const auth = req.headers.get("authorization");
+  if (!auth?.startsWith("Bearer "))
+    return NextResponse.json({ error: "No token" }, { status: 401 });
 
-  const token = authHeader.replace("Bearer ", "").trim();
+  const token = auth.replace("Bearer ", "");
 
   const res = await fetch(ZABBIX_URL, {
     method: "POST",
@@ -17,21 +16,21 @@ export async function GET(req: Request) {
       jsonrpc: "2.0",
       method: "problem.get",
       params: {
-        output: ["eventid", "severity", "name"],
+        output: ["eventid", "name", "severity"],
+        selectHosts: ["name"],
         sortfield: "eventid",
         sortorder: "DESC",
-        selectHosts: ["name"],
-        selectTriggers: ["description", "priority"],
+        limit: 1000,
       },
-      id: 1,
       auth: token,
+      id: 1,
     }),
   });
 
   const json = await res.json();
   if (json.error) throw new Error(json.error.message);
 
-  // 🔹 Group like Zabbix UI
+  // 🔥 EXACT grouping Zabbix UI does
   const map = new Map<string, any>();
 
   json.result.forEach((p: any) => {
@@ -48,11 +47,10 @@ export async function GET(req: Request) {
         count: 0,
       });
     }
-
     map.get(key).count++;
   });
 
-  return NextResponse.json(Array.from(map.values()));
+return NextResponse.json(Array.from(map.values()));
 }
 
 function severityText(s: number) {

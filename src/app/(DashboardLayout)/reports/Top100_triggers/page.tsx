@@ -2,21 +2,11 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  Card,
-  Select,
-  Table,
-  Button,
-  Space,
-  Row,
-  Col,
-  Modal,
-  Spin,
-} from "antd";
+import { Card, Select, Table, Button, Row, Col } from "antd";
 
 const { Option } = Select;
 
-/* axios config – SAME AS YOUR WORKING CODE */
+/* ✅ SAME axios config — DO NOT CHANGE */
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
@@ -28,18 +18,13 @@ const axiosCfg = {
   },
 };
 
-export default function ZabbixItemsPage() {
+export default function ZabbixTopProblemsPage() {
   const [hostGroups, setHostGroups] = useState<any[]>([]);
   const [hosts, setHosts] = useState<any[]>([]);
-  const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
+  const [groupids, setGroupids] = useState<string[]>([]);
+  const [hostids, setHostids] = useState<string[]>([]);
   const [tableData, setTableData] = useState<any[]>([]);
-  const [loadingTable, setLoadingTable] = useState(false);
-
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyData, setHistoryData] = useState<any[]>([]);
-  const [historyTitle, setHistoryTitle] = useState("");
-  const [historyHost, setHistoryHost] = useState("");
+  const [loading, setLoading] = useState(false);
 
   /* ---------------- LOAD HOST GROUPS ---------------- */
   useEffect(() => {
@@ -58,12 +43,13 @@ export default function ZabbixItemsPage() {
   }, []);
 
   /* ---------------- LOAD HOSTS ---------------- */
-  const loadHosts = async (groupids: string[]) => {
+  const loadHosts = async (groups: string[]) => {
+    setGroupids(groups);
     setHosts([]);
-    setSelectedHosts([]);
+    setHostids([]);
     setTableData([]);
 
-    if (!groupids.length) return;
+    if (!groups.length) return;
 
     const r = await axios.post(
       "/api/zabbix-proxy",
@@ -72,7 +58,7 @@ export default function ZabbixItemsPage() {
         method: "host.get",
         params: {
           output: ["hostid", "name"],
-          groupids,
+          groupids: groups,
         },
         id: 2,
       },
@@ -82,94 +68,95 @@ export default function ZabbixItemsPage() {
     setHosts(r.data.result ?? []);
   };
 
-  /* ---------------- LOAD ITEMS (TABLE) ---------------- */
-  const loadItems = async () => {
-    if (!selectedHosts.length) return;
+  /* ---------------- LOAD TOP PROBLEMS ---------------- */
+const loadProblems = async () => {
+  setLoading(true);
 
-    setLoadingTable(true);
-    try {
-      const r = await axios.post(
-        "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "item.get",
-          params: {
-            output: ["itemid", "name", "lastvalue", "lastclock", "delta"],
-            selectHosts: ["name"],
-            hostids: selectedHosts,
-          },
-          id: 3,
-        },
-        axiosCfg
-      );
-
-      setTableData(
-        (r.data.result ?? []).map((i: any) => ({
-          key: i.itemid,
-          itemid: i.itemid,
-          host: i.hosts?.[0]?.name ?? "-",
-          name: i.name,
-          lastValue: i.lastvalue,
-          lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
-          change: i.delta ?? "-",
-        }))
-      );
-    } finally {
-      setLoadingTable(false);
-    }
-  };
-
-  /* ---------------- OPEN HISTORY ---------------- */
-  const openHistory = async (itemid: string, name: string, host: string) => {
-    setHistoryTitle(name);
-    setHistoryHost(host);
-    setHistoryOpen(true);
-    setHistoryLoading(true);
-
+  try {
+    // 1️⃣ Get problems (NO selectHosts)
     const r = await axios.post(
       "/api/zabbix-proxy",
       {
         jsonrpc: "2.0",
-        method: "history.get",
+        method: "problem.get",
         params: {
-          output: "extend",
-          history: 0,
-          itemids: [itemid],
-          sortfield: "clock",
+          output: ["eventid", "name", "severity"],
+          sortfield: "eventid",
           sortorder: "DESC",
-          limit: 1000,
+          groupids: groupids.length ? groupids : undefined,
+          hostids: hostids.length ? hostids : undefined,
         },
-        id: 10,
+        id: 3,
       },
       axiosCfg
     );
 
-    setHistoryData(r.data.result ?? []);
-    setHistoryLoading(false);
-  };
+    const problems = r.data.result ?? [];
 
-  /* ---------------- TABLE COLUMNS ---------------- */
+    // 2️⃣ Collect hostids
+    const hostIdSet = new Set<string>();
+    problems.forEach((p: any) =>
+      p.hostids?.forEach((h: string) => hostIdSet.add(h))
+    );
+
+    // 3️⃣ Fetch host names
+    const hostsResp = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "host.get",
+        params: {
+          output: ["hostid", "name"],
+          hostids: Array.from(hostIdSet),
+        },
+        id: 4,
+      },
+      axiosCfg
+    );
+
+    const hostMap: Record<string, string> = {};
+    (hostsResp.data.result ?? []).forEach((h: any) => {
+      hostMap[h.hostid] = h.name;
+    });
+
+    // 4️⃣ Group like Zabbix UI
+    const map: Record<string, any> = {};
+
+    problems.forEach((p: any) => {
+      const hostid = p.hostids?.[0];
+      const host = hostMap[hostid] ?? "Unknown";
+      const trigger = p.name;
+      const key = `${host}||${trigger}`;
+
+      if (!map[key]) {
+        map[key] = {
+          key,
+          host,
+          trigger,
+          severity: severityText(p.severity),
+          count: 0,
+        };
+      }
+      map[key].count++;
+    });
+
+    setTableData(Object.values(map));
+  } finally {
+    setLoading(false);
+  }
+};
+
+  /* ---------------- TABLE ---------------- */
   const columns = [
     { title: "Host", dataIndex: "host" },
-    { title: "Item", dataIndex: "name" },
-    { title: "Last value", dataIndex: "lastValue" },
-    { title: "Last check", dataIndex: "lastCheck" },
-    { title: "Change", dataIndex: "change" },
-    {
-      title: "History",
-      render: (_: any, r: any) => (
-        <Button
-          size="small"
-          onClick={() => openHistory(r.itemid, r.name, r.host)}
-        >
-          View
-        </Button>
-      ),
-    },
+    { title: "Trigger", dataIndex: "trigger" },
+    { title: "Severity", dataIndex: "severity" },
+    { title: "Number of problems", dataIndex: "count" },
   ];
 
   return (
-    <Card title="Zabbix Items">
+    <Card title="Top Problems">
+      {/* 🔍 FILTERS */}
       <Row gutter={16}>
         <Col span={6}>
           <Select
@@ -191,8 +178,8 @@ export default function ZabbixItemsPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: "100%" }}
-            value={selectedHosts}
-            onChange={setSelectedHosts}
+            value={hostids}
+            onChange={setHostids}
           >
             {hosts.map((h) => (
               <Option key={h.hostid} value={h.hostid}>
@@ -203,35 +190,32 @@ export default function ZabbixItemsPage() {
         </Col>
 
         <Col span={4}>
-          <Button type="primary" onClick={loadItems}>
-            Load Items
+          <Button type="primary" onClick={loadProblems}>
+            Apply
           </Button>
         </Col>
       </Row>
 
+      {/* 📊 TABLE */}
       <Table
         style={{ marginTop: 24 }}
-        loading={loadingTable}
+        bordered
+        loading={loading}
         columns={columns}
         dataSource={tableData}
-        bordered
       />
-
-      <Modal
-        open={historyOpen}
-        title={`${historyHost} – ${historyTitle}`}
-        onCancel={() => setHistoryOpen(false)}
-        footer={null}
-        width={800}
-      >
-        {historyLoading ? (
-          <Spin />
-        ) : (
-          <pre style={{ maxHeight: 400, overflow: "auto" }}>
-            {JSON.stringify(historyData, null, 2)}
-          </pre>
-        )}
-      </Modal>
     </Card>
   );
+}
+
+/* ---------------- SEVERITY TEXT ---------------- */
+function severityText(p: number) {
+  return {
+    0: "Not classified",
+    1: "Information",
+    2: "Warning",
+    3: "Average",
+    4: "High",
+    5: "Disaster",
+  }[p];
 }
