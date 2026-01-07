@@ -1,4 +1,5 @@
 import axios from "axios";
+import nodemailer from "nodemailer";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -79,7 +80,62 @@ export async function POST() {
       })
     );
 
-    // ---------- 6) ADD deviceId BACK INTO TUNNELS ----------
+    // ---------- 6) EMAIL ALERT: find DOWN sessions ----------
+    const downAlerts: any[] = [];
+
+    bfdSessions.forEach((item: any) => {
+      (item.sessions || []).forEach((s: any) => {
+        if (s.state === "down") {
+          downAlerts.push({
+            deviceId: item.deviceId,
+            hostname: s["vdevice-host-name"] || "NA",
+            color: s["color"] || "NA",
+            localColor: s["local-color"] || "NA",
+            state: s.state,
+          });
+        }
+      });
+    });
+
+    // ---------- 7) SEND EMAIL IF ANY DOWN ----------
+    if (downAlerts.length > 0) {
+      // transporter
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const body = downAlerts
+        .map(
+          (d) =>
+            `
+Device: ${d.hostname}
+IP: ${d.deviceId}
+Color: ${d.color}
+Local Color: ${d.localColor}
+State: ${d.state}
+
+---------------------------
+`
+        )
+        .join("\n");
+
+      await transporter.sendMail({
+        from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
+        to: process.env.ALERT_MAIL_TO,
+        subject: "⚠️ SD-WAN BFD Session DOWN Alert",
+        text: `The following BFD sessions are DOWN:\n\n${body}`,
+      });
+
+      console.log("Alert email sent!");
+    }
+
+    // ---------- 8) ADD deviceId BACK ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
       deviceId: t["deviceId"],
@@ -93,6 +149,7 @@ export async function POST() {
         devices: tunnelsWithIds,
         deviceIds,
         bfdSessions,
+        alertsSent: downAlerts.length,
       },
     });
   } catch (err: any) {
