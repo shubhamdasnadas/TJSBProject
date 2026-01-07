@@ -27,15 +27,29 @@ export default function TunnelsPage() {
       const bfd = res.data.api.bfdSessions || [];
 
       // build rows from bfd sessions
-      let sessionRows: TunnelRow[] = bfd.flatMap((item: any) =>
-        (item.sessions || []).map((s: any) => ({
+      let sessionRows: TunnelRow[] = bfd.flatMap((item: any) => {
+        // If no sessions — still show the device row
+        if (!item.sessions || item.sessions.length === 0) {
+          return [
+            {
+              hostname: "NA",
+              vdeviceIP: item.deviceId,
+              color: "NA",
+              primary_color: "NA",
+              state: "no-session",
+            },
+          ];
+        }
+
+        // Otherwise show normal session rows
+        return item.sessions.map((s: any) => ({
           hostname: s["vdevice-host-name"] || "NA",
           vdeviceIP: item.deviceId,
           color: s["color"] || "NA",
           primary_color: s["local-color"] || "NA",
           state: s["state"] || "unknown",
-        }))
-      );
+        }));
+      });
 
       // ⭐ SORT — DOWN first, then UP, then others
       sessionRows = sessionRows.sort((a, b) => {
