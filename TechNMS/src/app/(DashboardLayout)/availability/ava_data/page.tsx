@@ -2,8 +2,9 @@
 
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { Table } from "antd";
+import { Table, Button } from "antd";
 import branches from "../data/data";
+import { useRouter } from "next/navigation";
 
 type IpRow = {
   hostname: string;
@@ -26,6 +27,7 @@ function getBranchNameByHostname(hostname: string) {
 export default function TunnelsPage() {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   async function load() {
     try {
@@ -39,7 +41,6 @@ export default function TunnelsPage() {
           const hostname = first?.hostname || "NA";
           const branchName = getBranchNameByHostname(hostname);
 
-          // sort tunnels (DOWN first)
           const sortedTunnels = tunnels.sort((a: any, b: any) => {
             const priority = (v: string) =>
               v === "down" ? 0 : v === "up" ? 1 : 2;
@@ -47,7 +48,6 @@ export default function TunnelsPage() {
             return priority(a.state) - priority(b.state);
           });
 
-          // ROW STATE BASED ONLY ON LOCAL SIDE STATE
           const allUp = sortedTunnels.every((t: any) => t.state === "up");
           const allDown = sortedTunnels.every((t: any) => t.state === "down");
 
@@ -77,8 +77,21 @@ export default function TunnelsPage() {
     load();
   }, []);
 
+  async function handleExport() {
+    try {
+      const res = await axios.post("/api/sdwan/tunnels");
+
+      // store full api response
+      localStorage.setItem("exportData", JSON.stringify(res.data));
+
+      // go to preview page
+      router.push("/export-preview");
+    } catch (e) {
+      console.error("EXPORT ERROR:", e);
+    }
+  }
+
   const columns: any = [
-    // BRANCH with COLOR BASED ON STATE
     {
       title: "Branch",
       dataIndex: "branchName",
@@ -112,20 +125,16 @@ export default function TunnelsPage() {
         );
       },
     },
-
     {
       title: "Hostname",
       dataIndex: "hostname",
       key: "hostname",
     },
-
     {
       title: "System IP",
       dataIndex: "systemIp",
       key: "systemIp",
     },
-
-    // TUNNEL NAME + UPTIME DROPDOWN
     {
       title: "Tunnels (Name + Uptime)",
       key: "tunnelInfo",
@@ -145,8 +154,6 @@ export default function TunnelsPage() {
         </select>
       ),
     },
-
-    // STATE COLUMN
     {
       title: "State",
       key: "state",
@@ -183,9 +190,13 @@ export default function TunnelsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">
-        SD-WAN — Tunnel Status by IP
-      </h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold">SD-WAN — Tunnel Status by IP</h1>
+
+        <Button type="primary" onClick={handleExport}>
+          Export / Preview
+        </Button>
+      </div>
 
       <Table
         loading={loading}
