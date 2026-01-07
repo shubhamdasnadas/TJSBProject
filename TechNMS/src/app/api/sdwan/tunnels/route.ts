@@ -1,161 +1,136 @@
 import axios from "axios";
-import nodemailer from "nodemailer";
 import { NextResponse } from "next/server";
+
+const BASE = "https://vmanage-31949190.sdwan.cisco.com";
+const CONCURRENCY = 8; // max safe for vManage
 
 export async function POST() {
   try {
-    const user = process.env.VMANAGE_USER;
-    const pass = process.env.VMANAGE_PASS;
+    const user = process.env.VMANAGE_USER!;
+    const pass = process.env.VMANAGE_PASS!;
 
-    const base = "https://vmanage-31949190.sdwan.cisco.com";
-
-    // ---------- 1) LOGIN ----------
+    /* ---------------- LOGIN ---------------- */
     const loginRes = await axios.post(
-      `${base}/j_security_check`,
+      `${BASE}/j_security_check`,
       `j_username=${user}&j_password=${pass}`,
-      {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        withCredentials: true,
-      }
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    const cookies = loginRes.headers["set-cookie"] || [];
-    const cookieHeader = cookies.map((c: string) => c.split(";")[0]).join("; ");
+    const cookieHeader = (loginRes.headers["set-cookie"] || [])
+      .map((c: string) => c.split(";")[0])
+      .join("; ");
 
-    if (!cookieHeader) throw new Error("No cookies returned from vManage");
+    if (!cookieHeader) {
+      throw new Error("Login failed – no session cookie");
+    }
 
-    // ---------- 2) TOKEN ----------
-    const tokenRes = await axios.get(`${base}/dataservice/client/token`, {
+    /* ---------------- CSRF TOKEN ---------------- */
+    const tokenRes = await axios.get(`${BASE}/dataservice/client/token`, {
       headers: { Cookie: cookieHeader },
-      withCredentials: true,
     });
 
-    const token = tokenRes.data;
+    const token = tokenRes.data || "";
 
-    // ---------- 3) DEVICE LIST ----------
-    const tunnelsRes = await axios.get(`${base}/dataservice/device`, {
+    /* ---------------- AXIOS SESSION ---------------- */
+    const vmanage = axios.create({
+      baseURL: BASE,
       headers: {
         Cookie: cookieHeader,
         "X-XSRF-TOKEN": token,
       },
-      withCredentials: true,
+      timeout: 15000,
     });
 
-    const tunnels = tunnelsRes.data?.data || [];
+    /* ---------------- DEVICE INVENTORY ---------------- */
+    const deviceRes = await vmanage.get("/dataservice/device");
+    const devices = deviceRes.data?.data || [];
 
-    // ---------- 4) COLLECT VALID deviceIds ----------
-    const deviceIds: string[] = Array.from(
-      new Set(
-        tunnels
-          .map((d: any) => d["deviceId"])
-          .filter((id: any) => typeof id === "string" && id.trim().length > 0)
-      )
+    /* ---------------- FILTER WAN EDGES ---------------- */
+    const wanEdges = devices.filter(
+      (d: any) =>
+        ["vedge", "cedge"].includes(d["device-type"]) &&
+        d["reachability"] === "reachable" &&
+        d["system-ip"]
     );
 
-    // ---------- 5) BFD SESSIONS (BY deviceId) ----------
-    const bfdSessions = await Promise.all(
-      deviceIds.map(async (deviceId) => {
+    const deviceMap = new Map<string, string>(
+      wanEdges.map((d: any) => [d["system-ip"], d["host-name"]])
+    );
+
+    const systemIps = Array.from(deviceMap.keys());
+
+    /* ---------------- CONCURRENCY WORKERS ---------------- */
+    const results: any[] = [];
+    let index = 0;
+
+    const worker = async () => {
+      while (true) {
+        const systemIp = systemIps[index++];
+        if (!systemIp) break;
+
         try {
-          const res = await axios.get(
-            `${base}/dataservice/device/bfd/sessions?deviceId=${encodeURIComponent(
-              deviceId
-            )}`,
-            {
-              headers: {
-                Cookie: cookieHeader,
-                "X-XSRF-TOKEN": token,
-              },
-              withCredentials: false,
-            }
+          const res = await vmanage.get(
+            `/dataservice/device/bfd/sessions?deviceId=${systemIp}`
           );
 
-          return {
-            deviceId,
+          results.push({
+            systemIp,
+            hostname: deviceMap.get(systemIp),
             sessions: res.data?.data || [],
-          };
-        } catch (err: any) {
-          console.error("BFD ERROR:", deviceId, err?.response?.status);
-          return { deviceId, sessions: [] };
-        }
-      })
-    );
-
-    // ---------- 6) EMAIL IF ANY SESSION IS DOWN ----------
-    const downSessions: any[] = [];
-
-    bfdSessions.forEach((item: any) => {
-      (item.sessions || []).forEach((s: any) => {
-        if (s.state === "down") {
-          downSessions.push({
-            deviceId: item.deviceId,
-            hostname: s["vdevice-host-name"] || "NA",
-            color: s["color"] || "NA",
-            localColor: s["local-color"] || "NA",
-            state: s.state,
+          });
+        } catch {
+          results.push({
+            systemIp,
+            hostname: deviceMap.get(systemIp),
+            sessions: [],
           });
         }
-      });
-    });
+      }
+    };
 
-    if (downSessions.length > 0) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: false,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+    await Promise.all(
+      Array.from({ length: CONCURRENCY }, () => worker())
+    );
 
-      const emailBody = downSessions
-        .map(
-          (d) => `
-Hostname: ${d.hostname}
-IP / DeviceId: ${d.deviceId}
-Color: ${d.color}
-Local Color: ${d.localColor}
-State: ${d.state}
-------------------------------
-`
-        )
-        .join("\n");
+    /* ---------------- DEVICE-WISE TUNNEL OUTPUT ---------------- */
+    const deviceWiseTunnels: Record<string, any[]> = {};
 
-      await transporter.sendMail({
-        from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
-        to: process.env.ALERT_MAIL_TO,
-        subject: "⚠️ SD-WAN BFD Session DOWN Alert",
-        text: `The following BFD tunnels are DOWN:\n\n${emailBody}`,
-      });
+    for (const d of results) {
+      deviceWiseTunnels[d.systemIp] = (d.sessions || []).map((s: any) => ({
+        // 🔑 Tunnel identity
+        tunnelName: `${d.systemIp}:${s["local-color"]} → ${s["system-ip"]}:${s["color"]}`,
 
-      console.log("Email alert sent.");
+        // 🔑 Endpoint details
+        localSystemIp: d.systemIp,
+        remoteSystemIp: s["system-ip"],
+        localColor: s["local-color"],
+        remoteColor: s["color"],
+
+        // 🔑 Status
+        state: s.state,
+
+        // 🔥 UPTIME DETAILS (IPsec tunnel uptime)
+        uptime: s.uptime,                 // e.g. "0:12:26:50"
+        uptimeEpoch: s["uptime-date"],    // epoch when tunnel came UP
+        lastUpdated: s.lastupdated,        // last refresh time
+
+        // Optional diagnostics
+        transitions: s.transitions,
+        protocol: s.proto,                // should be "ipsec"
+      }));
     }
 
-    // ---------- 7) ADD deviceId BACK ----------
-    const tunnelsWithIds = tunnels.map((t: any) => ({
-      ...t,
-      deviceId: t["deviceId"],
-    }));
-
+    /* ---------------- RESPONSE ---------------- */
     return NextResponse.json({
       success: true,
-      api: {
-        login: { status: loginRes.status },
-        token,
-        devices: tunnelsWithIds,
-        deviceIds,
-        bfdSessions,
-        alertsSent: downSessions.length,
-      },
+      totalEdges: systemIps.length,
+      devices: deviceWiseTunnels,
     });
   } catch (err: any) {
-    console.error("SDWAN ERROR:", err?.response?.data || err);
-
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch SD-WAN data",
-        detail: err?.response?.data || err?.message,
+        error: err?.message || err,
       },
       { status: 500 }
     );
