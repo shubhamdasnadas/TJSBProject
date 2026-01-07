@@ -52,14 +52,14 @@ export async function POST() {
       new Set(
         tunnels
           .map((d: any) => d["system-ip"])
-          .filter(Boolean)
+          .filter((ip: any) => typeof ip === "string" && ip.length > 0)
       )
     );
 
     // ---------- 5) BFD SESSIONS FOR EACH DEVICE ----------
-    const bfdSessions: any[] = [];
 
-    await Promise.all(
+
+    const bfdSessions = await Promise.all(
       deviceIds.map(async (deviceId) => {
         try {
           const res = await axios.get(
@@ -73,15 +73,17 @@ export async function POST() {
             }
           );
 
-          bfdSessions.push({
+          return {
             deviceId,
             sessions: res.data?.data || [],
-          });
-        } catch (e) {
-          console.error("BFD ERROR:", deviceId, e);
+          };
+        } catch (err: any) {
+          console.error("FAILED BFD:", deviceId, err?.response?.status);
+          return { deviceId, sessions: [] };
         }
       })
     );
+
 
     // ---------- 6) ADD deviceId INTO DEVICES ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
