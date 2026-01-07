@@ -20,7 +20,7 @@ async function sendAlertMail(subject: string, html: string) {
   try {
     await transporter.sendMail({
       from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
-      to: process.env.ALERT_TO,
+      to: process.env.ALERT_MAIL_TO,
       subject,
       html,
     });
