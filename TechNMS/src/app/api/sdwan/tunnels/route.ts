@@ -42,7 +42,7 @@ export async function POST() {
 
     const tunnels = tunnelsRes.data?.data || [];
 
-    // ---------- 4) COLLECT device info ----------
+    // ---------- 4) Extract REAL device identifiers ----------
     const devices = tunnels.map((d: any) => ({
       systemIp: d["system-ip"],
       uuid: d["uuid"] || d["deviceId"],
@@ -80,7 +80,7 @@ export async function POST() {
       })
     );
 
-    // ---------- 6) ADD deviceId back into tunnels ----------
+    // ---------- 6) Attach correct deviceId to tunnels ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
       deviceId: t["uuid"] || t["deviceId"] || t["system-ip"],
