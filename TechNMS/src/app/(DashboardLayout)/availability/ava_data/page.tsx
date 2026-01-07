@@ -3,6 +3,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Table } from "antd";
+import branches from "../data/data";
 
 type TunnelRow = {
   hostname: string;
@@ -10,6 +11,7 @@ type TunnelRow = {
   color: string;
   primary_color: string;
   state: string;
+  branchName: string;
   hostRowSpan?: number;
   deviceRowSpan?: number;
 };
@@ -17,6 +19,11 @@ type TunnelRow = {
 export default function TunnelsPage() {
   const [data, setData] = useState<TunnelRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  function getBranchName(ip: string) {
+    const found = branches.find((b: any) => b.ip === ip);
+    return found ? found.name : "Unknown";
+  }
 
   async function load() {
     try {
@@ -26,9 +33,9 @@ export default function TunnelsPage() {
 
       const bfd = res.data.api.bfdSessions || [];
 
-      // build rows from bfd sessions
       let sessionRows: TunnelRow[] = bfd.flatMap((item: any) => {
-        // If no sessions — still show the device row
+        const branchName = getBranchName(item.deviceId);
+
         if (!item.sessions || item.sessions.length === 0) {
           return [
             {
@@ -37,21 +44,21 @@ export default function TunnelsPage() {
               color: "NA",
               primary_color: "NA",
               state: "no-session",
+              branchName,
             },
           ];
         }
 
-        // Otherwise show normal session rows
         return item.sessions.map((s: any) => ({
           hostname: s["vdevice-host-name"] || "NA",
           vdeviceIP: item.deviceId,
           color: s["color"] || "NA",
           primary_color: s["local-color"] || "NA",
           state: s["state"] || "unknown",
+          branchName,
         }));
       });
 
-      // ⭐ SORT — DOWN first, then UP, then others
       sessionRows = sessionRows.sort((a, b) => {
         const priority = (v: string) =>
           v === "down" ? 0 : v === "up" ? 1 : 2;
@@ -71,7 +78,6 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // group host + device
   const grouped = data.reduce<Record<string, TunnelRow[]>>((acc, item) => {
     const key = `${item.hostname}-${item.vdeviceIP}`;
     if (!acc[key]) acc[key] = [];
@@ -92,6 +98,11 @@ export default function TunnelsPage() {
   });
 
   const columns: any = [
+    {
+      title: "Branch",
+      dataIndex: "branchName",
+      key: "branchName",
+    },
     {
       title: "hostname",
       dataIndex: "hostname",
@@ -148,6 +159,7 @@ export default function TunnelsPage() {
         dataSource={finalRows}
         bordered
         pagination={false}
+        rowKey={(r) => `${r.hostname}-${r.vdeviceIP}-${r.color}`}
       />
     </div>
   );
