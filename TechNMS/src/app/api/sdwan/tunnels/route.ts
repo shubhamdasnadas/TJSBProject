@@ -42,24 +42,23 @@ export async function POST() {
 
     const tunnels = tunnelsRes.data?.data || [];
 
-    // ---------- 4) Extract REAL device identifiers ----------
-    const devices = tunnels.map((d: any) => ({
-      systemIp: d["system-ip"],
-      uuid: d["uuid"] || d["deviceId"],
-      hostname: d["host-name"],
-      raw: d,
-    }));
+    // ---------- 4) COLLECT VALID deviceIds ----------
+    const deviceIds: string[] = Array.from(
+      new Set(
+        tunnels
+          .map((d: any) => d["deviceId"])
+          .filter((id: any) => typeof id === "string" && id.trim().length > 0)
+      )
+    );
 
-    const deviceIds = devices
-      .map((d:any) => d.uuid)
-      .filter(Boolean);
-
-    // ---------- 5) BFD SESSIONS ----------
+    // ---------- 5) BFD SESSIONS (BY deviceId) ----------
     const bfdSessions = await Promise.all(
-      deviceIds.map(async (uuid:any) => {
+      deviceIds.map(async (deviceId) => {
         try {
           const res = await axios.get(
-            `${base}/dataservice/device/bfd/sessions?deviceId=${uuid}`,
+            `${base}/dataservice/device/bfd/sessions?deviceId=${encodeURIComponent(
+              deviceId
+            )}`,
             {
               headers: {
                 Cookie: cookieHeader,
@@ -70,20 +69,20 @@ export async function POST() {
           );
 
           return {
-            deviceId: uuid,
+            deviceId,
             sessions: res.data?.data || [],
           };
         } catch (err: any) {
-          console.error("FAILED BFD:", uuid, err?.response?.status);
-          return { deviceId: uuid, sessions: [] };
+          console.error("BFD ERROR:", deviceId, err?.response?.status);
+          return { deviceId, sessions: [] };
         }
       })
     );
 
-    // ---------- 6) Attach correct deviceId to tunnels ----------
+    // ---------- 6) ADD deviceId BACK INTO TUNNELS ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
-      deviceId: t["uuid"] || t["deviceId"] || t["system-ip"],
+      deviceId: t["deviceId"],
     }));
 
     return NextResponse.json({
