@@ -16,31 +16,42 @@ type TunnelRow = {
   deviceRowSpan?: number;
 };
 
+// match branch
+function getBranchName(systemIp: string, hostname: string) {
+  // 1️⃣ First try match by IP
+  let found = branches.find((b: any) => b.ip === systemIp);
+  if (found) return found.name;
+
+  // 2️⃣ Fallback — match by branch code inside hostname
+  found = branches.find((b: any) =>
+    hostname?.toLowerCase().includes(b.code?.toLowerCase())
+  );
+
+  return found ? found.name : "Unknown";
+}
+
 export default function TunnelsPage() {
   const [data, setData] = useState<TunnelRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  function getBranchName(ip: string) {
-    const found = branches.find((b: any) => b.ip === ip);
-    return found ? found.name : "Unknown";
-  }
 
   async function load() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
-      console.log("🔁 BFD SESSIONS:", res.data);
-
       const bfd = res.data.api.bfdSessions || [];
 
       let sessionRows: TunnelRow[] = bfd.flatMap((item: any) => {
-        const branchName = getBranchName(item.deviceId);
+        const systemIp = item.systemIp;
+        const hostname = item.hostname;
 
+        const branchName = getBranchName(systemIp, hostname);
+
+        // if no sessions
         if (!item.sessions || item.sessions.length === 0) {
           return [
             {
-              hostname: "NA",
-              vdeviceIP: item.deviceId,
+              hostname,
+              vdeviceIP: systemIp,
               color: "NA",
               primary_color: "NA",
               state: "no-session",
@@ -49,9 +60,10 @@ export default function TunnelsPage() {
           ];
         }
 
+        // normal rows
         return item.sessions.map((s: any) => ({
-          hostname: s["vdevice-host-name"] || "NA",
-          vdeviceIP: item.deviceId,
+          hostname,
+          vdeviceIP: systemIp,
           color: s["color"] || "NA",
           primary_color: s["local-color"] || "NA",
           state: s["state"] || "unknown",
@@ -59,6 +71,7 @@ export default function TunnelsPage() {
         }));
       });
 
+      // sort down → up → others
       sessionRows = sessionRows.sort((a, b) => {
         const priority = (v: string) =>
           v === "down" ? 0 : v === "up" ? 1 : 2;
@@ -78,6 +91,7 @@ export default function TunnelsPage() {
     load();
   }, []);
 
+  // group hostname + device
   const grouped = data.reduce<Record<string, TunnelRow[]>>((acc, item) => {
     const key = `${item.hostname}-${item.vdeviceIP}`;
     if (!acc[key]) acc[key] = [];
