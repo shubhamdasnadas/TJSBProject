@@ -3,32 +3,16 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Table } from "antd";
-import branches from "../data/data";
-
+import branches from "../data/data"
 type TunnelRow = {
   hostname: string;
   vdeviceIP: string;
   color: string;
   primary_color: string;
   state: string;
-  branchName: string;
   hostRowSpan?: number;
   deviceRowSpan?: number;
 };
-
-// match branch
-function getBranchName(systemIp: string, hostname: string) {
-  // 1️⃣ First try match by IP
-  let found = branches.find((b: any) => b.ip === systemIp);
-  if (found) return found.name;
-
-  // 2️⃣ Fallback — match by branch code inside hostname
-  found = branches.find((b: any) =>
-    hostname?.toLowerCase().includes(b.code?.toLowerCase())
-  );
-
-  return found ? found.name : "Unknown";
-}
 
 export default function TunnelsPage() {
   const [data, setData] = useState<TunnelRow[]>([]);
@@ -38,40 +22,36 @@ export default function TunnelsPage() {
     try {
       const res = await axios.post("/api/sdwan/tunnels");
 
+      console.log("🔁 BFD SESSIONS:", res.data);
+
       const bfd = res.data.api.bfdSessions || [];
 
+      // build rows from bfd sessions
       let sessionRows: TunnelRow[] = bfd.flatMap((item: any) => {
-        const systemIp = item.systemIp;
-        const hostname = item.hostname;
-
-        const branchName = getBranchName(systemIp, hostname);
-
-        // if no sessions
+        // If no sessions — still show the device row
         if (!item.sessions || item.sessions.length === 0) {
           return [
             {
-              hostname,
-              vdeviceIP: systemIp,
+              hostname: "NA",
+              vdeviceIP: item.deviceId,
               color: "NA",
               primary_color: "NA",
               state: "no-session",
-              branchName,
             },
           ];
         }
 
-        // normal rows
+        // Otherwise show normal session rows
         return item.sessions.map((s: any) => ({
-          hostname,
-          vdeviceIP: systemIp,
+          hostname: s["vdevice-host-name"] || "NA",
+          vdeviceIP: item.deviceId,
           color: s["color"] || "NA",
           primary_color: s["local-color"] || "NA",
           state: s["state"] || "unknown",
-          branchName,
         }));
       });
 
-      // sort down → up → others
+      // ⭐ SORT — DOWN first, then UP, then others
       sessionRows = sessionRows.sort((a, b) => {
         const priority = (v: string) =>
           v === "down" ? 0 : v === "up" ? 1 : 2;
@@ -91,7 +71,7 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // group hostname + device
+  // group host + device
   const grouped = data.reduce<Record<string, TunnelRow[]>>((acc, item) => {
     const key = `${item.hostname}-${item.vdeviceIP}`;
     if (!acc[key]) acc[key] = [];
@@ -112,11 +92,6 @@ export default function TunnelsPage() {
   });
 
   const columns: any = [
-    {
-      title: "Branch",
-      dataIndex: "branchName",
-      key: "branchName",
-    },
     {
       title: "hostname",
       dataIndex: "hostname",
@@ -173,7 +148,6 @@ export default function TunnelsPage() {
         dataSource={finalRows}
         bordered
         pagination={false}
-        rowKey={(r) => `${r.hostname}-${r.vdeviceIP}-${r.color}`}
       />
     </div>
   );
