@@ -7,19 +7,19 @@ const CONCURRENCY = 8;
 
 /* ---------------- EMAIL TRANSPORT ---------------- */
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT || 587),
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 587),
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
 async function sendAlertMail(subject: string, html: string) {
   try {
     await transporter.sendMail({
-      from: `"SD-WAN Monitor" <${process.env.EMAIL_USER}>`,
+      from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
       to: process.env.ALERT_TO,
       subject,
       html,
