@@ -75,7 +75,7 @@ export async function POST() {
 
           return {
             deviceId,
-            sessions: res.data?.data || [],
+            sessions: res || [],
           };
         } catch (err: any) {
           console.error("FAILED BFD:", deviceId, err?.response?.status);
