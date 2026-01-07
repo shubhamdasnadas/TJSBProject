@@ -90,18 +90,22 @@ const exportHistoryToPDF = async (
   /* PAGE 1 – COVER */
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
-  doc.addImage(logoPng, "PNG", pageWidth / 2 - 300, 80, 600, 310);
+  doc.addImage(logoPng, "PNG", pageWidth / 2 - 150, 80, 300, 170);
+
+
 
   doc.setFontSize(26);
-  doc.text("Techsec NMS – History Report", pageWidth / 2, 540, { align: "center",  });
+  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, { align: "center",  });
 
+  doc.text(
+    `Generated: ${new Date().toLocaleString()}`,     pageWidth / 2,      440,     { align: "center" }   );
+    
   doc.setFontSize(16);
-  doc.text(`Metric: ${title}`, pageWidth / 2, 580, { align: "center" });
+  doc.text(`Metric: ${title}`, pageWidth / 2, 470, { align: "center" });
+  
 
   doc.setFontSize(12);
   doc.setTextColor(90);
-  doc.text(
-    `Generated: ${new Date().toLocaleString()}`,     pageWidth / 2,      610,     { align: "center" }   );
 
   /* PAGE 2 – CHART */
   if (chartEl) {
