@@ -11,11 +11,9 @@ export async function POST(req: Request) {
   const token = authHeader.replace("Bearer ", "").trim();
   const body = await req.json();
 
-  // ⏱ last 24 hours (same as Zabbix default)
-  const time_from =
-    body.time_from ?? Math.floor(Date.now() / 1000) - 24 * 3600;
+  const { hostids } = body;
 
-  /* 1️⃣ event.get (THIS IS TOP TRIGGERS SOURCE) */
+  /* 1️⃣ event.get — FILTER BY HOSTS + LATEST */
   const eventRes = await fetch(ZABBIX_URL, {
     method: "POST",
     headers: {
@@ -26,14 +24,14 @@ export async function POST(req: Request) {
       jsonrpc: "2.0",
       method: "event.get",
       params: {
-        output: ["eventid", "objectid"],
+        output: ["eventid", "objectid", "clock"],
         source: 0, // trigger
         object: 0, // trigger
         value: 1, // PROBLEM
-        time_from,
-        sortfield: "eventid",
+        hostids: hostids?.length ? hostids : undefined,
+        sortfield: ["clock"],
         sortorder: "DESC",
-        limit: 5000,
+        limit: 1000,
       },
       id: 1,
     }),
@@ -71,42 +69,34 @@ export async function POST(req: Request) {
 
   const triggerJson = await triggerRes.json();
   const triggerMap: Record<string, any> = {};
-
   (triggerJson.result ?? []).forEach((t: any) => {
     triggerMap[t.triggerid] = t;
   });
 
-  /* 3️⃣ GROUP + COUNT(eventid) */
-  const map: Record<string, any> = {};
+  /* 3️⃣ ONLY LATEST EVENT PER HOST+TRIGGER */
+  const seen = new Set<string>();
+  const rows: any[] = [];
 
-  events.forEach((e: any) => {
+  for (const e of events) {
     const trigger = triggerMap[e.objectid];
-    if (!trigger) return;
+    if (!trigger) continue;
 
     const host = trigger.hosts?.[0]?.name ?? "Unknown";
-    const triggerName = trigger.description;
-    const severity = severityText(trigger.priority);
+    const key = `${host}||${trigger.description}`;
 
-    const key = `${host}||${triggerName}`;
+    if (seen.has(key)) continue; // 🔥 skip older ones
 
-    if (!map[key]) {
-      map[key] = {
-        key,
-        host,
-        trigger: triggerName,
-        severity,
-        count: 0,
-      };
-    }
-    map[key].count++;
-  });
+    seen.add(key);
+    rows.push({
+      key,
+      host,
+      trigger: trigger.description,
+      severity: severityText(trigger.priority),
+      count: 1, // latest problem only
+    });
+  }
 
-  // 🔥 TOP 100
-  const result = Object.values(map)
-    .sort((a: any, b: any) => b.count - a.count)
-    .slice(0, 100);
-
-  return NextResponse.json(result);
+  return NextResponse.json(rows);
 }
 
 function severityText(p: number) {
