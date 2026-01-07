@@ -47,16 +47,16 @@ export async function POST() {
 
     const tunnels = tunnelsRes.data?.data || [];
 
-    // ---------- 4) COLLECT deviceIds ----------
+    // ---------- 4) COLLECT ALL system-ip ----------
     const deviceIds: string[] = Array.from(
       new Set(
         tunnels
-          .map((d: any) => d["deviceId"])
-          
+          .map((d: any) => d["system-ip"])
+          .filter(Boolean)
       )
     );
 
-    // ---------- 5) BFD SESSIONS ----------
+    // ---------- 5) BFD SESSIONS FOR EACH DEVICE ----------
     const bfdSessions: any[] = [];
 
     await Promise.all(
@@ -83,16 +83,15 @@ export async function POST() {
       })
     );
 
-    // ---------- ADD deviceId INTO TUNNELS ----------
+    // ---------- 6) ADD deviceId INTO DEVICES ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
-      deviceId: t["deviceId"],
+      deviceId: t["system-ip"],
     }));
 
+    // ---------- 7) SEND EVERYTHING TO FRONTEND ----------
     return NextResponse.json({
       success: true,
-
-      // send EVERYTHING to frontend
       api: {
         login: { status: loginRes.status },
         token,
