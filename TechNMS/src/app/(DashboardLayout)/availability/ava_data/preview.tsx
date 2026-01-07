@@ -5,30 +5,14 @@ import { Table, Button } from "antd";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default function ExportPreview() {
+export default function Preview() {
   const [rows, setRows] = useState<any[]>([]);
 
   useEffect(() => {
-    const raw = localStorage.getItem("exportData");
+    const raw = localStorage.getItem("exportRows");
     if (!raw) return;
 
-    const parsed = JSON.parse(raw);
-
-    const devices = parsed.devices || {};
-
-    const formatted = Object.entries(devices).map(
-      ([systemIp, tunnels]: any) => {
-        const first = tunnels[0];
-        return {
-          hostname: first?.hostname || "NA",
-          systemIp,
-          branchName: first?.branchName || "Unknown",
-          tunnels,
-        };
-      }
-    );
-
-    setRows(formatted);
+    setRows(JSON.parse(raw));
   }, []);
 
   function downloadPdf() {
@@ -39,7 +23,7 @@ export default function ExportPreview() {
 
     autoTable(doc, {
       startY: 22,
-      head: [["Branch", "Hostname", "System IP", "Total Tunnels"]],
+      head: [["Branch", "Hostname", "System IP", "Tunnels"]],
       body: rows.map((r) => [
         r.branchName,
         r.hostname,
@@ -63,7 +47,7 @@ export default function ExportPreview() {
 
   return (
     <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between mb-4">
         <h2 className="text-lg font-bold">Export Preview</h2>
 
         <Button type="primary" onClick={downloadPdf}>

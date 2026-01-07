@@ -79,12 +79,7 @@ export default function TunnelsPage() {
 
   async function handleExport() {
     try {
-      const res = await axios.post("/api/sdwan/tunnels");
-
-      // store full api response
-      localStorage.setItem("exportData", JSON.stringify(res.data));
-
-      // go to preview page
+      localStorage.setItem("exportRows", JSON.stringify(rows));
       router.push("/preview");
     } catch (e) {
       console.error("EXPORT ERROR:", e);
@@ -125,16 +120,8 @@ export default function TunnelsPage() {
         );
       },
     },
-    {
-      title: "Hostname",
-      dataIndex: "hostname",
-      key: "hostname",
-    },
-    {
-      title: "System IP",
-      dataIndex: "systemIp",
-      key: "systemIp",
-    },
+    { title: "Hostname", dataIndex: "hostname" },
+    { title: "System IP", dataIndex: "systemIp" },
     {
       title: "Tunnels (Name + Uptime)",
       key: "tunnelInfo",
