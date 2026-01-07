@@ -80,13 +80,13 @@ export async function POST() {
       })
     );
 
-    // ---------- 6) EMAIL ALERT: find DOWN sessions ----------
-    const downAlerts: any[] = [];
+    // ---------- 6) EMAIL IF ANY SESSION IS DOWN ----------
+    const downSessions: any[] = [];
 
     bfdSessions.forEach((item: any) => {
       (item.sessions || []).forEach((s: any) => {
         if (s.state === "down") {
-          downAlerts.push({
+          downSessions.push({
             deviceId: item.deviceId,
             hostname: s["vdevice-host-name"] || "NA",
             color: s["color"] || "NA",
@@ -97,9 +97,7 @@ export async function POST() {
       });
     });
 
-    // ---------- 7) SEND EMAIL IF ANY DOWN ----------
-    if (downAlerts.length > 0) {
-      // transporter
+    if (downSessions.length > 0) {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: Number(process.env.SMTP_PORT || 587),
@@ -110,17 +108,15 @@ export async function POST() {
         },
       });
 
-      const body = downAlerts
+      const emailBody = downSessions
         .map(
-          (d) =>
-            `
-Device: ${d.hostname}
-IP: ${d.deviceId}
+          (d) => `
+Hostname: ${d.hostname}
+IP / DeviceId: ${d.deviceId}
 Color: ${d.color}
 Local Color: ${d.localColor}
 State: ${d.state}
-
----------------------------
+------------------------------
 `
         )
         .join("\n");
@@ -129,13 +125,13 @@ State: ${d.state}
         from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
         to: process.env.ALERT_MAIL_TO,
         subject: "⚠️ SD-WAN BFD Session DOWN Alert",
-        text: `The following BFD sessions are DOWN:\n\n${body}`,
+        text: `The following BFD tunnels are DOWN:\n\n${emailBody}`,
       });
 
-      console.log("Alert email sent!");
+      console.log("Email alert sent.");
     }
 
-    // ---------- 8) ADD deviceId BACK ----------
+    // ---------- 7) ADD deviceId BACK ----------
     const tunnelsWithIds = tunnels.map((t: any) => ({
       ...t,
       deviceId: t["deviceId"],
@@ -149,7 +145,7 @@ State: ${d.state}
         devices: tunnelsWithIds,
         deviceIds,
         bfdSessions,
-        alertsSent: downAlerts.length,
+        alertsSent: downSessions.length,
       },
     });
   } catch (err: any) {
