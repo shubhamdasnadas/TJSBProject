@@ -288,6 +288,7 @@ export default function ZabbixTopProblemsPage() {
             selectHosts: ["hostid", "name"],
             groupids,
             hostids,
+            value: 1, // PROBLEM only
             time_from,
             time_till: now,
           },
