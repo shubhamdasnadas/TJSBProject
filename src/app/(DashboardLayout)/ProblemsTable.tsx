@@ -304,7 +304,7 @@ export default function ProblemsTablePage() {
         columns={columns}
         dataSource={data}
         loading={loading}
-        pagination={{ pageSize: 10, showSizeChanger: false }}
+        pagination={{ pageSize: 10, showSizeChanger: true }}
         size="small"
         style={{ marginTop: 16 }}
       />

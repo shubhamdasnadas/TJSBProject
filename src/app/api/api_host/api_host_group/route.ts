@@ -11,6 +11,7 @@ export async function POST(req: Request) {
     });
 
     const ZABBIX_URL =
+<<<<<<< HEAD
       process.env.NEXT_PUBLIC_ZABBIX_URL ||
       "http://localhost:8080/api_jsonrpc.php";
 
@@ -23,11 +24,20 @@ export async function POST(req: Request) {
     if (Array.isArray(names) && names.length > 0) {
       params.filter = { name: names };
     }
+=======
+      process.env.NEXT_PUBLIC_ZABBIX_URL as string;
+>>>>>>> source/tablex
 
     const payload = {
       jsonrpc: "2.0",
       method: "hostgroup.get",
+<<<<<<< HEAD
       params,
+=======
+      params: {
+        output: "extend",
+      },
+>>>>>>> source/tablex
       id: 1,
     };
 
@@ -36,12 +46,23 @@ export async function POST(req: Request) {
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
+<<<<<<< HEAD
         "Authorization": `Bearer ${auth}`,
+=======
+      
+        Authorization: `Bearer ${auth}`,
+>>>>>>> source/tablex
       },
       timeout: 10000,
     });
+<<<<<<< HEAD
     console.log("hostgroup.get response:", response.data);
     // SUCCESS — Return result
+=======
+
+    console.log("templategroup.get response:", response.data);
+
+>>>>>>> source/tablex
     if (response.data?.result) {
       return NextResponse.json({ result: response.data.result });
     }

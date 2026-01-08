@@ -29,10 +29,10 @@ const Profile = () => {
   };
 
   return (
-    <Box>
-      {/* <IconButton size="large" onClick={handleOpenMenu}>
+    <>
+      <IconButton size="large" onClick={handleOpenMenu}>
         <Avatar src="/images/profile/user-1.jpg" alt="Profile" sx={{ width: 36, height: 36 }} />
-      </IconButton> */}
+      </IconButton>
 
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
         <Box
@@ -62,7 +62,7 @@ const Profile = () => {
           </Button>
         </Box>
       </Menu>
-    </Box>
+    </>
   );
 };
 

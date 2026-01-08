@@ -137,7 +137,7 @@ export default function DashboardSummaryCount({
         : rangeData;
 
       const res = await axios.post(
-        "http://192.168.56.1:3000/api/zabbix/problems",
+        "/api/zabbix/problems",
         {
           auth: token,
           ...finalRangeData,

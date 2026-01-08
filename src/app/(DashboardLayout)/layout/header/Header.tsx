@@ -4,21 +4,25 @@ import {
   Box,
   AppBar,
   Toolbar,
-  styled,
   Stack,
   IconButton,
-  Badge,
   Button,
   useMediaQuery,
 } from "@mui/material";
 import { Theme } from "@mui/material/styles";
-import { IconBellRinging, IconMenu } from "@tabler/icons-react";
+import { IconMenu } from "@tabler/icons-react";
 import Link from "next/link";
 import Profile from "./Profile";
+<<<<<<< HEAD
 
 import { useThemeMode } from "@/app/context/ThemeContext";
 import { EncryptedText } from "@/components/ui/encrypted-text";   // ⭐ ADDED
  
+=======
+import { EncryptedText } from "./EncryptedText";
+import { useThemeMode } from "@/app/context/ThemeContext";
+import { useState } from "react";
+>>>>>>> source/tablex
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -27,7 +31,9 @@ interface HeaderProps {
 
 const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down("lg"));
-  const { mode } = useThemeMode();      // ⭐ ADDED
+  const { mode } = useThemeMode();
+
+  const [logoAnimTrigger, setLogoAnimTrigger] = useState(0);
 
   const loginStatus =
     typeof window !== "undefined"
@@ -35,6 +41,9 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
       : "false";
 
   const handleClick = () => {
+    // 🔥 trigger encrypted animation EVERY time
+    setLogoAnimTrigger((v) => v + 1);
+
     if (isMobile) toggleMobileSidebar();
     else toggleSidebar();
   };
@@ -44,17 +53,14 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
       position="sticky"
       elevation={0}
       sx={{
-        background: "var(--bg-color)",       // ⭐ THEME APPLIED
-        color: "var(--text-color)",          // ⭐ THEME APPLIED
+        background: "var(--bg-color)",
+        color: "var(--text-color)",
         borderBottom: "1px solid var(--card-border)",
-        transition: "background 0.3s ease",
       }}
     >
       <Toolbar>
-
         <IconButton onClick={handleClick}>
-          <IconMenu width={22} height={22} color="var(--text-color)" />  
-          {/* ⭐ Icon color from theme */}
+          <IconMenu width={22} height={22} />
         </IconButton>
 
         <Box
@@ -64,6 +70,7 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
             fontSize: "1.25rem",
             letterSpacing: "0.5px",
             textTransform: "uppercase",
+<<<<<<< HEAD
             "& .text-cyan-500": {
               color: "#06b6d4 !important",
             },
@@ -77,6 +84,22 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
             encryptedClassName="text-cyan-500"
             revealedClassName="text-white"
             revealDelayMs={30}
+=======
+            "& .encrypted": {
+              color: "#06b6d4",
+            },
+            "& .revealed": {
+              color: mode === "dark" ? "#ffffff" : "#014d8c",
+            },
+          }}
+        >
+          <EncryptedText
+            text="TECHSEC NMS - Cybersecurity Operations"
+            encryptedClassName="encrypted"
+            revealedClassName="revealed"
+            revealDelayMs={30}
+            trigger={logoAnimTrigger}
+>>>>>>> source/tablex
           />
         </Box>
 

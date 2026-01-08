@@ -11,6 +11,9 @@ import {
 import { IconPoint } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import DirectionAwareHover from "../../components/ui/direction-aware-hover";
+
+import type { CSSProperties } from "react";
 
 interface SidebarItemsProps {
   isSidebarOpen: boolean;
@@ -18,6 +21,7 @@ interface SidebarItemsProps {
 
 const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
   const pathname = usePathname();
+  const collapsedEffective = !isSidebarOpen;
 
   // ============================================
   // RENDER MENU ITEMS (Ant + Tabler SAFE)
@@ -38,14 +42,15 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
         // ✅ Ant Design icon (React element)
         if (React.isValidElement(item.icon)) {
           return React.cloneElement(
-            item.icon as React.ReactElement,
+            item.icon as React.ReactElement<any>,
             {
               style: {
-                fontSize: 24, // ⭐ ANT ICON SIZE
+                fontSize: 24,
               },
             }
           );
         }
+
 
         // ✅ Tabler icon (React component)
         const IconComponent = item.icon;
@@ -132,17 +137,17 @@ const SidebarItems = ({ isSidebarOpen }: SidebarItemsProps) => {
           padding: "23px 10px",
         }}
       >
-        {isSidebarOpen ? (
-          <img
-            src="/images/logos/image.png"
-            style={{ width: "160px" }}
-            alt="Logo"
-          />
-        ) : (
+        {collapsedEffective ? (
           <img
             src="/images/logos/techsec_logo-removebg-preview.png"
             style={{ width: "40px" }}
             alt="Logo Icon"
+          />
+        ) : (
+          <DirectionAwareHover
+            imageUrl="/images/logos/image.png"
+            className="w-28 sm:w-36 md:w-40 lg:w-48 h-auto"
+            imageClassName="py-8 object-contain"
           />
         )}
       </Box>

@@ -6,10 +6,14 @@ import axios from "axios";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { EncryptedText } from "@/components/ui/encrypted-text";
 =======
 // import { EncryptedText } from "@/components/ui/encrypted-text";
 >>>>>>> da6ef2f (data changes in cardItem)
+=======
+// import { EncryptedText } from "@/components/ui/encrypted-text";
+>>>>>>> source/tablex
 import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import DashboardSummary from "./DashboardSummary";
 import DashboardSummaryCount from "./DashboardSummaryCount";
@@ -20,6 +24,10 @@ import ActionLog from "./widget/actionLog";
 import Graph from "./widget/graph";
 import PieChart from "./widget/pie_chart";
 import ItemValue from "./widget/itemvalue";
+import ProblemSeverity from "./Problemseverity";
+import { group } from "console";
+import ProblemTableDay from "./ProblemTableDay";
+import TopHost from "./widget/top_host/data";
 
 /* ================= STORAGE KEYS ================= */
 const STORAGE_KEY = "dashboard_layout_v2";
@@ -29,8 +37,8 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
   { id: "summary-count", title: "Summary Count", component: DashboardSummaryCount, x: 0, y: 0, w: 12, h: 2 },
-  { id: "summary", title: "Summary", component: DashboardSummary, x: 0, y: 2, w: 12, h: 2 },
-  { id: "problem-severity", title: "Problem Severity", component: Problemseverity, x: 0, y: 4, w: 6, h: 3 },
+  // { id: "problem-table-day", title: "Problem Day Table", component: ProblemTableDay, x: 0, y: 2, w: 12, h: 2 },
+  // { id: "problem-severity", title: "Problem Severity", component: Problemseverity, x: 0, y: 4, w: 6, h: 3 },
   { id: "problems-table", title: "Active Problems", component: ProblemsTablePage, x: 6, y: 4, w: 6, h: 3 },
 ];
 
@@ -60,6 +68,11 @@ export default function Dashboard() {
   const [graphConfig, setGraphConfig] = useState<any>(null);
   const [pieConfig, setPieConfig] = useState<any>(null);
   const [itemConfig, setItemConfig] = useState<any>(null);
+<<<<<<< HEAD
+=======
+  const [tophostConfig, setTophostConfig] = useState<any>(null);
+  const [problemSeverityConfig, setProblemSeverityConfig] = useState<any>(null);
+>>>>>>> source/tablex
 
   const [rangeData, setRangeData] = useState({
     startDate: "",
@@ -215,6 +228,7 @@ export default function Dashboard() {
 
     setDynamicWidgets((prev) => {
       const next = [
+<<<<<<< HEAD
   ...prev,
   {
     id,
@@ -227,6 +241,24 @@ export default function Dashboard() {
         : graphConfig,
   },
 ];
+=======
+        ...prev,
+        {
+          id,
+          type: selectType,
+          config:
+            selectType === "pie_chart"
+              ? pieConfig
+              : selectType === "item_value"
+                ? itemConfig
+                : selectType === "problems_by_severity"
+                  ? problemSeverityConfig
+                  : selectType == "top_host"
+                    ? tophostConfig
+                    : graphConfig,
+        },
+      ];
+>>>>>>> source/tablex
 
       localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
       return next;
@@ -236,28 +268,51 @@ export default function Dashboard() {
     setGraphConfig(null);
     setPieConfig(null);
     setItemConfig(null);
+<<<<<<< HEAD
+=======
+    setTophostConfig(null);
+    setProblemSeverityConfig(null)
+>>>>>>> source/tablex
     setSelectType("");
   };
 
   /* ================= REMOVE WIDGETS ================= */
-  const removeDynamicWidget = (id: string) => {
+  const removeWidget = (id: string) => {
     hasUserModifiedWidgets.current = true;
 
-    /* Remove from React state */
-    setDynamicWidgets((prev) => prev.filter((w) => w.id !== id));
+    /* 1️⃣ Read dynamic widgets from localStorage */
+    const dynamicWidgets: any[] = JSON.parse(
+      localStorage.getItem(DYNAMIC_WIDGETS_KEY) || "[]"
+    );
 
-    /* Remove from GridStack */
-    const el = document.querySelector(
-      `[gs-id="${id}"]`
-    ) as HTMLElement | null;
+    const isDynamic = dynamicWidgets.some((w) => w.id === id);
 
-    if (el) {
-      grid.current?.removeWidget(el);
+    /* 2️⃣ Remove from React state (ONLY React touches DOM) */
+    if (isDynamic) {
+      setDynamicWidgets((prev) =>
+        prev.filter((w) => w.id !== id)
+      );
     }
 
-    /* 🔑 Remove from BOTH localStorage keys */
+    /* 3️⃣ Let GridStack update internal state ONLY */
+    requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[gs-id="${id}"]`
+      ) as HTMLElement | null;
+
+      if (el && grid.current) {
+        grid.current.removeWidget(el, false); // ✅ DO NOT remove DOM
+      }
+
+      /* 4️⃣ Compact grid */
+      grid.current?.compact();
+    });
+
+    /* 5️⃣ Remove from localStorage */
     removeWidgetFromLocalStorage(id);
   };
+
+
 
 
   const removeStaticWidget = (id: string) => {
@@ -304,7 +359,7 @@ export default function Dashboard() {
                 <div className="dashboard-card-header">
                   {title}
                   {editMode && (
-                    <span onClick={() => removeStaticWidget(id)} style={{ float: "right", color: "red", cursor: "pointer" }}>
+                    <span onClick={() => removeWidget(id)} style={{ float: "right", color: "red", cursor: "pointer" }}>
                       ✖
                     </span>
                   )}
@@ -323,14 +378,20 @@ export default function Dashboard() {
               <div className="dashboard-card-header">
                 {getWidgetTitle(w.type)}
                 {editMode && (
-                  <span onClick={() => removeDynamicWidget(w.id)} style={{ float: "right", color: "red", cursor: "pointer" }}>
+                  <span onClick={() => removeWidget(w.id)} style={{ float: "right", color: "red", cursor: "pointer" }}>
                     ✖
                   </span>
                 )}
               </div>
               <div className="dashboard-card-body">
                 {w.type === "graph" && <Graph rangeData={rangeData} initialConfig={w.config} />}
+                {w.type === "top_host" && (
+                  <TopHost mode="preview" initialConfig={w.config} />
+                )}
+
                 {w.type === "pie_chart" && <PieChart initialConfig={w.config} />}
+                {w.type === "item_value" && <ItemValue initialConfig={w.config} />}
+                {w.type === "problems_by_severity" && <ProblemSeverity rangeData={rangeData} groupID={groupID} initialConfig={w.config} />}
                 {w.type === "action_log" && <ActionLog />}
               </div>
             </div>
@@ -359,8 +420,17 @@ export default function Dashboard() {
           </Form.Item>
 
           {selectType === "graph" && <Graph rangeData={rangeData} onConfigChange={setGraphConfig} />}
+          {selectType === "top_host" && (
+            <TopHost mode="widget" onConfigChange={setTophostConfig} />
+          )}
+
           {selectType === "pie_chart" && <PieChart onConfigChange={setPieConfig} />}
+<<<<<<< HEAD
           {selectType === "item_value" && <ItemValue onConfigChange={setItemConfig}/>}
+=======
+          {selectType === "item_value" && <ItemValue onConfigChange={setItemConfig} />}
+          {selectType === "problems_by_severity" && <ProblemSeverity rangeData={rangeData} groupID={groupID} onConfigChange={setProblemSeverityConfig} />}
+>>>>>>> source/tablex
           {selectType === "action_log" && <ActionLog />}
         </Form>
       </Modal>

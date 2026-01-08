@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
  
@@ -17,6 +17,7 @@ import {
   Radio,
   Checkbox,
   Modal,
+  Tooltip,
 } from "antd";
 import axios from "axios";
 
@@ -114,10 +115,19 @@ const HostFilterCard = ({
     high: false,
     disaster: false,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Fetch host groups on mount
   const handleGetHostGroups = async () => {
     setLoadingGroups(true);
+
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingGroups(false);
+      return;
+    }
 
     const payload = {
       jsonrpc: '2.0',
@@ -125,13 +135,15 @@ const HostFilterCard = ({
       params: {
         output: ['groupid', 'name'],
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 1,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -157,6 +169,13 @@ const HostFilterCard = ({
 
     setLoadingHosts(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingHosts(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'host.get',
@@ -164,13 +183,15 @@ const HostFilterCard = ({
         output: ['hostid', 'name'],
         groupids: groupIds,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 2,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -196,6 +217,13 @@ const HostFilterCard = ({
 
     setLoadingTriggers(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingTriggers(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'trigger.get',
@@ -205,13 +233,15 @@ const HostFilterCard = ({
         groupids: groupIds,
         expandDescription: true,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 5,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -243,6 +273,13 @@ const HostFilterCard = ({
 
     setLoadingTriggers(true);
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      setLoadingTriggers(false);
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'trigger.get',
@@ -252,13 +289,15 @@ const HostFilterCard = ({
         groupids: [groupId],
         expandDescription: true,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 5,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -289,6 +328,12 @@ const HostFilterCard = ({
       return;
     }
 
+    const authToken = localStorage.getItem('zabbix_auth');
+    if (!authToken) {
+      console.error('No auth token found');
+      return;
+    }
+
     const payload = {
       jsonrpc: '2.0',
       method: 'hostinterface.get',
@@ -296,13 +341,15 @@ const HostFilterCard = ({
         output: ['hostid', 'ip', 'dns', 'port', 'type', 'main'],
         hostids: hostIds,
       },
-      auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
       id: 6,
     };
 
     try {
       const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
 
       const items = response?.data?.result ?? [];
@@ -415,13 +462,15 @@ const HostFilterCard = ({
       jsonrpc: '2.0',
       method: 'problem.get',
       params: problemParams,
-      auth:  user_token ,
       id: 3,
     };
 
     try {
       const problemResponse = await axios.post('/api/zabbix-proxy', problemPayload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user_token}`,
+        },
       });
 
       const problems = problemResponse?.data?.result ?? [];
@@ -444,12 +493,14 @@ const HostFilterCard = ({
           triggerids: triggerIds,
           expandDescription: true,
         },
-        auth: '7de73a2634c45b95faaecb45d0429286005a442e974352f4431eaee833a66d00',
         id: 4,
       };
 
       const triggerResponse = await axios.post('/api/zabbix-proxy', triggerPayload, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user_token}`,
+        },
       });
 
       const triggers = triggerResponse?.data?.result ?? [];
@@ -509,6 +560,29 @@ const HostFilterCard = ({
     handleApplyFilters();
   }, []);
 
+  // Keyboard shortcuts for pagination
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey) {
+        if (e.key === 'n' || e.key === 'N') {
+          e.preventDefault();
+          const totalPages = Math.ceil(tableData.length / pageSize);
+          if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+          }
+        } else if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPage, pageSize, tableData.length]);
+
   const getSeverityTag = (priority: string) => {
     const p = Number(priority);
     const baseStyle = {
@@ -565,7 +639,7 @@ const HostFilterCard = ({
       title: "Time",
       dataIndex: "timestamp",
       key: "timestamp",
-      width: 130,
+      width: 100,
       render: (text: string, record: TriggerItem) => {
         if (!record.time_from) return <span style={{ fontSize: '13px', color: '#8c8c8c' }}>-</span>;
         
@@ -594,13 +668,13 @@ const HostFilterCard = ({
       title: "Severity",
       dataIndex: "priority",
       key: "priority",
-      width: 110,
+      width: 100,
       render: (priority: string) => getSeverityTag(priority),
     },
     {
       title: "Recovery time",
       key: "recovery",
-      width: 130,
+      width: 100,
       render: (text: string, record: TriggerItem) => {
         if (!record.time_till) return <span style={{ fontSize: '13px', color: '#8c8c8c' }}>-</span>;
         
@@ -629,13 +703,13 @@ const HostFilterCard = ({
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 90,
+      width: 80,
       render: (status: string) => getStatusTag(status),
     },
     {
       title: "Interface",
       key: "interface",
-      width: 90,
+      width: 80,
       render: (text: string, record: TriggerItem) => {
         const iface = record.hostid ? hostInterfaces[record.hostid] : null;
         if (!iface) {
@@ -658,7 +732,7 @@ const HostFilterCard = ({
       title: "Host",
       dataIndex: "hostname",
       key: "hostname",
-      width: 180,
+      width: 140,
       render: (text: string) => (
         <a style={{ color: '#1677ff', fontSize: '13px', fontWeight: 500 }}>{text}</a>
       ),
@@ -667,7 +741,7 @@ const HostFilterCard = ({
       title: "Problem",
       dataIndex: "description",
       key: "description",
-      width: 350,
+      width: 250,
       render: (text: string, record: TriggerItem) => (
         <div>
           <a style={{ color: '#1677ff', fontSize: '13px', fontWeight: 500 }}>{text}</a>
@@ -682,7 +756,7 @@ const HostFilterCard = ({
     {
       title: "Duration",
       key: "duration",
-      width: 90,
+      width: 80,
       render: (text: string, record: TriggerItem) => {
         if (!record.time_from) return <span style={{ fontSize: '13px', color: '#8c8c8c' }}>-</span>;
         
@@ -724,7 +798,7 @@ const HostFilterCard = ({
     {
       title: "Update",
       key: "update",
-      width: 80,
+      width: 70,
       render: () => (
         <a style={{ color: '#1677ff', fontSize: '13px', fontWeight: 500 }}>Update</a>
       ),
@@ -732,7 +806,7 @@ const HostFilterCard = ({
     {
       title: "Actions",
       key: "actions",
-      width: 80,
+      width: 70,
       render: () => (
         <a style={{ color: '#1677ff', fontSize: '13px', fontWeight: 500 }}>Actions</a>
       ),
@@ -740,48 +814,78 @@ const HostFilterCard = ({
     {
       title: "Tags",
       key: "tags",
-      width: 400,
+      width: 280,
       render: (text: string, record: TriggerItem) => {
         if (!record.tags || record.tags.length === 0) {
           return <span style={{ fontSize: '13px', color: '#8c8c8c' }}>-</span>;
         }
         
+        // Show first 2 tags inline, rest in tooltip
+        const visibleTags = record.tags.slice(0, 2);
+        const hiddenTags = record.tags.slice(2);
+        
+        const getTagColor = (tag: string) => {
+          const tagLower = tag.toLowerCase();
+          if (tagLower.includes('scope')) return '#1677ff';
+          else if (tagLower.includes('component')) return '#52c41a';
+          else if (tagLower.includes('description') || tagLower.includes('name')) return '#fa8c16';
+          else if (tagLower.includes('interface')) return '#722ed1';
+          else if (tagLower.includes('target')) return '#eb2f96';
+          else if (tagLower.includes('service')) return '#722ed1';
+          else if (tagLower.includes('class')) return '#13c2c2';
+          else if (tagLower.includes('link')) return '#1677ff';
+          else if (tagLower.includes('label')) return '#eb2f96';
+          return '#1677ff';
+        };
+        
+        const formatTagText = (tag: { tag: string; value: string }) => {
+          const fullText = `${tag.tag}${tag.value ? `: ${tag.value}` : ''}`;
+          // Truncate if too long
+          return fullText.length > 30 ? fullText.substring(0, 30) + '...' : fullText;
+        };
+        
         return (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: '100%', overflow: 'visible' }}>
-            {record.tags.map((tag, index) => {
-              // Determine color based on tag name
-              let color = '#1677ff';
-              const tagLower = tag.tag.toLowerCase();
-              
-              if (tagLower.includes('scope')) color = '#1677ff';
-              else if (tagLower.includes('component')) color = '#52c41a';
-              else if (tagLower.includes('description') || tagLower.includes('name')) color = '#fa8c16';
-              else if (tagLower.includes('interface')) color = '#722ed1';
-              else if (tagLower.includes('target')) color = '#eb2f96';
-              else if (tagLower.includes('service')) color = '#722ed1';
-              else if (tagLower.includes('class')) color = '#13c2c2';
-              else if (tagLower.includes('link')) color = '#1677ff';
-              else if (tagLower.includes('label')) color = '#eb2f96';
-              
-              return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+            {visibleTags.map((tag, index) => (
+              <Tooltip key={index} title={`${tag.tag}${tag.value ? `: ${tag.value}` : ''}`}>
                 <span 
-                  key={index} 
                   style={{ 
                     fontSize: '12px',
-                    color: color,
+                    color: getTagColor(tag.tag),
                     fontWeight: 400,
-                    whiteSpace: 'normal',
-                    wordBreak: 'break-word',
-                    wordWrap: 'break-word',
-                    overflowWrap: 'break-word',
-                    maxWidth: '100%',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '110px',
                     display: 'inline-block'
                   }}
                 >
-                  {tag.tag}{tag.value ? `: ${tag.value}` : ''}
+                  {formatTagText(tag)}
                 </span>
-              );
-            })}
+              </Tooltip>
+            ))}
+            {hiddenTags.length > 0 && (
+              <Tooltip 
+                title={
+                  <div>
+                    {hiddenTags.map((tag, index) => (
+                      <div key={index} style={{ marginBottom: 4 }}>
+                        {tag.tag}{tag.value ? `: ${tag.value}` : ''}
+                      </div>
+                    ))}
+                  </div>
+                }
+              >
+                <span style={{ 
+                  fontSize: '12px', 
+                  color: '#8c8c8c',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}>
+                  +{hiddenTags.length}
+                </span>
+              </Tooltip>
+            )}
           </div>
         );
       },
@@ -903,16 +1007,16 @@ const HostFilterCard = ({
             background: #fafafa;
             font-size: 13px;
             font-weight: 600;
-            padding: 12px 12px;
+            padding: 10px 12px;
             border-bottom: 1px solid #d9d9d9;
             color: #262626;
           }
           
           .spacious-table-wrapper .ant-table-tbody > tr > td {
-            padding: 12px 12px;
+            padding: 10px 12px;
             font-size: 13px;
             border-bottom: 1px solid #f0f0f0;
-            vertical-align: top;
+            vertical-align: middle;
           }
           
           .spacious-table-wrapper .ant-table-tbody > tr:hover > td {
@@ -1093,7 +1197,10 @@ const HostFilterCard = ({
 
         {/* Severity Checkboxes */}
         <div style={{ marginBottom: 28 }}>
-          <span className="spacious-label">Severity</span>
+          <span className="spacious-label">
+            
+            
+          </span>
           <Space wrap size={[16, 12]}>
             <Checkbox 
               checked={severityFilters.notClassified}
@@ -1254,11 +1361,48 @@ const HostFilterCard = ({
           columns={columns}
           dataSource={tableData}
           loading={loadingTable}
+          scroll={{ x: 1500 }}
           pagination={{ 
             position: ['topLeft', 'bottomRight'], 
-            pageSize: 20,
+            current: currentPage,
+            pageSize: pageSize,
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total} items`
+            showTotal: (total) => `Total ${total} items`,
+            onChange: (page, pageSize) => {
+              setCurrentPage(page);
+              setPageSize(pageSize);
+            },
+            onShowSizeChange: (current, size) => {
+              setCurrentPage(1);
+              setPageSize(size);
+            },
+            itemRender: (page, type, originalElement) => {
+              if (type === 'prev') {
+                return (
+                  <button
+                    className="ant-pagination-item-link"
+                    accessKey="p"
+                    title="Previous page (Alt+P)"
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    <span aria-label="left">&lt;</span>
+                  </button>
+                );
+              }
+              if (type === 'next') {
+                return (
+                  <button
+                    className="ant-pagination-item-link"
+                    accessKey="n"
+                    title="Next page (Alt+N)"
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    <span aria-label="right">&gt;</span>
+                  </button>
+                );
+              }
+              return originalElement;
+            },
           }}
         />
       </div>
@@ -1374,5 +1518,3 @@ const HostFilterCard = ({
 };
 
 export default HostFilterCard;
-
- 

@@ -45,7 +45,11 @@ const Host = () => {
     console.log("Filter Data:", filterFormData);
     try {
       const res = await axios.post(
+<<<<<<< HEAD
         "/api/api_host/api_getdata_host",
+=======
+        "http://localhost:3000/api/api_host/api_getdata_host",
+>>>>>>> source/tablex
         {
           auth:   "4da1fa11e111045e020b7985d219eeea",
           groupid: filterFormData.groupid,
@@ -156,7 +160,7 @@ const Host = () => {
           <Row gutter={[24, 24]}>
             <Col span={12}>
               <Form.Item label="Template Group">
-                <Select onChange={(e) => {handleClick(), handleGetTemplateList(e  as any)}}>
+                <Select onChange={(e) => { handleClick(), handleGetTemplateList(e as any) }}>
                   {templateGrouplist.map((v: any) => (
                     <Select.Option key={v.groupid} value={v.groupid}>
                       {v.name}

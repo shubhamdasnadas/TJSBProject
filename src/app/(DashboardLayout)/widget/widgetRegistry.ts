@@ -1,6 +1,7 @@
 export const WIDGET_TYPES = [
   { value: "action_log", label: "Action log" },
   { value: "clock", label: "Clock" },
+  { value: "top_host", label: "Top Host" },
   { value: "discovery_status", label: "Discovery status" },
   { value: "favorite_graphs", label: "Favorite graphs" },
   { value: "favorite_maps", label: "Favorite maps" },
