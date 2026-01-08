@@ -97,7 +97,37 @@ export default function Dashboard() {
   const user_token =
     typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
-  /* ================= BROADCAST TO SERVER ================= */
+  // /* ================= SOCKET INIT ================= */
+  // useEffect(() => {
+  //   socketRef.current = io({
+  //     path: "/app/api/socket_io",
+  //   });
+
+  //   // when server broadcasts dashboard
+  //   socketRef.current.on("dashboard:sync", (serverState: any) => {
+  //     const { layout = [], dynamicWidgets = [], removedStatic = [] } =
+  //       serverState || {};
+
+  //     setLayout(layout);
+  //     setDynamicWidgets(dynamicWidgets);
+  //     setRemovedStaticIds(removedStatic);
+
+  //     safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
+  //     safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
+  //     safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
+
+  //     if (grid.current) {
+  //       requestAnimationFrame(() => {
+  //         grid.current!.load(layout);
+  //         window.dispatchEvent(new Event("resize"));
+  //       });
+  //     }
+  //   });
+
+  //   return () => socketRef.current?.disconnect();
+  // }, []);
+
+  /* ================= BROADCAST TO SERVER (socket + api) ================= */
   const broadcastDashboard = (normalized: any[]) => {
     socketRef.current?.emit("dashboard:save", {
       layout: normalized,
@@ -119,14 +149,17 @@ export default function Dashboard() {
         })
       );
 
+      // existing API
       await axios.post("/api/dashboard_action_log/data_save", {
         layout: normalized,
         dynamicWidgets,
         removedStatic: removedStaticIds,
       });
 
+      // local
       safeStorage.set(STORAGE_KEY, JSON.stringify(normalized));
 
+      // NEW realtime sync
       broadcastDashboard(normalized);
     } catch (e) {
       console.warn("Save failed:", e);
@@ -173,6 +206,7 @@ export default function Dashboard() {
       setDynamicWidgets(finalDynamicWidgets);
       setRemovedStaticIds(finalRemovedStatic);
 
+      // notify sockets
       socketRef.current?.emit("dashboard:save", {
         layout: finalLayout,
         dynamicWidgets: finalDynamicWidgets,
@@ -198,6 +232,7 @@ export default function Dashboard() {
       safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
     }
   };
+
 
   /* ================= LOAD FIRST ================= */
   useEffect(() => {
@@ -237,7 +272,7 @@ export default function Dashboard() {
       .then((res) =>
         setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
       )
-      .catch(() => {});
+      .catch(() => { });
   }, [user_token]);
 
   /* ================= GRID INIT ================= */
@@ -294,21 +329,10 @@ export default function Dashboard() {
 
     const existingIds = new Set(layout.map((l) => l.id));
 
+    // ✅ only inject missing STATIC widgets
     WIDGETS.forEach((w) => {
       if (!existingIds.has(w.id)) {
         layout.push({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h });
-      }
-    });
-
-    dynamicWidgets.forEach((w) => {
-      if (!existingIds.has(w.id)) {
-        layout.push({
-          id: w.id,
-          x: 0,
-          y: 0,
-          w: 6,
-          h: 4,
-        });
       }
     });
 
@@ -318,7 +342,7 @@ export default function Dashboard() {
       grid.current!.load(layout);
       window.dispatchEvent(new Event("resize"));
     });
-  }, [gridReady, dynamicWidgets]);
+  }, [gridReady]);
 
   /* ================= REGISTER DYNAMIC ================= */
   useEffect(() => {
@@ -341,6 +365,28 @@ export default function Dashboard() {
     grid.current.setStatic(!editMode);
   }, [editMode]);
 
+
+  const updateLayoutWithDynamicWidget = (id: string) => {
+    const raw = JSON.parse(safeStorage.get(STORAGE_KEY) || "[]");
+
+    const exists = raw.some((l: any) => l.id === id);
+    if (exists) return raw;
+
+    const next = [
+      ...raw,
+      {
+        id,
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 4,
+      },
+    ];
+
+    safeStorage.set(STORAGE_KEY, JSON.stringify(next));
+    return next;
+  };
+
   /* ================= ADD WIDGET ================= */
   const handleAddWidget = () => {
     if (!selectType) return;
@@ -348,24 +394,29 @@ export default function Dashboard() {
     hasUserModifiedWidgets.current = true;
     const id = `${selectType}-${Date.now()}`;
 
+    const widgetConfig =
+      selectType === "pie_chart"
+        ? pieConfig
+        : selectType === "item_value"
+          ? itemConfig
+          : selectType === "problems_by_severity"
+            ? problemSeverityConfig
+            : selectType === "top_host"
+              ? tophostConfig
+              : graphConfig;
+
     setDynamicWidgets((prev) => {
       const next = [
         ...prev,
         {
           id,
           type: selectType,
-          config:
-            selectType === "pie_chart"
-              ? pieConfig
-              : selectType === "item_value"
-              ? itemConfig
-              : selectType === "problems_by_severity"
-              ? problemSeverityConfig
-              : selectType === "top_host"
-              ? tophostConfig
-              : graphConfig,
+          config: widgetConfig,
         },
       ];
+
+      // 🔥 IMPORTANT: sync layout also
+      updateLayoutWithDynamicWidget(id);
 
       safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
       saveToServer();
@@ -383,11 +434,9 @@ export default function Dashboard() {
     setEditingTopHostConfig(null);
   };
 
+
   /* ================= REMOVE ================= */
   const removeWidget = (id: string) => {
-    // 🚫 NEVER allow removing summary-count
-    if (id === "summary-count") return;
-
     hasUserModifiedWidgets.current = true;
 
     const dynamicWidgetsStored: any[] = JSON.parse(
@@ -460,11 +509,8 @@ export default function Dashboard() {
       </div>
 
       <div className="grid-stack" ref={gridRef}>
-        {WIDGETS.map(({ id, title, component: Component, x, y, w, h }, index) => {
-          // ⭐ ALWAYS show first widget
-          if (index !== 0 && removedStaticIds.includes(id)) return null;
-
-          return (
+        {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
+          ({ id, title, component: Component, x, y, w, h }) => (
             <div
               key={id}
               className="grid-stack-item"
@@ -477,12 +523,14 @@ export default function Dashboard() {
               <div className="grid-stack-item-content dashboard-card">
                 <div className="dashboard-card-header">
                   {title}
-
-                  {/* 🚫 Hide delete button on first widget */}
-                  {editMode && index !== 0 && (
+                  {editMode && (
                     <span
                       onClick={() => removeWidget(id)}
-                      style={{ float: "right", color: "red", cursor: "pointer" }}
+                      style={{
+                        float: "right",
+                        color: "red",
+                        cursor: "pointer",
+                      }}
                     >
                       ✖
                     </span>
@@ -496,8 +544,8 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          );
-        })}
+          )
+        )}
 
         {dynamicWidgets.map((w) => (
           <div

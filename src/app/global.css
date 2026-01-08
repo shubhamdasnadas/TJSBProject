@@ -1,0 +1,440 @@
+/* ========================================================= */
+/*                  GLOBAL FONT + RESET                      */
+/* ========================================================= */
+* {
+  font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif !important;
+  box-sizing: border-box;
+}
+
+/* ========================================================= */
+/*                    THEME VARIABLES (LIGHT MODE)           */
+/* ========================================================= */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+
+  --header-bg: #ffffff;
+
+  /* ⭐ LIGHT MODE SIDEBAR */
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #000000;
+
+  /* ⭐ ACTIVE COLOR (Orange-400) */
+  --active-color: #014d8c;
+
+  --card-bg: #f8f8f8;
+  --card-text: #000000;
+
+  --border-color: #dcdcdc;
+
+  --card-disaster: #f4a7a1;
+  --card-high: #f7c79b;
+  --card-average: #f9dfa3;
+  --card-warning: #fdf2c8;
+  --card-info: #b7d9f3;
+  --card-grey: #d5ddde;
+}
+
+/* ========================================================= */
+/*                    DARK MODE VARIABLES                    */
+/* ========================================================= */
+[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #e5e5e5;
+
+  --header-bg: #1a1a1a;
+
+  /* ⭐ DARK MODE SIDEBAR */
+  --sidebar-bg: #1a1a1a;
+  --sidebar-text: #ffffff;
+
+  /* ⭐ ACTIVE COLOR SAME IN DARK MODE */
+  --active-color: #fb923c;
+
+  --card-bg: #1e1e1e;
+  --card-text: #ffffff;
+
+  --border-color: #333333;
+
+  --card-disaster: #a85c56;
+  --card-high: #a77540;
+  --card-average: #b8a44a;
+  --card-warning: #b8a85a;
+  --card-info: #6a8aa1;
+  --card-grey: #6f7a7c;
+}
+
+/* ========================================================= */
+/*                     GLOBAL APPLY                          */
+/* ========================================================= */
+body {
+  background: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background 0.50s ease-in-out, color 0.50s ease-in-out;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 6px;
+}
+
+/* ========================================================= */
+/*                    SIDEBAR THEME FIX                     */
+/* ========================================================= */
+
+.MuiDrawer-paper,
+.sidebar-container {
+  background: var(--sidebar-bg) !important;
+  color: var(--sidebar-text) !important;
+  border-right: 1px solid var(--border-color) !important;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* ⭐ Sidebar text + icons adapt to theme */
+.rms-menuitem *,
+.rms-submenu-title *,
+.rms-menuitem-title *,
+.rms-menuitem svg,
+.rms-submenu-title svg {
+  color: var(--sidebar-text) !important;
+  stroke: var(--sidebar-text) !important;
+  fill: var(--sidebar-text) !important;
+}
+
+/* Hover */
+.rms-menuitem:hover,
+.rms-submenu-title:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ⭐ ACTIVE SIDEBAR ITEM COLOR */
+.rms-menuitem.active,
+.rms-menuitem.active * {
+  background: var(--active-color) !important;
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* ========================================================= */
+/*                     HEADER THEME FIX                      */
+/* ========================================================= */
+
+.MuiAppBar-root,
+.header-wrapper {
+  background: var(--header-bg) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.MuiIconButton-root svg {
+  stroke: var(--text-color) !important;
+  color: var(--text-color) !important;
+}
+
+.MuiMenu-paper {
+  background: var(--header-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.MuiButton-root {
+  color: var(--text-color) !important;
+}
+
+.MuiAvatar-root {
+  border: 2px solid var(--border-color) !important;
+}
+
+/* ========================================================= */
+/*             DASHBOARD SUMMARY CARD FIX                   */
+/* ========================================================= */
+
+.dashboard-card {
+  background: var(--card-bg) !important;
+  color: var(--card-text) !important;
+  border-radius: 12px !important;
+  border: none !important;
+}
+
+.card-disaster { background: var(--card-disaster) !important; }
+.card-high     { background: var(--card-high) !important; }
+.card-average  { background: var(--card-average) !important; }
+.card-warning  { background: var(--card-warning) !important; }
+.card-info     { background: var(--card-info) !important; }
+.card-grey     { background: var(--card-grey) !important; }
+
+/* ========================================================= */
+/*                TABLE + ANT DESIGN FIX                     */
+/* ========================================================= */
+
+.ant-table-thead > tr > th {
+  background: var(--header-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.ant-table-thead > tr > th * {
+  color: var(--text-color) !important;
+}
+
+.ant-table-tbody > tr > td {
+  background: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.ant-table-tbody > tr > td * {
+  color: var(--text-color) !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.ant-pagination-item,
+.ant-pagination-item-link {
+  background: var(--header-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.ant-select-selector,
+.ant-picker {
+  background: var(--header-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.ant-input::placeholder,
+.ant-select-selection-placeholder,
+.ant-picker-input > input::placeholder {
+  color: #888 !important;
+}
+
+/* ========================================================= */
+/*         ⭐ BUTTON ACTIVE / PRIMARY ORANGE COLOR            */
+/* ========================================================= */
+
+.ant-btn-primary,
+.ant-btn-primary:active,
+.ant-btn-primary:focus,
+.ant-btn-primary:hover {
+  background: var(--active-color) !important;
+  border-color: var(--active-color) !important;
+  color: #ffffff !important;
+}
+
+.ant-btn:active,
+.ant-btn:focus,
+.ant-btn:hover {
+  border-color: var(--active-color) !important;
+  color: var(--active-color) !important;
+}
+
+/* ========================================================= */
+/*       ⭐ DARK MODE FIX — TABLE LABEL / AVAILABILITY        */
+/* ========================================================= */
+
+[data-theme="dark"] .ant-table-tbody td div,
+[data-theme="dark"] .ant-table-tbody td span,
+[data-theme="dark"] .ant-table-tbody td strong {
+  color: #ffffff !important;
+}
+
+/* Fix for AntD Tags */
+[data-theme="dark"] .ant-tag {
+  color: #ffffff !important;
+  background: #333333 !important;
+  border-color: #555555 !important;
+}
+
+/* Reduce spacing between date text and arrow */
+.ant-picker-suffix {
+  margin-left: 4px !important;     /* controls space before arrow */
+}
+
+.ant-picker {
+  padding-right: 6px !important;   /* reduces right empty space */
+}
+
+
+  .dashboard-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  height: 100%;
+}
+
+.grid-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: move;
+  border-bottom: 1px solid #eee;
+}
+
+/* ========================================================= */
+/*            DASHBOARD GRIDSTACK – FINAL OVERRIDES          */
+/* ========================================================= */
+
+/* 🔴 REMOVE ALL CARD BACKGROUND / SHADOW */
+.dashboard-card {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* HEADER = DRAG AREA */
+.dashboard-card-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: default;
+  background: transparent !important;
+}
+
+/* Drag cursor only in edit mode */
+.dashboard-edit-mode .dashboard-card-header {
+  cursor: move;
+}
+
+/* Drag icon */
+.drag-icon {
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+/* BODY */
+.dashboard-card-body {
+  padding: 14px;
+  height: 100%;
+  overflow: auto; /* ✅ prevents overlap */
+}
+
+/* ========================================================= */
+/*            EDIT MODE OUTLINE (SIDE-LINE BASED)             */
+/* ========================================================= */
+
+.dashboard-edit-mode .dashboard-card {
+  outline: 1px dashed var(--active-color);
+  outline-offset: -2px;
+}
+
+/* ========================================================= */
+/*            GRIDSTACK RESIZE HANDLE FIX (DOTS)              */
+/* ========================================================= */
+
+/* Remove default resize arrows */
+.grid-stack > .grid-stack-item > .ui-resizable-handle {
+  background: none !important;
+  border: none !important;
+}
+
+/* Common dot style */
+.grid-stack > .grid-stack-item > .ui-resizable-handle::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--active-color);
+  border-radius: 50%;
+  position: absolute;
+}
+
+/* TOP */
+.ui-resizable-n::after {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* BOTTOM */
+.ui-resizable-s::after {
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* RIGHT */
+.ui-resizable-e::after {
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* LEFT */
+.ui-resizable-w::after {
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* CORNERS */
+.ui-resizable-se::after {
+  right: -4px;
+  bottom: -4px;
+}
+
+.ui-resizable-sw::after {
+  left: -4px;
+  bottom: -4px;
+}
+
+.ui-resizable-ne::after {
+  right: -4px;
+  top: -4px;
+}
+
+.ui-resizable-nw::after {
+  left: -4px;
+  top: -4px;
+}
+
+/* ========================================================= */
+/*            GRIDSTACK CONTENT HEIGHT FIX                    */
+/* ========================================================= */
+
+.grid-stack-item-content {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* ========================================================= */
+/*                    SysReport Table Styles                 */
+/* ========================================================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background: var(--header-bg);
+  color: var(--active-color);
+}
+
+tr:nth-child(even) {
+  background: var(--card-bg);
+}
+
+.sev-0 { color: #22c55e; }
+.sev-1 { color: #84cc16; }
+.sev-2 { color: #eab308; }
+.sev-3 { color: #f97316; }
+.sev-4 { color: #ef4444; }
+.sev-5 { color: #dc2626; }
+

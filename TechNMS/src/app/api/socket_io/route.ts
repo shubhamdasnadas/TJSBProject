@@ -1,70 +1,54 @@
-import { NextRequest } from "next/server";
 import { Server } from "socket.io";
+import { NextRequest } from "next/server";
+import fs from "fs";
+import path from "path";
 
-let io: any;
+let io: Server | null = null;
 
-// in-memory dashboard shared by all users
-let DASHBOARD_STATE = {
-  layout: [] as any[],
-  dynamicWidgets: [] as any[],
-  removedStatic: [] as any[],
-};
+const DATA_FILE = path.join(process.cwd(), "dashboard-state.json");
+
+/* ---------- helpers ---------- */
+function loadState() {
+  try {
+    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+  } catch {
+    return {
+      layout: [],
+      dynamicWidgets: [],
+      removedStatic: [],
+    };
+  }
+}
+
+function saveState(state: any) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
+}
+
+/* ---------- load once ---------- */
+let DASHBOARD_STATE = loadState();
 
 export async function GET(req: NextRequest) {
-  // Only create server once
-  // @ts-ignore
   if (!io) {
-    // @ts-ignore
     io = new Server({
       path: "/api/socket_io",
-      addTrailingSlash: false,
       cors: { origin: "*" },
     });
 
-    io.on("connection", (socket: any) => {
-      console.log("client connected:", socket.id);
-
-      // Send current dashboard to new user
+    io.on("connection", (socket) => {
+      // ✅ Always send last saved state
       socket.emit("dashboard:sync", DASHBOARD_STATE);
 
-      // Save whole dashboard
-      socket.on("dashboard:save", (payload: any) => {
-        DASHBOARD_STATE = payload;
-        io.emit("dashboard:sync", DASHBOARD_STATE);
+      socket.on("dashboard:save", (state) => {
+        DASHBOARD_STATE = state;
+        saveState(DASHBOARD_STATE);
+
+        // ✅ Broadcast to ALL browsers
+        io?.emit("dashboard:sync", DASHBOARD_STATE);
       });
-
-      // Add widget
-      socket.on("widget:add", (widget: any) => {
-        DASHBOARD_STATE.dynamicWidgets.push(widget);
-        io.emit("dashboard:sync", DASHBOARD_STATE);
-      });
-
-      // Remove widget
-      socket.on("widget:remove", (id: string) => {
-        DASHBOARD_STATE.dynamicWidgets =
-          DASHBOARD_STATE.dynamicWidgets.filter((w) => w.id !== id);
-
-        DASHBOARD_STATE.layout = DASHBOARD_STATE.layout.filter(
-          (l) => l.id !== id
-        );
-
-        io.emit("dashboard:sync", DASHBOARD_STATE);
-      });
-
-      // Layout update (drag / resize)
-      socket.on("layout:update", (layout: any[]) => {
-        DASHBOARD_STATE.layout = layout;
-        io.emit("dashboard:sync", DASHBOARD_STATE);
-      });
-
-      socket.on("disconnect", () =>
-        console.log("client disconnected:", socket.id)
-      );
     });
   }
 
-  return new Response("Socket server running");
+  return new Response("Socket.IO running");
 }
 
-// Disable caching
 export const dynamic = "force-dynamic";
