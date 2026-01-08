@@ -83,34 +83,46 @@ export default function ZabbixTopProblemsPage() {
     <Card title="Top Problems">
       <Row gutter={16}>
         <Col span={6}>
-          <Select
-            mode="multiple"
-            placeholder="Host Groups"
-            style={{ width: "100%" }}
-            onChange={loadHosts}
+      <Select
+        mode="multiple"
+        showSearch
+        optionFilterProp="label"
+        placeholder="Host Groups"
+        style={{ width: "100%" }}
+        onChange={loadHosts}
+      >
+        {groups.map((g) => (
+          <Option
+            key={g.groupid}
+            value={g.groupid}
+            label={g.name}   // 🔥 important
           >
-            {groups.map((g) => (
-              <Option key={g.groupid} value={g.groupid}>
-                {g.name}
-              </Option>
-            ))}
-          </Select>
+            {g.name}
+          </Option>
+        ))}
+      </Select>
         </Col>
 
         <Col span={10}>
-          <Select
-            mode="multiple"
-            placeholder="Hosts"
-            style={{ width: "100%" }}
-            value={hostids}
-            onChange={setHostids}
+      <Select
+        mode="multiple"
+        showSearch
+        optionFilterProp="label"
+        placeholder="Hosts"
+        style={{ width: "100%" }}
+        value={hostids}
+        onChange={setHostids}
+      >
+        {hosts.map((h) => (
+          <Option
+            key={h.hostid}
+            value={h.hostid}
+            label={h.name}   // 🔥 important
           >
-            {hosts.map((h) => (
-              <Option key={h.hostid} value={h.hostid}>
-                {h.name}
-              </Option>
-            ))}
-          </Select>
+            {h.name}
+          </Option>
+        ))}
+      </Select>
         </Col>
 
         <Col span={4}>
