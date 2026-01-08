@@ -47,16 +47,38 @@ const WIDGETS = [
     w: 6,
     h: 3,
   },
-  // {
-  //   id: "top_host-1767865902282",
-  //   title: "Top Host",
-  //   component: TopHost,
-  //   x: 0,
-  //   y: 9,
-  //   w: 12,
-  //   h:8
-  // }
+  {
+    id: "top_host1",
+    title: "Top Host",
+    component: (props: any) => (
+      <TopHost
+        mode="preview"
+        topHostName={["host1"]}
+        showPreviewData={true}
+      />
+    ),
+    x: 0,
+    y: 9,
+    w: 12,
+    h: 8,
+  },
+  {
+    id: "top_host2",
+    title: "Top Host",
+    component: (props: any) => (
+      <TopHost
+        mode="preview"
+        topHostName={["host2"]}
+        showPreviewData={true}
+      />
+    ),
+    x: 0,
+    y: 9,
+    w: 12,
+    h: 8,
+  },
 ];
+
 
 const getWidgetTitle = (type: string) => {
   if (type === "graph") return "Graph";
