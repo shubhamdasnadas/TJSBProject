@@ -1,0 +1,14 @@
+export const WIDGET_TYPES = [
+  { value: "action_log", label: "Action log" },
+  { value: "clock", label: "Clock" },
+  { value: "discovery_status", label: "Discovery status" },
+  { value: "favorite_graphs", label: "Favorite graphs" },
+  { value: "favorite_maps", label: "Favorite maps" },
+  { value: "gauge", label: "Gauge" },
+  { value: "graph", label: "Graph" },
+  { value: "pie_chart", label: "Pie Chart" },
+  { value: "geomap", label: "Geomap" },
+  { value: "problems", label: "Problems" },
+  { value: "problems_by_severity", label: "Problems by severity" },
+  { value: "item_value", label: "Item Value" },
+];
