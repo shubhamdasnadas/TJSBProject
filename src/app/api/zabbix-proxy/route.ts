@@ -19,20 +19,7 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_ZABBIX_URL ||
       "https://192.168.0.252/monitor/api_jsonrpc.php";
 
-<<<<<<< HEAD
-    const resp = await axios.post(
-      zabbixUrl,
-      body,
-      {
-        headers: { 'Content-Type': 'application/json' },
-        httpsAgent,
-        // accept any status so we forward upstream status back
-        validateStatus: () => true,
-      }
-    );
-=======
     const authHeader = req.headers.get("authorization");
->>>>>>> source/tablex
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
