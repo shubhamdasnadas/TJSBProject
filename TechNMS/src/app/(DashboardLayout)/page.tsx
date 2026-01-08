@@ -97,37 +97,7 @@ export default function Dashboard() {
   const user_token =
     typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
-  // /* ================= SOCKET INIT ================= */
-  // useEffect(() => {
-  //   socketRef.current = io({
-  //     path: "/app/api/socket_io",
-  //   });
-
-  //   // when server broadcasts dashboard
-  //   socketRef.current.on("dashboard:sync", (serverState: any) => {
-  //     const { layout = [], dynamicWidgets = [], removedStatic = [] } =
-  //       serverState || {};
-
-  //     setLayout(layout);
-  //     setDynamicWidgets(dynamicWidgets);
-  //     setRemovedStaticIds(removedStatic);
-
-  //     safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
-  //     safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
-  //     safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
-
-  //     if (grid.current) {
-  //       requestAnimationFrame(() => {
-  //         grid.current!.load(layout);
-  //         window.dispatchEvent(new Event("resize"));
-  //       });
-  //     }
-  //   });
-
-  //   return () => socketRef.current?.disconnect();
-  // }, []);
-
-  /* ================= BROADCAST TO SERVER (socket + api) ================= */
+  /* ================= BROADCAST TO SERVER ================= */
   const broadcastDashboard = (normalized: any[]) => {
     socketRef.current?.emit("dashboard:save", {
       layout: normalized,
@@ -149,17 +119,14 @@ export default function Dashboard() {
         })
       );
 
-      // existing API
       await axios.post("/api/dashboard_action_log/data_save", {
         layout: normalized,
         dynamicWidgets,
         removedStatic: removedStaticIds,
       });
 
-      // local
       safeStorage.set(STORAGE_KEY, JSON.stringify(normalized));
 
-      // NEW realtime sync
       broadcastDashboard(normalized);
     } catch (e) {
       console.warn("Save failed:", e);
@@ -206,7 +173,6 @@ export default function Dashboard() {
       setDynamicWidgets(finalDynamicWidgets);
       setRemovedStaticIds(finalRemovedStatic);
 
-      // notify sockets
       socketRef.current?.emit("dashboard:save", {
         layout: finalLayout,
         dynamicWidgets: finalDynamicWidgets,
@@ -419,6 +385,9 @@ export default function Dashboard() {
 
   /* ================= REMOVE ================= */
   const removeWidget = (id: string) => {
+    // 🚫 NEVER allow removing summary-count
+    if (id === "summary-count") return;
+
     hasUserModifiedWidgets.current = true;
 
     const dynamicWidgetsStored: any[] = JSON.parse(
@@ -491,8 +460,11 @@ export default function Dashboard() {
       </div>
 
       <div className="grid-stack" ref={gridRef}>
-        {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
-          ({ id, title, component: Component, x, y, w, h }) => (
+        {WIDGETS.map(({ id, title, component: Component, x, y, w, h }, index) => {
+          // ⭐ ALWAYS show first widget
+          if (index !== 0 && removedStaticIds.includes(id)) return null;
+
+          return (
             <div
               key={id}
               className="grid-stack-item"
@@ -505,14 +477,12 @@ export default function Dashboard() {
               <div className="grid-stack-item-content dashboard-card">
                 <div className="dashboard-card-header">
                   {title}
-                  {editMode && (
+
+                  {/* 🚫 Hide delete button on first widget */}
+                  {editMode && index !== 0 && (
                     <span
                       onClick={() => removeWidget(id)}
-                      style={{
-                        float: "right",
-                        color: "red",
-                        cursor: "pointer",
-                      }}
+                      style={{ float: "right", color: "red", cursor: "pointer" }}
                     >
                       ✖
                     </span>
@@ -526,8 +496,8 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          )
-        )}
+          );
+        })}
 
         {dynamicWidgets.map((w) => (
           <div
