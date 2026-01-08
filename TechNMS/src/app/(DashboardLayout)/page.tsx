@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, Suspense, lazy } from "react";
+import React, { useEffect, useRef, useState, Suspense, lazy, Component } from "react";
 import { Button, Form, Modal, Select } from "antd";
 import axios from "axios";
 import { GridStack } from "gridstack";
@@ -9,6 +9,7 @@ import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import { safeStorage } from "@/utils/safeStorage";
 
 import { io } from "socket.io-client";
+import { xAxisDefaultProps } from "recharts/types/cartesian/XAxis";
 
 /* ===================== LAZY LOAD WIDGETS ===================== */
 const DashboardSummaryCount = lazy(() => import("./DashboardSummaryCount"));
@@ -46,6 +47,15 @@ const WIDGETS = [
     w: 6,
     h: 3,
   },
+  // {
+  //   id: "top_host-1767865902282",
+  //   title: "Top Host",
+  //   component: TopHost,
+  //   x: 0,
+  //   y: 9,
+  //   w: 12,
+  //   h:8
+  // }
 ];
 
 const getWidgetTitle = (type: string) => {
@@ -97,35 +107,7 @@ export default function Dashboard() {
   const user_token =
     typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
-  // /* ================= SOCKET INIT ================= */
-  // useEffect(() => {
-  //   socketRef.current = io({
-  //     path: "/app/api/socket_io",
-  //   });
 
-  //   // when server broadcasts dashboard
-  //   socketRef.current.on("dashboard:sync", (serverState: any) => {
-  //     const { layout = [], dynamicWidgets = [], removedStatic = [] } =
-  //       serverState || {};
-
-  //     setLayout(layout);
-  //     setDynamicWidgets(dynamicWidgets);
-  //     setRemovedStaticIds(removedStatic);
-
-  //     safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
-  //     safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
-  //     safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
-
-  //     if (grid.current) {
-  //       requestAnimationFrame(() => {
-  //         grid.current!.load(layout);
-  //         window.dispatchEvent(new Event("resize"));
-  //       });
-  //     }
-  //   });
-
-  //   return () => socketRef.current?.disconnect();
-  // }, []);
 
   /* ================= BROADCAST TO SERVER (socket + api) ================= */
   const broadcastDashboard = (normalized: any[]) => {
