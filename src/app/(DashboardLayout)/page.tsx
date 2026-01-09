@@ -5,15 +5,9 @@ import { Button, Form, Modal, Select } from "antd";
 import axios from "axios";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
-<<<<<<< HEAD
-<<<<<<< HEAD
+ 
 import { EncryptedText } from "@/components/ui/encrypted-text";
-=======
-// import { EncryptedText } from "@/components/ui/encrypted-text";
->>>>>>> da6ef2f (data changes in cardItem)
-=======
-// import { EncryptedText } from "@/components/ui/encrypted-text";
->>>>>>> source/tablex
+
 import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import DashboardSummary from "./DashboardSummary";
 import DashboardSummaryCount from "./DashboardSummaryCount";
@@ -68,11 +62,8 @@ export default function Dashboard() {
   const [graphConfig, setGraphConfig] = useState<any>(null);
   const [pieConfig, setPieConfig] = useState<any>(null);
   const [itemConfig, setItemConfig] = useState<any>(null);
-<<<<<<< HEAD
-=======
   const [tophostConfig, setTophostConfig] = useState<any>(null);
   const [problemSeverityConfig, setProblemSeverityConfig] = useState<any>(null);
->>>>>>> source/tablex
 
   const [rangeData, setRangeData] = useState({
     startDate: "",
@@ -228,7 +219,6 @@ export default function Dashboard() {
 
     setDynamicWidgets((prev) => {
       const next = [
-<<<<<<< HEAD
   ...prev,
   {
     id,
@@ -241,24 +231,6 @@ export default function Dashboard() {
         : graphConfig,
   },
 ];
-=======
-        ...prev,
-        {
-          id,
-          type: selectType,
-          config:
-            selectType === "pie_chart"
-              ? pieConfig
-              : selectType === "item_value"
-                ? itemConfig
-                : selectType === "problems_by_severity"
-                  ? problemSeverityConfig
-                  : selectType == "top_host"
-                    ? tophostConfig
-                    : graphConfig,
-        },
-      ];
->>>>>>> source/tablex
 
       localStorage.setItem(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
       return next;
@@ -268,11 +240,6 @@ export default function Dashboard() {
     setGraphConfig(null);
     setPieConfig(null);
     setItemConfig(null);
-<<<<<<< HEAD
-=======
-    setTophostConfig(null);
-    setProblemSeverityConfig(null)
->>>>>>> source/tablex
     setSelectType("");
   };
 
@@ -425,12 +392,7 @@ export default function Dashboard() {
           )}
 
           {selectType === "pie_chart" && <PieChart onConfigChange={setPieConfig} />}
-<<<<<<< HEAD
           {selectType === "item_value" && <ItemValue onConfigChange={setItemConfig}/>}
-=======
-          {selectType === "item_value" && <ItemValue onConfigChange={setItemConfig} />}
-          {selectType === "problems_by_severity" && <ProblemSeverity rangeData={rangeData} groupID={groupID} onConfigChange={setProblemSeverityConfig} />}
->>>>>>> source/tablex
           {selectType === "action_log" && <ActionLog />}
         </Form>
       </Modal>

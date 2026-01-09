@@ -12,12 +12,7 @@ export async function POST(req: Request) {
     
     console.log("Received login request for user:", username, password);
     const ZABBIX_URL =
-<<<<<<< HEAD
-      process.env.NEXT_PUBLIC_ZABBIX_URL ||
-      "http://localhost:8080/api_jsonrpc.php";
-=======
       process.env.NEXT_PUBLIC_ZABBIX_URL as string ;
->>>>>>> source/tablex
 
     const payload = {
       jsonrpc: "2.0",
@@ -33,10 +28,7 @@ export async function POST(req: Request) {
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
-<<<<<<< HEAD
-=======
         
->>>>>>> source/tablex
       },
       timeout: 10000,
     });

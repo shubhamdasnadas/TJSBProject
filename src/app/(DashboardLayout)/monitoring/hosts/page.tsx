@@ -45,11 +45,7 @@ const Host = () => {
     console.log("Filter Data:", filterFormData);
     try {
       const res = await axios.post(
-<<<<<<< HEAD
         "/api/api_host/api_getdata_host",
-=======
-        "http://localhost:3000/api/api_host/api_getdata_host",
->>>>>>> source/tablex
         {
           auth:   "4da1fa11e111045e020b7985d219eeea",
           groupid: filterFormData.groupid,
