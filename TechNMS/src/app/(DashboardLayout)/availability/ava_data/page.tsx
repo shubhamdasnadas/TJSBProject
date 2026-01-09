@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Modal } from "antd";
 import branches from "../data/data";
+import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -13,9 +14,7 @@ type IpRow = {
   tunnels: any[];
   rowState: "up" | "down" | "partial";
 };
-interface Props {
-  mode?: "page" | "widget";
-}
+
 function getBranchNameByHostname(hostname: string) {
   if (!hostname) return "Unknown";
 
@@ -26,28 +25,56 @@ function getBranchNameByHostname(hostname: string) {
   return found ? found.name : "Unknown";
 }
 
-export default function TunnelsPage({ mode = "page" }: Props) {
+/**
+ * ✅ Normalize tunnel ISP name using ISP_BRANCHES
+ * Does NOT affect existing logic
+ */
+function resolveIspName(text: string) {
+  if (!text) return text;
+
+  let result = text;
+
+  ISP_BRANCHES.forEach((isp) => {
+    const type = isp.type.toLowerCase();
+    if (result.toLowerCase().includes(type)) {
+      result = result.replace(
+        new RegExp(type, "gi"),
+        isp.name
+      );
+    }
+  });
+
+  return result;
+}
+
+interface Props {
+  mode?: "page" | "widget";
+}
+
+export default function TunnelsTable({ mode = "page" }: Props) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 👇 for preview popup
   const [showPreview, setShowPreview] = useState(false);
 
   async function load() {
+    setLoading(true);
+
     try {
-      // ✅ READ FROM LOCAL STORAGE ONLY
       const cached = localStorage.getItem("preloaded_tunnels");
-      if (!cached) return;
+      if (!cached) {
+        setRows([]);
+        return;
+      }
 
       const data: IpRow[] = JSON.parse(cached);
 
-      // ✅ SORT ROWS: down → partial → up
       const order = { down: 0, partial: 1, up: 2 };
       data.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
       setRows(data);
     } catch (e) {
       console.error("FRONTEND ERROR:", e);
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -57,22 +84,20 @@ export default function TunnelsPage({ mode = "page" }: Props) {
     load();
   }, []);
 
-  // 👇 instead of routing — just open preview popup
   function handleExport() {
     setShowPreview(true);
   }
 
   function downloadPdf() {
     const doc = new jsPDF();
-
     doc.setFontSize(14);
     doc.text("SD-WAN Tunnel Report", 14, 16);
 
     autoTable(doc, {
       startY: 22,
-      head: [["Branch", "Hostname", "System IP", "Tunnels"]],
+      head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
       body: rows.map((r: any) => [
-        r.branchName,
+        getBranchNameByHostname(r.hostname),
         r.hostname,
         r.systemIp,
         r.tunnels.length,
@@ -85,7 +110,6 @@ export default function TunnelsPage({ mode = "page" }: Props) {
   const columns: any = [
     {
       title: "Branch",
-      dataIndex: "branchName",
       key: "branchName",
       render: (_: any, row: IpRow) => {
         let bg = "#ddd";
@@ -95,12 +119,10 @@ export default function TunnelsPage({ mode = "page" }: Props) {
           bg = "#d7ffd7";
           color = "green";
         }
-
         if (row.rowState === "down") {
           bg = "#ffd6d6";
           color = "red";
         }
-
         if (row.rowState === "partial") {
           bg = "#ffe5b4";
           color = "orange";
@@ -116,7 +138,7 @@ export default function TunnelsPage({ mode = "page" }: Props) {
               fontWeight: 700,
             }}
           >
-            {row.branchName}
+            {getBranchNameByHostname(row.hostname)}
           </span>
         );
       },
@@ -136,7 +158,7 @@ export default function TunnelsPage({ mode = "page" }: Props) {
                 fontWeight: t.state === "down" ? 700 : 400,
               }}
             >
-              {t.tunnelName} — {t.uptime}
+              {resolveIspName(t.tunnelName)} — {t.uptime}
             </option>
           ))}
         </select>
@@ -153,12 +175,10 @@ export default function TunnelsPage({ mode = "page" }: Props) {
           bg = "#d7ffd7";
           color = "green";
         }
-
         if (row.rowState === "down") {
           bg = "#ffd6d6";
           color = "red";
         }
-
         if (row.rowState === "partial") {
           bg = "#ffe5b4";
           color = "orange";
@@ -182,8 +202,7 @@ export default function TunnelsPage({ mode = "page" }: Props) {
   ];
 
   return (
-    <div className={mode === "widget" ? "" : "p-4"}>
-      {/* ❌ Hide header in widget mode */}
+    <div>
       {mode === "page" && (
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">
@@ -196,7 +215,6 @@ export default function TunnelsPage({ mode = "page" }: Props) {
         </div>
       )}
 
-      {/* ✅ TABLE ALWAYS RENDERS */}
       <Table
         loading={loading}
         columns={columns}
@@ -207,7 +225,6 @@ export default function TunnelsPage({ mode = "page" }: Props) {
         size={mode === "widget" ? "small" : "middle"}
       />
 
-      {/* ❌ Hide modal in widget mode */}
       {mode === "page" && (
         <Modal
           open={showPreview}
@@ -225,7 +242,11 @@ export default function TunnelsPage({ mode = "page" }: Props) {
         >
           <Table
             columns={[
-              { title: "Branch", dataIndex: "branchName" },
+              {
+                title: "Branch",
+                render: (_: any, r: any) =>
+                  getBranchNameByHostname(r.hostname),
+              },
               { title: "Hostname", dataIndex: "hostname" },
               { title: "System IP", dataIndex: "systemIp" },
               {
