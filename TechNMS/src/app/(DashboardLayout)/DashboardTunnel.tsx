@@ -52,7 +52,7 @@ interface Props {
   mode?: "page" | "widget";
 }
 
-export default function TunnelsTable({ mode = "page" }: Props) {
+export default function DashboardTunnel({ mode = "page" }: Props) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
