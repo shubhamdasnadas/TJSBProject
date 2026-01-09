@@ -15,6 +15,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 
 import CustomTextField from "../../(DashboardLayout)/components/forms/theme-elements/CustomTextField";
+import { loadTunnels } from "@/utils/loadTunnels";
 
 interface LoginProps {
   title?: string;
@@ -44,8 +45,6 @@ const AuthLogin: React.FC<LoginProps> = ({
   const router = useRouter();
 
   const handleSubmit = async () => {
-    console.log("Login submitted:", userData);
-
     try {
       const response = await axios.post("/api/zabbix-login", {
         username: userData.userName,
@@ -54,23 +53,33 @@ const AuthLogin: React.FC<LoginProps> = ({
 
       const data = response.data;
 
-      if (data.result) {
-        const token = data.result;
-
-        console.log("User Token:", token);
-
-        // main app token
-        localStorage.setItem("auth_token", token);
-
-        // keep zabbix auth also
-        localStorage.setItem("zabbix_auth", token);
-        localStorage.setItem("zabbix_login_status", "true");
-
-        // go root — layout controls dashboard
-        router.replace("/");
-      } else {
-        console.error("Login Failed:", data.error || "Unknown error");
+      if (!data?.result) {
+        console.error("Login Failed:", data?.error || "Unknown error");
+        return;
       }
+
+      const token = data.result;
+
+      // ---------------- TOKEN STORAGE ----------------
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("zabbix_auth", token);
+      localStorage.setItem("zabbix_login_status", "true");
+
+      // ---------------- PRELOAD TUNNELS ----------------
+      try {
+        const tunnelRows = await loadTunnels();
+        localStorage.setItem(
+          "preloaded_tunnels",
+          JSON.stringify(tunnelRows)
+        );
+      } catch (e) {
+        console.error("Tunnel preload failed:", e);
+        // ❗ dashboard can still load later
+      }
+
+      // ---------------- REDIRECT ----------------
+      router.replace("/");
+
     } catch (err) {
       console.error("Login error:", err);
     }
@@ -88,18 +97,10 @@ const AuthLogin: React.FC<LoginProps> = ({
 
       <Stack>
         <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            component="label"
-            htmlFor="username"
-            mb="5px"
-          >
+          <Typography variant="subtitle1" fontWeight={600}>
             Username
           </Typography>
           <CustomTextField
-            id="username"
-            variant="outlined"
             fullWidth
             value={userData.userName}
             onChange={(e: any) =>
@@ -109,19 +110,11 @@ const AuthLogin: React.FC<LoginProps> = ({
         </Box>
 
         <Box mt="25px">
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            component="label"
-            htmlFor="password"
-            mb="5px"
-          >
+          <Typography variant="subtitle1" fontWeight={600}>
             Password
           </Typography>
           <CustomTextField
-            id="password"
             type="password"
-            variant="outlined"
             fullWidth
             value={userData.password}
             onChange={(e: any) =>
@@ -130,12 +123,7 @@ const AuthLogin: React.FC<LoginProps> = ({
           />
         </Box>
 
-        <Stack
-          justifyContent="space-between"
-          direction="row"
-          alignItems="center"
-          my={2}
-        >
+        <Stack direction="row" justifyContent="space-between" my={2}>
           <FormGroup>
             <FormControlLabel
               control={<Checkbox defaultChecked />}
@@ -146,7 +134,6 @@ const AuthLogin: React.FC<LoginProps> = ({
           <Typography
             component={Link}
             href="/"
-            fontWeight="500"
             sx={{ textDecoration: "none", color: "primary.main" }}
           >
             Forgot Password?
@@ -154,18 +141,15 @@ const AuthLogin: React.FC<LoginProps> = ({
         </Stack>
       </Stack>
 
-      <Box>
-        <Button
-          color="primary"
-          variant="contained"
-          size="large"
-          fullWidth
-          sx={{ py: 1.6, mb: 2 }}
-          onClick={handleSubmit}
-        >
-          Sign In
-        </Button>
-      </Box>
+      <Button
+        fullWidth
+        variant="contained"
+        size="large"
+        sx={{ py: 1.6, mb: 2 }}
+        onClick={handleSubmit}
+      >
+        Sign In
+      </Button>
 
       {subtitle}
     </>

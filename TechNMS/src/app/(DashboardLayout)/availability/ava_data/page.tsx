@@ -25,17 +25,26 @@ function getBranchNameByHostname(hostname: string) {
   return found ? found.name : "Unknown";
 }
 
-export default function TunnelsPage() {
+interface Props {
+  mode?: "page" | "widget";
+}
+
+export default function TunnelsTable({ mode = "page" }: Props) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 👇 for preview popup
   const [showPreview, setShowPreview] = useState(false);
 
   async function load() {
     try {
-      const res = await axios.post("/api/sdwan/tunnels");
+      const cached = localStorage.getItem("preloaded_tunnels");
 
+      if (cached) {
+        setRows(JSON.parse(cached));
+        localStorage.removeItem("preloaded_tunnels");
+        return;
+      }
+
+      const res = await axios.post("/api/sdwan/tunnels");
       const devices = res.data.devices || {};
 
       const final: IpRow[] = Object.entries(devices).map(
@@ -47,7 +56,6 @@ export default function TunnelsPage() {
           const sortedTunnels = tunnels.sort((a: any, b: any) => {
             const priority = (v: string) =>
               v === "down" ? 0 : v === "up" ? 1 : 2;
-
             return priority(a.state) - priority(b.state);
           });
 
@@ -80,21 +88,14 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // 👇 instead of routing — just open preview popup
-  function handleExport() {
-    setShowPreview(true);
-  }
-
   function downloadPdf() {
     const doc = new jsPDF();
-
-    doc.setFontSize(14);
     doc.text("SD-WAN Tunnel Report", 14, 16);
 
     autoTable(doc, {
       startY: 22,
       head: [["Branch", "Hostname", "System IP", "Tunnels"]],
-      body: rows.map((r: any) => [
+      body: rows.map((r) => [
         r.branchName,
         r.hostname,
         r.systemIp,
@@ -109,7 +110,6 @@ export default function TunnelsPage() {
     {
       title: "Branch",
       dataIndex: "branchName",
-      key: "branchName",
       render: (_: any, row: IpRow) => {
         let bg = "#ddd";
         let color = "#000";
@@ -118,7 +118,6 @@ export default function TunnelsPage() {
           bg = "#d7ffd7";
           color = "green";
         }
-
         if (row.rowState === "down") {
           bg = "#ffd6d6";
           color = "red";
@@ -142,67 +141,27 @@ export default function TunnelsPage() {
     { title: "Hostname", dataIndex: "hostname" },
     { title: "System IP", dataIndex: "systemIp" },
     {
-      title: "Tunnels (Name + Uptime)",
-      key: "tunnelInfo",
-      render: (_: any, row: IpRow) => (
-        <select style={{ padding: 4 }}>
-          {row.tunnels.map((t: any, i: number) => (
-            <option
-              key={i}
-              style={{
-                color: t.state === "down" ? "red" : "black",
-                fontWeight: t.state === "down" ? 700 : 400,
-              }}
-            >
-              {t.tunnelName} — {t.uptime}
-            </option>
-          ))}
-        </select>
-      ),
+      title: "Tunnels",
+      render: (_: any, row: IpRow) => row.tunnels.length,
     },
     {
       title: "State",
-      key: "state",
-      render: (_: any, row: IpRow) => {
-        let bg = "#ccc";
-        let color = "black";
-
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-
-        return (
-          <span
-            style={{
-              padding: "2px 10px",
-              borderRadius: 6,
-              background: bg,
-              color,
-              fontWeight: 700,
-            }}
-          >
-            {row.rowState}
-          </span>
-        );
-      },
+      render: (_: any, row: IpRow) => row.rowState,
     },
   ];
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">SD-WAN — Tunnel Status by IP</h1>
-
-        <Button type="primary" onClick={handleExport}>
-          Export / Preview
-        </Button>
-      </div>
+    <div>
+      {mode === "page" && (
+        <div className="flex justify-between mb-4">
+          <h1 className="text-xl font-bold">
+            SD-WAN — Tunnel Status by IP
+          </h1>
+          <Button type="primary" onClick={() => setShowPreview(true)}>
+            Export / Preview
+          </Button>
+        </div>
+      )}
 
       <Table
         loading={loading}
@@ -211,39 +170,32 @@ export default function TunnelsPage() {
         bordered
         pagination={false}
         rowKey={(r) => r.systemIp}
+        size={mode === "widget" ? "small" : "middle"}
       />
 
-      {/* PREVIEW MODAL */}
-      <Modal
-        open={showPreview}
-        title="Export Preview"
-        onCancel={() => setShowPreview(false)}
-        width={900}
-        footer={[
-          <Button key="close" onClick={() => setShowPreview(false)}>
-            Close
-          </Button>,
-          <Button key="pdf" type="primary" onClick={downloadPdf}>
-            Download PDF
-          </Button>,
-        ]}
-      >
-        <Table
-          columns={[
-            { title: "Branch", dataIndex: "branchName" },
-            { title: "Hostname", dataIndex: "hostname" },
-            { title: "System IP", dataIndex: "systemIp" },
-            {
-              title: "Tunnels",
-              render: (_: any, row: any) => row.tunnels.length,
-            },
+      {mode === "page" && (
+        <Modal
+          open={showPreview}
+          title="Export Preview"
+          onCancel={() => setShowPreview(false)}
+          width={900}
+          footer={[
+            <Button key="close" onClick={() => setShowPreview(false)}>
+              Close
+            </Button>,
+            <Button key="pdf" type="primary" onClick={downloadPdf}>
+              Download PDF
+            </Button>,
           ]}
-          dataSource={rows}
-          bordered
-          pagination={false}
-          rowKey={(r: any) => r.systemIp}
-        />
-      </Modal>
+        >
+          <Table
+            columns={columns}
+            dataSource={rows}
+            pagination={false}
+            rowKey={(r) => r.systemIp}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

@@ -21,6 +21,7 @@ const ItemValue = lazy(() => import("./widget/itemvalue"));
 const ProblemSeverity = lazy(() => import("./Problemseverity"));
 const ActionLog = lazy(() => import("./widget/actionLog"));
 const TopHost = lazy(() => import("./widget/top_host/data"));
+const TunnelsTable = lazy(() => import("../(DashboardLayout)/availability/ava_data/page"));
 
 /* ================= STORAGE KEYS ================= */
 const STORAGE_KEY = "dashboard_layout_v2";
@@ -29,15 +30,6 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
-  // {
-  //   id: "summary-count",
-  //   title: "Summary Count",
-  //   component: DashboardSummaryCount,
-  //   x: 0,
-  //   y: 0,
-  //   w: 12,
-  //   h: 2,
-  // },
   {
     id: "problems-table",
     title: "Active Problems",
@@ -76,6 +68,15 @@ const WIDGETS = [
     y: 0,
     w: 12,
     h: 9,
+  },
+  {
+    id: "sdwan_tunnels",
+    title: "SD-WAN Tunnel Status",
+    component: () => <TunnelsTable mode="widget" />,
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 8,
   },
 ];
 
