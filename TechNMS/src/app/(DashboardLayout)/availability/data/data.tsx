@@ -5,7 +5,7 @@ export interface Branch {
 }
 
 
-const branches: Branch[]  = [
+const branches: Branch[] = [
   { "name": "Main Old", "code": "BR-C002-MAIN", "ip": "192.168.222.21" },
   { "name": "Main New", "code": "BR-C002-MAIN2", "ip": "192.168.222.177" },
   { "name": "Naupada", "code": "BR-C003-NPADA", "ip": "192.168.222.22" },
@@ -206,3 +206,37 @@ const branches: Branch[]  = [
 ]
 
 export default branches;
+
+
+export const ISP_BRANCHES = [
+  {
+    "name": "TCL",
+    "type": "Private1",
+  },
+  {
+    "name": "Airtel",
+    "type": "Private2",
+  },
+  {
+    "name": "TTML",
+    "type": "Private3",
+  },
+  {
+    "name": "Sify",
+    "type": "Private4",
+  },
+  {
+    "name": "P2P",
+    "type": "Private5",
+  },
+  {
+    "name": "Passcom",
+    "type": "Biz-Internet",
+  },
+  {
+    "name": "Local ISP",
+    "type": "Public-Internet",
+  },
+];
+
+
