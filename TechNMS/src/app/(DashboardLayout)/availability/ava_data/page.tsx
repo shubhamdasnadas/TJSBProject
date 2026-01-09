@@ -34,10 +34,11 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const [showPreview, setShowPreview] = useState(false);
 
   const loadFromLocalStorage = () => {
-    setLoading(true);
+     setLoading(true);
 
     try {
       const cached = localStorage.getItem("preloaded_tunnels");
+      setLoading(true);
       if (!cached) {
         setRows([]);
         return;
@@ -60,7 +61,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     loadFromLocalStorage();
-  }, []);
+  }, [mode, loading]);
 
   /* ---------------- AUTO REFRESH (NO PAGE RELOAD) ---------------- */
   useEffect(() => {
