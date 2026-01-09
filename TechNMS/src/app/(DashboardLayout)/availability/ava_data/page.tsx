@@ -61,7 +61,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     loadFromLocalStorage();
-  }, [mode, loading]);
+  }, []);
 
   /* ---------------- AUTO REFRESH (NO PAGE RELOAD) ---------------- */
   useEffect(() => {
