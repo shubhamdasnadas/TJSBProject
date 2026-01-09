@@ -25,45 +25,7 @@ export default function ZabbixTopProblemsPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  /* ✅ PAGINATION STATE */
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-
-  /* =========================
-     KEYBOARD PAGINATION
-     Alt + N / Alt + P
-  ========================= */
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // ignore while typing
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
-
-      const totalPages = Math.ceil(data.length / pageSize);
-
-      // Alt + N → Next
-      if (e.altKey && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        setCurrentPage((p) => (p < totalPages ? p + 1 : p));
-      }
-
-      // Alt + P → Previous
-      if (e.altKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        setCurrentPage((p) => (p > 1 ? p - 1 : p));
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [data.length]);
-
-  /* =========================
-     LOAD GROUPS
-  ========================= */
+  /* Load groups */
   useEffect(() => {
     axios
       .post(
@@ -79,15 +41,12 @@ export default function ZabbixTopProblemsPage() {
       .then((r) => setGroups(r.data.result ?? []));
   }, []);
 
-  /* =========================
-     LOAD HOSTS
-  ========================= */
+  /* Load hosts */
   const loadHosts = async (gids: string[]) => {
     setGroupids(gids);
     setHosts([]);
     setHostids([]);
     setData([]);
-    setCurrentPage(1);
 
     if (!gids.length) return;
 
@@ -105,14 +64,12 @@ export default function ZabbixTopProblemsPage() {
     setHosts(r.data.result ?? []);
   };
 
-  /* =========================
-     LOAD TABLE (WITH COUNT)
-  ========================= */
+  /* 🔥 Load table WITH OCCURRENCE COUNT */
   const loadTable = async () => {
     setLoading(true);
     try {
       const now = Math.floor(Date.now() / 1000);
-      const time_from = now - 24 * 3600;
+      const time_from = now - 24 * 3600; // last 6 hours (same as working page)
 
       const r = await axios.post(
         "/api/zabbix-proxy",
@@ -124,7 +81,7 @@ export default function ZabbixTopProblemsPage() {
             selectHosts: ["hostid", "name"],
             groupids,
             hostids,
-            value: 1,
+            value: 1, // PROBLEM only
             time_from,
             time_till: now,
           },
@@ -134,6 +91,8 @@ export default function ZabbixTopProblemsPage() {
       );
 
       const events = r.data.result ?? [];
+
+      /* ✅ SAME OCCURRENCE LOGIC */
       const map: Record<string, any> = {};
 
       events.forEach((e: any) => {
@@ -145,7 +104,7 @@ export default function ZabbixTopProblemsPage() {
               key,
               host: h.name,
               trigger: e.name,
-              severity: "N/A",
+              severity: "N/A", // optional
               count: 0,
             };
           }
@@ -155,23 +114,13 @@ export default function ZabbixTopProblemsPage() {
       });
 
       setData(Object.values(map));
-      setCurrentPage(1); // ✅ reset page
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card
-      title={
-        <span>
-          Top Problems (Occurrence Count)
-          <span style={{ marginLeft: 12, color: "#999", fontSize: 12 }}>
-            (Alt + N / Alt + P)
-          </span>
-        </span>
-      }
-    >
+    <Card title="Top Problems (Occurrence Count)">
       <Row gutter={16}>
         <Col span={6}>
           <Select
@@ -180,7 +129,6 @@ export default function ZabbixTopProblemsPage() {
             optionFilterProp="label"
             placeholder="Host Groups"
             style={{ width: "100%" }}
-            listHeight={600}
             onChange={loadHosts}
           >
             {groups.map((g) => (
@@ -198,7 +146,6 @@ export default function ZabbixTopProblemsPage() {
             optionFilterProp="label"
             placeholder="Hosts"
             style={{ width: "100%" }}
-            listHeight={600}
             value={hostids}
             onChange={setHostids}
           >
@@ -223,13 +170,6 @@ export default function ZabbixTopProblemsPage() {
         loading={loading}
         rowKey="key"
         dataSource={data}
-        pagination={{
-          current: currentPage,
-          pageSize,
-          total: data.length,
-          onChange: setCurrentPage,
-          showSizeChanger: false,
-        }}
         columns={[
           { title: "Host", dataIndex: "host" },
           { title: "Trigger", dataIndex: "trigger" },
@@ -244,3 +184,9 @@ export default function ZabbixTopProblemsPage() {
     </Card>
   );
 }
+
+
+
+
+
+
