@@ -17,31 +17,7 @@ import { useRouter } from "next/navigation";
 import CustomTextField from "../../(DashboardLayout)/components/forms/theme-elements/CustomTextField";
 import { loadTunnels } from "@/utils/loadTunnels";
 
-interface LoginProps {
-  title?: string;
-  subtitle?: React.ReactNode;
-  subtext?: React.ReactNode;
-
-  userData: {
-    userName: string;
-    password: string;
-  };
-
-  setUserData: React.Dispatch<
-    React.SetStateAction<{
-      userName: string;
-      password: string;
-    }>
-  >;
-}
-
-const AuthLogin: React.FC<LoginProps> = ({
-  title,
-  subtitle,
-  subtext,
-  userData,
-  setUserData,
-}) => {
+const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => {
   const router = useRouter();
 
   const handleSubmit = async () => {
@@ -51,35 +27,18 @@ const AuthLogin: React.FC<LoginProps> = ({
         password: userData.password,
       });
 
-      const data = response.data;
+      if (!response.data?.result) return;
 
-      if (!data?.result) {
-        console.error("Login Failed:", data?.error || "Unknown error");
-        return;
-      }
+      const token = response.data.result;
 
-      const token = data.result;
-
-      // ---------------- TOKEN STORAGE ----------------
       localStorage.setItem("auth_token", token);
       localStorage.setItem("zabbix_auth", token);
       localStorage.setItem("zabbix_login_status", "true");
 
-      // ---------------- PRELOAD TUNNELS ----------------
-      try {
-        const tunnelRows = await loadTunnels();
-        localStorage.setItem(
-          "preloaded_tunnels",
-          JSON.stringify(tunnelRows)
-        );
-      } catch (e) {
-        console.error("Tunnel preload failed:", e);
-        // ❗ dashboard can still load later
-      }
-
-      // ---------------- REDIRECT ----------------
       router.replace("/");
-
+      // 🔹 preload tunnels
+      const tunnelRows = await loadTunnels();
+      localStorage.setItem("preloaded_tunnels", JSON.stringify(tunnelRows));
     } catch (err) {
       console.error("Login error:", err);
     }
@@ -87,67 +46,29 @@ const AuthLogin: React.FC<LoginProps> = ({
 
   return (
     <>
-      {title && (
-        <Typography fontWeight="700" variant="h2" mb={1}>
-          {title}
-        </Typography>
-      )}
-
+      {title && <Typography variant="h2">{title}</Typography>}
       {subtext}
 
       <Stack>
-        <Box>
-          <Typography variant="subtitle1" fontWeight={600}>
-            Username
-          </Typography>
-          <CustomTextField
-            fullWidth
-            value={userData.userName}
-            onChange={(e: any) =>
-              setUserData({ ...userData, userName: e.target.value })
-            }
-          />
-        </Box>
+        <CustomTextField
+          fullWidth
+          value={userData.userName}
+          onChange={(e: any) =>
+            setUserData({ ...userData, userName: e.target.value })
+          }
+        />
 
-        <Box mt="25px">
-          <Typography variant="subtitle1" fontWeight={600}>
-            Password
-          </Typography>
-          <CustomTextField
-            type="password"
-            fullWidth
-            value={userData.password}
-            onChange={(e: any) =>
-              setUserData({ ...userData, password: e.target.value })
-            }
-          />
-        </Box>
-
-        <Stack direction="row" justifyContent="space-between" my={2}>
-          <FormGroup>
-            <FormControlLabel
-              control={<Checkbox defaultChecked />}
-              label="Remember this Device"
-            />
-          </FormGroup>
-
-          <Typography
-            component={Link}
-            href="/"
-            sx={{ textDecoration: "none", color: "primary.main" }}
-          >
-            Forgot Password?
-          </Typography>
-        </Stack>
+        <CustomTextField
+          type="password"
+          fullWidth
+          value={userData.password}
+          onChange={(e: any) =>
+            setUserData({ ...userData, password: e.target.value })
+          }
+        />
       </Stack>
 
-      <Button
-        fullWidth
-        variant="contained"
-        size="large"
-        sx={{ py: 1.6, mb: 2 }}
-        onClick={handleSubmit}
-      >
+      <Button fullWidth variant="contained" onClick={handleSubmit}>
         Sign In
       </Button>
 
