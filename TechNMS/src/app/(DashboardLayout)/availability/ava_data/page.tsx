@@ -85,11 +85,19 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     load();
   }, []);
 
-  setInterval(async () => {
-    const res = await loadTunnels();
-    localStorage.setItem("preloaded_tunnels", JSON.stringify(res));
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      const res = await loadTunnels();
+      localStorage.setItem(
+        "preloaded_tunnels",
+        JSON.stringify(res)
+      );
+    }, 180000);
 
-  }, 180000); // every 5 minutes
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+
 
 
   function handleExport() {
