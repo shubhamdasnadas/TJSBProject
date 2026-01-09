@@ -33,7 +33,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 
-  async function load() {
+  const loadFromLocalStorage = () => {
     setLoading(true);
 
     try {
@@ -45,7 +45,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
       const data: IpRow[] = JSON.parse(cached);
 
-      // down → partial → up
       const order = { down: 0, partial: 1, up: 2 };
       data.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
@@ -56,10 +55,39 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
+  /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
-    load();
+    loadFromLocalStorage();
+  }, []);
+
+  /* ---------------- AUTO REFRESH (NO PAGE RELOAD) ---------------- */
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (
+        e.key === "preloaded_tunnels" ||
+        e.key === "sdwan_api_success"
+      ) {
+        loadFromLocalStorage();
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+
+    // fallback for same-tab updates
+    const interval = setInterval(() => {
+      const apiFlag = localStorage.getItem("sdwan_api_success");
+      if (apiFlag === "true") {
+        loadFromLocalStorage();
+        localStorage.removeItem("sdwan_api_success");
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      clearInterval(interval);
+    };
   }, []);
 
   function handleExport() {
@@ -181,7 +209,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   return (
     <div>
-      {/* ✅ PAGE MODE HEADER ONLY */}
       {mode === "page" && (
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">
@@ -194,7 +221,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         </div>
       )}
 
-      {/* ✅ TABLE ALWAYS RENDERS */}
       <Table
         loading={loading}
         columns={columns}
@@ -205,7 +231,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         size={mode === "widget" ? "small" : "middle"}
       />
 
-      {/* ✅ MODAL ONLY FOR PAGE MODE */}
       {mode === "page" && (
         <Modal
           open={showPreview}

@@ -39,6 +39,10 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
       // 🔹 preload tunnels
       const tunnelRows = await loadTunnels();
       localStorage.setItem("preloaded_tunnels", JSON.stringify(tunnelRows));
+
+      // 🔹 GLOBAL API SUCCESS FLAG (TABLE REFRESH TRIGGER)
+      localStorage.setItem("sdwan_api_success", "true");
+
     } catch (err) {
       console.error("Login error:", err);
     }

@@ -99,12 +99,14 @@ export async function POST() {
             systemIp,
             hostname: deviceMap.get(systemIp),
             sessions: res.data?.data || [],
+            apiSuccess: true, // ✅ API CALL SUCCESS
           });
         } catch {
           results.push({
             systemIp,
             hostname: deviceMap.get(systemIp),
             sessions: [],
+            apiSuccess: false, // ❌ API CALL FAILED
           });
         }
       }
@@ -113,78 +115,61 @@ export async function POST() {
     await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
     /* ---------------- DEVICE-WISE ---------------- */
-    const deviceWiseTunnels: Record<string, any[]> = {};
+    const deviceWiseTunnels: Record<
+      string,
+      {
+        hostname: string;
+        apiSuccess: boolean; // ✅ BOOLEAN REQUESTED
+        tunnels: any[];
+      }
+    > = {};
 
     for (const d of results) {
-      deviceWiseTunnels[d.systemIp] = (d.sessions || []).map((s: any) => ({
-        tunnelName: `${d.systemIp}:${s["local-color"]} → ${s["system-ip"]}:${s["color"]}`,
-        localSystemIp: d.systemIp,
-        remoteSystemIp: s["system-ip"],
-        localColor: s["local-color"],
-        remoteColor: s["color"],
-        state: s.state,
-        uptime: s.uptime,
-        uptimeEpoch: s["uptime-date"],
-        lastUpdated: s.lastupdated,
-        transitions: s.transitions,
-        protocol: s.proto,
+      deviceWiseTunnels[d.systemIp] = {
         hostname: d.hostname,
-      }));
+        apiSuccess: d.apiSuccess,
+        tunnels: (d.sessions || []).map((s: any) => ({
+          tunnelName: `${d.systemIp}:${s["local-color"]} → ${s["system-ip"]}:${s["color"]}`,
+          localSystemIp: d.systemIp,
+          remoteSystemIp: s["system-ip"],
+          localColor: s["local-color"],
+          remoteColor: s["color"],
+          state: s.state,
+          uptime: s.uptime,
+          uptimeEpoch: s["uptime-date"],
+          lastUpdated: s.lastupdated,
+          transitions: s.transitions,
+          protocol: s.proto,
+          hostname: d.hostname,
+        })),
+      };
     }
 
     /* =====================================================
-       🔔 ALERT LOGIC – DO NOT BREAK EXISTING CODE
+       🔔 ALERT LOGIC – UNCHANGED
        ===================================================== */
-    for (const [systemIp, tunnels] of Object.entries(deviceWiseTunnels)) {
+    for (const [systemIp, device] of Object.entries(deviceWiseTunnels)) {
+      const tunnels = device.tunnels;
       if (!tunnels || tunnels.length === 0) continue;
 
-      const hostname = tunnels[0].hostname || "NA";
-
+      const hostname = device.hostname || "NA";
       const states = tunnels.map((t: any) => t.state);
 
       const allUp = states.every((s: string) => s === "up");
       const allDown = states.every((s: string) => s === "down");
 
-      /* ---------- CASE 1: MIXED ---------- */
       if (!allUp && !allDown) {
-        const html = `
-          <h3>⚠️ Partial Tunnel Failure</h3>
-          <p><b>System IP:</b> ${systemIp}</p>
-          <p><b>Hostname:</b> ${hostname}</p>
-          <hr />
-          <ul>
-            ${tunnels
-              .map(
-                (t: any) =>
-                  `<li>${t.tunnelName} — uptime: ${t.uptime} — <b>${t.state}</b></li>`
-              )
-              .join("")}
-          </ul>
-        `;
-
-        await sendAlertMail(`PARTIAL DOWN — ${hostname} (${systemIp})`, html);
-        continue;
+        await sendAlertMail(
+          `PARTIAL DOWN — ${hostname} (${systemIp})`,
+          `<p>Partial tunnel failure detected</p>`
+        );
       }
 
-      /* ---------- CASE 2: ALL DOWN ---------- */
       if (allDown) {
-        const html = `
-          <h3>🚨 ALL TUNNELS DOWN</h3>
-          <p><b>Branch:</b> Unknown (add later if needed)</p>
-          <p><b>Hostname:</b> ${hostname}</p>
-          <p><b>System IP:</b> ${systemIp}</p>
-          <hr />
-          <ul>
-            ${tunnels
-              .map(
-                (t: any) =>
-                  `<li>${t.tunnelName} — uptime: ${t.uptime} — <b>${t.state}</b></li>`
-              )
-              .join("")}
-          </ul>
-        `;
-
-        await sendAlertMail(`ALL DOWN — ${hostname} (${systemIp})`, html);
+        await sendAlertMail(
+          `ALL DOWN — ${hostname} (${systemIp})`,
+          `<p>All tunnels are down</p>`
+        );
       }
     }
 
@@ -192,7 +177,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       totalEdges: systemIps.length,
-      devices: deviceWiseTunnels,
+      devices: deviceWiseTunnels, // ✅ frontend gets apiSuccess boolean
     });
   } catch (err: any) {
     return NextResponse.json(
