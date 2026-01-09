@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -58,6 +59,7 @@ const axiosCfg = {
 ========================= */
 const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
 
+/** SVG → PNG for jsPDF */
 const loadSvgAsPng = async (url: string) => {
   const svgText = await fetch(url).then((r) => r.text());
   const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
@@ -86,30 +88,53 @@ const exportHistoryToPDF = async (
   const doc = new jsPDF("l", "pt", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
 
+  /* PAGE 1 – COVER */
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
+
   doc.addImage(logoPng, "PNG", pageWidth / 2 - 150, 80, 300, 170);
 
+
+
   doc.setFontSize(26);
-  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, {
-    align: "center",
-  });
+  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, { align: "center",  });
 
-  doc.setFontSize(14);
-  doc.text(`Metric: ${title}`, pageWidth / 2, 450, { align: "center" });
+  doc.text(
+    `Generated: ${new Date().toLocaleString()}`,     pageWidth / 2,      440,     { align: "center" }   );
+    
+  doc.setFontSize(16);
+  doc.text(`Metric: ${title}`, pageWidth / 2, 470, { align: "center" });
+  
 
+  doc.setFontSize(12);
+  doc.setTextColor(90);
+
+  /* PAGE 2 – CHART */
   if (chartEl) {
-    const canvas = await html2canvas(chartEl, { scale: 3 });
+    const canvas = await html2canvas(chartEl, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+    });
+
     doc.addPage();
+    doc.setFontSize(18);
+    doc.text("Utilization Graph", 40, 40);
     doc.addImage(canvas.toDataURL("image/png"), "PNG", 40, 60, 760, 320);
   }
 
+  /* PAGE 3 – TABLE */
   doc.addPage();
+  doc.setFontSize(18);
+  doc.text("History Data", 40, 40);
+
   autoTable(doc, {
+    startY: 70,
     head: [["Time", "Value"]],
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
       Number(r.value).toFixed(2),
     ]),
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [30, 30, 30] },
   });
 
   doc.save(`techsec_history_${Date.now()}.pdf`);
@@ -134,10 +159,10 @@ const HistoryLineChart = ({
     <div style={{ height: 260 }}>
       <ResponsiveContainer>
         <LineChart data={chartData}>
-          <XAxis dataKey="time" />
+          <XAxis dataKey="time" minTickGap={30} />
           <YAxis />
           <Tooltip />
-          <Line dataKey="value" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="value" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -155,10 +180,6 @@ export default function LatestDataPage() {
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
 
-  /* ✅ PAGINATION STATE */
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTitle, setHistoryTitle] = useState("");
@@ -172,32 +193,6 @@ export default function LatestDataPage() {
   });
 
   const chartRef = useRef<HTMLDivElement>(null);
-
-  /* ✅ KEYBOARD PAGINATION */
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
-
-      const totalPages = Math.ceil(tableData.length / pageSize);
-
-      if (e.altKey && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        setCurrentPage((p) => (p < totalPages ? p + 1 : p));
-      }
-
-      if (e.altKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        setCurrentPage((p) => (p > 1 ? p - 1 : p));
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [tableData.length]);
 
   /* LOAD HOST GROUPS */
   useEffect(() => {
@@ -261,11 +256,55 @@ export default function LatestDataPage() {
           change: i.delta ?? "-",
         }))
       );
-
-      setCurrentPage(1); // ✅ reset page
     } finally {
       setLoadingTable(false);
     }
+  };
+
+  const openHistory = async (itemid: string, name: string, host: string) => {
+    setHistoryTitle(name);
+    setHistoryHost(host);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+
+    const r = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: 0,
+          itemids: [itemid],
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 1000,
+        },
+        id: 10,
+      },
+      axiosCfg
+    );
+
+    setHistoryData(r.data.result ?? []);
+    setHistoryLoading(false);
+  };
+
+  const filterHistory = () => {
+    if (!historyDateRange.startDate) return historyData;
+
+    const start =
+      new Date(
+        `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`
+      ).getTime() / 1000;
+
+    const end =
+      new Date(
+        `${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`
+      ).getTime() / 1000;
+
+    return historyData.filter(
+      (r: any) => r.clock >= start && r.clock <= end
+    );
   };
 
   const columns: ColumnsType<TableRow> = [
@@ -274,6 +313,14 @@ export default function LatestDataPage() {
     { title: "Last Value", dataIndex: "lastValue", width: 120 },
     { title: "Last Check", dataIndex: "lastCheck", width: 180 },
     { title: "Change", dataIndex: "change", width: 100 },
+    {
+      title: "History",
+      render: (_, r) => (
+        <Button size="small" onClick={() => openHistory(r.itemid, r.name, r.host)}>
+          View
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -284,6 +331,7 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
+            listHeight={600}
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -299,6 +347,7 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
+            listHeight={600}
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -311,26 +360,65 @@ export default function LatestDataPage() {
           </Button>
         </Space>
 
-        <Table
-          columns={columns}
-          dataSource={tableData}
-          loading={loadingTable}
-          pagination={{
-            current: currentPage,
-            pageSize,
-            total: tableData.length,
-            onChange: setCurrentPage,
-            showSizeChanger: false,
-          }}
-          title={() => (
-            <span>
-              Latest Data
-              <span style={{ marginLeft: 12, color: "#999", fontSize: 12 }}>
-                (Alt + N / Alt + P)
-              </span>
-            </span>
-          )}
-        />
+        <Table columns={columns} dataSource={tableData} loading={loadingTable} />
+
+        <Modal
+          title={`${historyHost} – ${historyTitle}`}
+          open={historyOpen}
+          onCancel={() => setHistoryOpen(false)}
+          footer={null}
+          width={900}
+        >
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Space style={{ justifyContent: "space-between", width: "100%" }}>
+              <RangePickerDemo onRangeChange={setHistoryDateRange} />
+              <Button
+                type="primary"
+                onClick={() =>
+                  exportHistoryToPDF(
+                    historyTitle,
+                    filterHistory(),
+                    chartRef.current
+                  )
+                }
+              >
+                Export PDF
+              </Button>
+            </Space>
+
+            <div ref={chartRef} style={{ background: "#fff", padding: 12 }}>
+              <HistoryLineChart
+                data={filterHistory().map((r: any) => ({
+                  clock: r.clock,
+                  value: r.value,
+                }))}
+              />
+            </div>
+
+            <Table
+              size="small"
+              pagination={false}
+              loading={historyLoading}
+              columns={[
+                {
+                  title: "Time",
+                  dataIndex: "clock",
+                  render: (v) => new Date(v * 1000).toLocaleString(),
+                },
+                {
+                  title: "Value",
+                  dataIndex: "value",
+                  render: (v) => Number(v).toFixed(2),
+                },
+              ]}
+              dataSource={filterHistory().map((r: any) => ({
+                key: r.clock,
+                clock: r.clock,
+                value: r.value,
+              }))}
+            />
+          </Space>
+        </Modal>
       </Space>
     </Card>
   );
