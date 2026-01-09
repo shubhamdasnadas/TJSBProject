@@ -34,13 +34,12 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const [showPreview, setShowPreview] = useState(false);
 
   async function load() {
-    setLoading(true); // ✅ START LOADING
+    setLoading(true);
 
     try {
       const cached = localStorage.getItem("preloaded_tunnels");
-
       if (!cached) {
-        setRows([]); // no data case
+        setRows([]);
         return;
       }
 
@@ -55,7 +54,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
       console.error("FRONTEND ERROR:", e);
       setRows([]);
     } finally {
-      setLoading(false); // ✅ STOP LOADING AFTER DATA READY
+      setLoading(false);
     }
   }
 
@@ -69,7 +68,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   function downloadPdf() {
     const doc = new jsPDF();
-
     doc.setFontSize(14);
     doc.text("SD-WAN Tunnel Report", 14, 16);
 
@@ -183,61 +181,67 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">
-          SD-WAN — Tunnel Status by IP
-        </h1>
+      {/* ✅ PAGE MODE HEADER ONLY */}
+      {mode === "page" && (
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold">
+            SD-WAN — Tunnel Status by IP
+          </h1>
 
-        <Button type="primary" onClick={handleExport}>
-          Export / Preview
-        </Button>
-      </div>
-
-      {mode === "widget" && (
-        <Table
-          loading={loading}   // ✅ PROPER LOADING HANDLING
-          columns={columns}
-          dataSource={rows}
-          bordered
-          pagination={false}
-          rowKey={(r) => r.systemIp}
-        />
+          <Button type="primary" onClick={handleExport}>
+            Export / Preview
+          </Button>
+        </div>
       )}
 
-      <Modal
-        open={showPreview}
-        title="Export Preview"
-        onCancel={() => setShowPreview(false)}
-        width={900}
-        footer={[
-          <Button key="close" onClick={() => setShowPreview(false)}>
-            Close
-          </Button>,
-          <Button key="pdf" type="primary" onClick={downloadPdf}>
-            Download PDF
-          </Button>,
-        ]}
-      >
-        <Table
-          columns={[
-            {
-              title: "Branch",
-              render: (_: any, r: any) =>
-                getBranchNameByHostname(r.hostname),
-            },
-            { title: "Hostname", dataIndex: "hostname" },
-            { title: "System IP", dataIndex: "systemIp" },
-            {
-              title: "Tunnels",
-              render: (_: any, row: any) => row.tunnels.length,
-            },
+      {/* ✅ TABLE ALWAYS RENDERS */}
+      <Table
+        loading={loading}
+        columns={columns}
+        dataSource={rows}
+        bordered
+        pagination={false}
+        rowKey={(r) => r.systemIp}
+        size={mode === "widget" ? "small" : "middle"}
+      />
+
+      {/* ✅ MODAL ONLY FOR PAGE MODE */}
+      {mode === "page" && (
+        <Modal
+          open={showPreview}
+          title="Export Preview"
+          onCancel={() => setShowPreview(false)}
+          width={900}
+          footer={[
+            <Button key="close" onClick={() => setShowPreview(false)}>
+              Close
+            </Button>,
+            <Button key="pdf" type="primary" onClick={downloadPdf}>
+              Download PDF
+            </Button>,
           ]}
-          dataSource={rows}
-          bordered
-          pagination={false}
-          rowKey={(r: any) => r.systemIp}
-        />
-      </Modal>
+        >
+          <Table
+            columns={[
+              {
+                title: "Branch",
+                render: (_: any, r: any) =>
+                  getBranchNameByHostname(r.hostname),
+              },
+              { title: "Hostname", dataIndex: "hostname" },
+              { title: "System IP", dataIndex: "systemIp" },
+              {
+                title: "Tunnels",
+                render: (_: any, row: any) => row.tunnels.length,
+              },
+            ]}
+            dataSource={rows}
+            bordered
+            pagination={false}
+            rowKey={(r: any) => r.systemIp}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
