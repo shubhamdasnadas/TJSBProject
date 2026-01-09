@@ -192,11 +192,11 @@ const branches: Branch[]  = [
 
   { "name": "National Cancer Inst., Nagpur", "code": "OF-NGNCI-OA", "ip": "192.168.222.164" },
 
-  { "name": "Thane NOC/DC", "code": "DC-THANE-R01", "ip": "192.168.222.1 " },
-  { "name": "Thane NOC/DC", "code": "DC-THANE-R02", "ip": "192.168.222.2" },
+  { "name": "Thane NOC/DC", "code": "DC-THANE-C83K-R1", "ip": "192.168.222.1 " },
+  { "name": "Thane NOC/DC", "code": "DC-THANE-C83K-R2", "ip": "192.168.222.2" },
 
-  { "name": "Pune DC", "code": "DR-PUNE-R01", "ip": "192.168.222.3 " },
-  { "name": "Pune DC", "code": "DR-PUNE-R02", "ip": "192.168.222.4" },
+  { "name": "Pune DC", "code": "DR-PUNE-C83K-RTR01", "ip": "192.168.222.3 " },
+  { "name": "Pune DC", "code": "DR-PUNE-C83K-RTR02", "ip": "192.168.222.4" },
 
   { "name": "Seva Dham", "code": "OF-SEVADHAM-CBS", "ip": "192.168.222.156" },
 

@@ -193,7 +193,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         </Button>
       </div>
 
-      {mode === "page" && (
+      {mode === "widget" && (
         <Table
           loading={loading}   // ✅ PROPER LOADING HANDLING
           columns={columns}
