@@ -10,7 +10,7 @@ const ZABBIX_URL =
   process.env.NEXT_PUBLIC_ZABBIX_URL ||
   "https://192.168.0.252/monitor/api_jsonrpc.php";
 
-  const user_token = localStorage
+const user_token = localStorage.getItem("zabbix_auth") || "";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -32,11 +32,11 @@ export async function POST(req: NextRequest) {
     // 🔥 Inject auth ONLY at proxy level
     const zabbixPayload = {
       ...body,
-    
+
     };
 
     const resp = await axios.post(ZABBIX_URL, zabbixPayload, {
-      headers: { "Content-Type": "application/json",   Authorization: `Bearer ${user_token}`, },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${user_token}`, },
       httpsAgent,
       timeout: 15000,
     });
