@@ -143,15 +143,7 @@ const AuthLogin: React.FC<LoginProps> = ({
             />
           </FormGroup>
 
-          <Typography
-            component={Link}
-            href="/"
-            fontWeight="500"
-            sx={{ textDecoration: "none", color: "primary.main" }}
-          >
-            Forgot Password?
-          </Typography>
-        </Stack>
+         </Stack>
       </Stack>
 
       {/* Login Button */}

@@ -162,7 +162,7 @@ const HostFilterCard = () => {
             groupids: selectedGroups,
             hostids: selectedHosts,
             recent: true,
-            sortfield: ["clock"],
+            sortfield: ["eventid"],
             sortorder: "DESC",
           },
           id: 3,
