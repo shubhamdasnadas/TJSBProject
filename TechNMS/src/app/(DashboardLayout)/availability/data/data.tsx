@@ -188,7 +188,7 @@ const branches: Branch[]  = [
 
   { "name": "Sevadham", "code": "OF-SVADM-RO", "ip": "192.168.222.175" },
 
-  { "name": "Bhiwandi Godown", "code": "", "ip": "" },
+  // { "name": "Bhiwandi Godown", "code": "", "ip": "" },
 
   { "name": "National Cancer Inst., Nagpur", "code": "OF-NGNCI-OA", "ip": "192.168.222.164" },
 
