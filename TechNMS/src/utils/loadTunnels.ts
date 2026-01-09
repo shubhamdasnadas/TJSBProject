@@ -8,27 +8,19 @@ export type IpRow = {
   rowState: "up" | "down" | "partial";
 };
 
-const getBranchNameByHostname = (hostname: string) => {
-  // ⛔ keep your existing logic here
-  return hostname || "NA";
-};
-
 export async function loadTunnels(): Promise<IpRow[]> {
   const res = await axios.post("/api/sdwan/tunnels");
-
   const devices = res.data.devices || {};
 
-  const final: IpRow[] = Object.entries(devices).map(
+  const rows: IpRow[] = Object.entries(devices).map(
     ([systemIp, tunnels]: any) => {
       const first = tunnels[0];
       const hostname = first?.hostname || "NA";
-      const branchName = getBranchNameByHostname(hostname);
 
       const sortedTunnels = tunnels.sort((a: any, b: any) => {
-        const priority = (v: string) =>
-          v === "down" ? 0 : v === "up" ? 1 : 2;
-
-        return priority(a.state) - priority(b.state);
+        const p = (v: string) =>
+          v === "down" ? 0 : v === "partial" ? 1 : 2;
+        return p(a.state) - p(b.state);
       });
 
       const allUp = sortedTunnels.every((t: any) => t.state === "up");
@@ -41,12 +33,16 @@ export async function loadTunnels(): Promise<IpRow[]> {
       return {
         hostname,
         systemIp,
-        branchName,
+        branchName: hostname,
         tunnels: sortedTunnels,
         rowState,
       };
     }
   );
 
-  return final;
+  // 🔥 FINAL SORT: down → partial → up
+  return rows.sort((a, b) => {
+    const order = { down: 0, partial: 1, up: 2 };
+    return order[a.rowState] - order[b.rowState];
+  });
 }
