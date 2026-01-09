@@ -29,23 +29,23 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
-  {
-    id: "summary-count",
-    title: "Summary Count",
-    component: DashboardSummaryCount,
-    x: 0,
-    y: 0,
-    w: 12,
-    h: 2,
-  },
+  // {
+  //   id: "summary-count",
+  //   title: "Summary Count",
+  //   component: DashboardSummaryCount,
+  //   x: 0,
+  //   y: 0,
+  //   w: 12,
+  //   h: 2,
+  // },
   {
     id: "problems-table",
     title: "Active Problems",
     component: ProblemsTablePage,
-    x: 6,
-    y: 4,
-    w: 6,
-    h: 3,
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 9,
   },
   {
     id: "top_host1",
@@ -58,9 +58,9 @@ const WIDGETS = [
       />
     ),
     x: 0,
-    y: 9,
+    y: 0,
     w: 12,
-    h: 8,
+    h: 9,
   },
   {
     id: "top_host2",
@@ -73,9 +73,9 @@ const WIDGETS = [
       />
     ),
     x: 0,
-    y: 9,
+    y: 0,
     w: 12,
-    h: 8,
+    h: 9,
   },
 ];
 
@@ -325,7 +325,7 @@ export default function Dashboard() {
 
     let layout: any[] = JSON.parse(safeStorage.get(STORAGE_KEY) || "[]");
 
-    layout = layout.map((l: any) => ({
+    layout = layout.slice(1).map((l: any) => ({
       ...l,
       w: Math.max(l.w || 2, 2),
       h: Math.max(l.h || 2, 2),

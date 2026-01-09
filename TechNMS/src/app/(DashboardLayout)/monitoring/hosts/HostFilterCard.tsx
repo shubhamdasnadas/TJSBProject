@@ -230,14 +230,14 @@ const HostFilterCard = ({
               </Form.Item>
             </Col>
 
-            <Col span={6}>
+            {/* <Col span={6}>
               <Form.Item label="DNS">
                 <Input placeholder="Enter DNS" />
               </Form.Item>
-            </Col>
+            </Col> */}
           </Row>
 
-          {/* Row 2 */}
+          {/* Row 2
           <Row gutter={16}>
             <Col span={6}>
               <Form.Item label="Port">
@@ -246,12 +246,12 @@ const HostFilterCard = ({
             </Col>
 
             
-          </Row>
+          </Row> */}
 
           <Divider />
 
           {/* Status + Tags */}
-          <Row gutter={16}>
+          {/* <Row gutter={16}>
             <Col span={6}>
               <Form.Item label="Status">
                 <Space>
@@ -297,9 +297,9 @@ const HostFilterCard = ({
                 </Button>
               </Form.Item>
             </Col>
-          </Row>
+          </Row> */}
 
-          <Divider />
+          {/* <Divider /> */}
 
           {/* APPLY/RESET */}
           <Row justify="end" gutter={16}>

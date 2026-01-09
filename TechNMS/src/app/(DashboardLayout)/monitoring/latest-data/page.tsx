@@ -285,7 +285,7 @@ export default function LatestDataPage() {
         <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} />
 
         {/* ---------------------- ROW 2 ---------------------- */}
-        <Row gutter={[24, 16]}>
+        {/* <Row gutter={[24, 16]}>
           <Col span={6}>
             <Form.Item label="Show tags">
               <Radio.Group defaultValue="3" size="middle">
@@ -322,13 +322,13 @@ export default function LatestDataPage() {
               </Radio.Group>
             </Form.Item>
           </Col>
-        </Row>
+        </Row> */}
 
         {/* BREAK LINE */}
-        <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} />
+        {/* <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} /> */}
 
         {/* ---------------------- ROW 3 — TAGS (Dynamic) ---------------------- */}
-        <Row gutter={[24, 16]}>
+        {/* <Row gutter={[24, 16]}>
           <Col span={24}>
             <Form.Item label="Tags">
 
@@ -337,7 +337,7 @@ export default function LatestDataPage() {
                 {tags.map((item, index) => (
                   <Row key={index} gutter={16} align="middle">
 
-                    {/* TAG INPUT */}
+                    TAG INPUT
                     <Col span={6}>
                       <Input
                         placeholder="tag"
@@ -352,7 +352,7 @@ export default function LatestDataPage() {
                       />
                     </Col>
 
-                    {/* OPERATOR SELECT */}
+                    OPERATOR SELECT
                     <Col span={6}>
                       <Select
                         value={item.operator}
@@ -373,7 +373,7 @@ export default function LatestDataPage() {
                       </Select>
                     </Col>
 
-                    {/* VALUE INPUT */}
+                    VALUE INPUT
                     <Col span={6}>
                       <Input
                         placeholder="value"
@@ -388,7 +388,7 @@ export default function LatestDataPage() {
                       />
                     </Col>
 
-                    {/* REMOVE BUTTON */}
+                    REMOVE BUTTON
                     <Col span={6}>
                       <Button
                         danger
@@ -408,7 +408,7 @@ export default function LatestDataPage() {
                 ))}
 
                 {/* ADD TAG BUTTON */}
-                <Button
+                {/* <Button
                   type="dashed"
                   size="middle"
                   style={{ width: 100, borderRadius: 6 }}
@@ -421,17 +421,17 @@ export default function LatestDataPage() {
 
             </Form.Item>
           </Col>
-        </Row>
+        </Row> */} 
 
         {/* BREAK LINE */}
-        <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} />
+        {/* <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} /> */}
 
         {/* ---------------------- ROW 4 ---------------------- */}
-        <Row style={{ marginBottom: 16 }}>
+        {/* <Row style={{ marginBottom: 16 }}>
           <Col span={24}>
             <Checkbox>Show details</Checkbox>
           </Col>
-        </Row>
+        </Row> */}
 
         {/* ---------------------- ACTION BUTTONS ---------------------- */}
         <Row justify="center" gutter={16} style={{ marginTop: 10 }}>

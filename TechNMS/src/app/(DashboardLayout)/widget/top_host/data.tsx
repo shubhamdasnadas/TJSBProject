@@ -27,6 +27,7 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
   host2: [
     'Interface ["GigabitEthernet0/0/0"]: Bits received',
     'Interface ["GigabitEthernet0/0/1"]: Bits received',
+    'Interface ["GigabitEthernet0/0/0"]: Speed',
     "Memory utilization",
     "CPU utilization",
     "Certificate validity",
@@ -310,7 +311,7 @@ const TopHost: React.FC<TopHostProps> = ({
     return 0;
   });
 
-  const dynamicColumns = uniqueColumns.map((c) => ({
+  const   dynamicColumns = uniqueColumns.map((c) => ({
     title: c.name,
     dataIndex: c.name!,
     render: (value: any) => {
