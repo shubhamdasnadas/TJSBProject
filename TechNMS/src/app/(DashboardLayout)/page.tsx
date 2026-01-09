@@ -58,9 +58,9 @@ const WIDGETS = [
       />
     ),
     x: 0,
-    y: 0,
+    y: 9,
     w: 12,
-    h: 9,
+    h: 8,
   },
   {
     id: "top_host2",
