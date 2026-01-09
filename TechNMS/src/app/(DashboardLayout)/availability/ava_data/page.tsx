@@ -85,12 +85,11 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     load();
   }, []);
 
-  setInterval(() => {
-    loadTunnels().then((tunnelRows) => {
-      localStorage.setItem("preloaded_tunnels", JSON.stringify(tunnelRows));
-      load();
-    });
-  }, 60 * 1000); // every 5 minutes
+  setInterval(async () => {
+    const res = await loadTunnels();
+    localStorage.setItem("preloaded_tunnels", JSON.stringify(res));
+
+  }, 180000); // every 5 minutes
 
 
   function handleExport() {
