@@ -9,21 +9,21 @@ import autoTable from "jspdf-autotable";
 import { loadTunnels } from "@/utils/loadTunnels";
 
 type IpRow = {
-  hostname: string;
-  systemIp: string;
-  branchName: string;
-  tunnels: any[];
-  rowState: "up" | "down" | "partial";
+    hostname: string;
+    systemIp: string;
+    branchName: string;
+    tunnels: any[];
+    rowState: "up" | "down" | "partial";
 };
 
 function getBranchNameByHostname(hostname: string) {
-  if (!hostname) return "Unknown";
+    if (!hostname) return "Unknown";
 
-  const found = branches.find((b: any) =>
-    hostname.toLowerCase().includes(b.code?.toLowerCase())
-  );
+    const found = branches.find((b: any) =>
+        hostname.toLowerCase().includes(b.code?.toLowerCase())
+    );
 
-  return found ? found.name : "Unknown";
+    return found ? found.name : "Unknown";
 }
 
 /**
@@ -31,217 +31,218 @@ function getBranchNameByHostname(hostname: string) {
  * Does NOT affect existing logic
  */
 function resolveIspName(text: string) {
-  if (!text) return text;
+    if (!text) return text;
 
-  let result = text;
+    let result = text;
 
-  ISP_BRANCHES.forEach((isp) => {
-    const type = isp.type.toLowerCase();
-    if (result.toLowerCase().includes(type)) {
-      result = result.replace(
-        new RegExp(type, "gi"),
-        isp.name
-      );
-    }
-  });
+    ISP_BRANCHES.forEach((isp) => {
+        const type = isp.type.toLowerCase();
+        if (result.toLowerCase().includes(type)) {
+            result = result.replace(
+                new RegExp(type, "gi"),
+                isp.name
+            );
+        }
+    });
 
-  return result;
+    return result;
 }
 
 interface Props {
-  mode?: "page" | "widget";
+    mode?: "page" | "widget";
 }
 
 export default function DashboardTunnel({ mode = "page" }: Props) {
-  const [rows, setRows] = useState<IpRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showPreview, setShowPreview] = useState(false);
+    const [rows, setRows] = useState<IpRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showPreview, setShowPreview] = useState(false);
 
-  async function load() {
-    setLoading(true);
+    async function load() {
+        setLoading(true);
 
-    try {
-      const cached = localStorage.getItem("preloaded_tunnels");
-      if (!cached) {
-        setRows([]);
-        return;
-      }
+        try {
+            const res = await loadTunnels();
+            const cached = JSON.stringify(res);
+            if (!cached) {
+                setRows([]);
+                return;
+            }
 
-      const data: IpRow[] = JSON.parse(cached);
+            const data: IpRow[] = JSON.parse(cached);
 
-      const order = { down: 0, partial: 1, up: 2 };
-      data.sort((a, b) => order[a.rowState] - order[b.rowState]);
+            const order = { down: 0, partial: 1, up: 2 };
+            data.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
-      setRows(data);
-    } catch (e) {
-      console.error("FRONTEND ERROR:", e);
-      setRows([]);
-    } finally {
-      setLoading(false);
+            setRows(data);
+        } catch (e) {
+            console.error("FRONTEND ERROR:", e);
+            setRows([]);
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  useEffect(() => {
-    load();
-  }, []);
+    useEffect(() => {
+        load();
+    }, []);
 
-//   useEffect(() => {
-//     const timeoutId = setTimeout(async () => {
-//       const res = await loadTunnels();
-//       localStorage.setItem(
-//         "preloaded_tunnels",
-//         JSON.stringify(res)
-//       );
-//     }, 180000);
+    //   useEffect(() => {
+    //     const timeoutId = setTimeout(async () => {
+    //       const res = await loadTunnels();
+    //       localStorage.setItem(
+    //         "preloaded_tunnels",
+    //         JSON.stringify(res)
+    //       );
+    //     }, 180000);
 
-//     return () => clearTimeout(timeoutId);
-//   }, []);
-
+    //     return () => clearTimeout(timeoutId);
+    //   }, []);
 
 
 
-  function handleExport() {
-    setShowPreview(true);
-  }
 
-//   function downloadPdf() {
-//     const doc = new jsPDF();
-//     doc.setFontSize(14);
-//     doc.text("SD-WAN Tunnel Report", 14, 16);
+    function handleExport() {
+        setShowPreview(true);
+    }
 
-//     autoTable(doc, {
-//       startY: 22,
-//       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
-//       body: rows.map((r: any) => [
-//         getBranchNameByHostname(r.hostname),
-//         r.hostname,
-//         r.systemIp,
-//         r.tunnels.length,
-//       ]),
-//     });
+    //   function downloadPdf() {
+    //     const doc = new jsPDF();
+    //     doc.setFontSize(14);
+    //     doc.text("SD-WAN Tunnel Report", 14, 16);
 
-//     doc.save("sdwan_report.pdf");
-//   }
+    //     autoTable(doc, {
+    //       startY: 22,
+    //       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
+    //       body: rows.map((r: any) => [
+    //         getBranchNameByHostname(r.hostname),
+    //         r.hostname,
+    //         r.systemIp,
+    //         r.tunnels.length,
+    //       ]),
+    //     });
 
-  const columns: any = [
-    {
-      title: "Branch",
-      key: "branchName",
-      render: (_: any, row: IpRow) => {
-        let bg = "#ddd";
-        let color = "#000";
+    //     doc.save("sdwan_report.pdf");
+    //   }
 
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-        if (row.rowState === "partial") {
-          bg = "#ffe5b4";
-          color = "orange";
-        }
+    const columns: any = [
+        {
+            title: "Branch",
+            key: "branchName",
+            render: (_: any, row: IpRow) => {
+                let bg = "#ddd";
+                let color = "#000";
 
-        return (
-          <span
-            style={{
-              padding: "4px 10px",
-              borderRadius: 6,
-              background: bg,
-              color,
-              fontWeight: 700,
-            }}
-          >
-            {getBranchNameByHostname(row.hostname)}
-          </span>
-        );
-      },
-    },
-    { title: "Hostname", dataIndex: "hostname" },
-    { title: "System IP", dataIndex: "systemIp" },
-    {
-      title: "Tunnels (Name + Uptime)",
-      key: "tunnelInfo",
-      render: (_: any, row: IpRow) => (
-        <select style={{ padding: 4 }}>
-          {row.tunnels.map((t: any, i: number) => (
-            <option
-              key={i}
-              style={{
-                color: t.state === "down" ? "red" : "black",
-                fontWeight: t.state === "down" ? 700 : 400,
-              }}
-            >
-              {resolveIspName(t.tunnelName)} — {t.uptime}
-            </option>
-          ))}
-        </select>
-      ),
-    },
-    {
-      title: "State",
-      key: "state",
-      render: (_: any, row: IpRow) => {
-        let bg = "#ccc";
-        let color = "black";
+                if (row.rowState === "up") {
+                    bg = "#d7ffd7";
+                    color = "green";
+                }
+                if (row.rowState === "down") {
+                    bg = "#ffd6d6";
+                    color = "red";
+                }
+                if (row.rowState === "partial") {
+                    bg = "#ffe5b4";
+                    color = "orange";
+                }
 
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-        if (row.rowState === "partial") {
-          bg = "#ffe5b4";
-          color = "orange";
-        }
+                return (
+                    <span
+                        style={{
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            background: bg,
+                            color,
+                            fontWeight: 700,
+                        }}
+                    >
+                        {getBranchNameByHostname(row.hostname)}
+                    </span>
+                );
+            },
+        },
+        { title: "Hostname", dataIndex: "hostname" },
+        { title: "System IP", dataIndex: "systemIp" },
+        {
+            title: "Tunnels (Name + Uptime)",
+            key: "tunnelInfo",
+            render: (_: any, row: IpRow) => (
+                <select style={{ padding: 4 }}>
+                    {row.tunnels.map((t: any, i: number) => (
+                        <option
+                            key={i}
+                            style={{
+                                color: t.state === "down" ? "red" : "black",
+                                fontWeight: t.state === "down" ? 700 : 400,
+                            }}
+                        >
+                            {resolveIspName(t.tunnelName)} — {t.uptime}
+                        </option>
+                    ))}
+                </select>
+            ),
+        },
+        {
+            title: "State",
+            key: "state",
+            render: (_: any, row: IpRow) => {
+                let bg = "#ccc";
+                let color = "black";
 
-        return (
-          <span
-            style={{
-              padding: "2px 10px",
-              borderRadius: 6,
-              background: bg,
-              color,
-              fontWeight: 700,
-            }}
-          >
-            {row.rowState}
-          </span>
-        );
-      },
-    },
-  ];
+                if (row.rowState === "up") {
+                    bg = "#d7ffd7";
+                    color = "green";
+                }
+                if (row.rowState === "down") {
+                    bg = "#ffd6d6";
+                    color = "red";
+                }
+                if (row.rowState === "partial") {
+                    bg = "#ffe5b4";
+                    color = "orange";
+                }
 
-  return (
-    <div>
-    
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold">
-            SD-WAN — Tunnel Status by IP
-          </h1>
-{/* 
+                return (
+                    <span
+                        style={{
+                            padding: "2px 10px",
+                            borderRadius: 6,
+                            background: bg,
+                            color,
+                            fontWeight: 700,
+                        }}
+                    >
+                        {row.rowState}
+                    </span>
+                );
+            },
+        },
+    ];
+
+    return (
+        <div>
+
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-xl font-bold">
+                    SD-WAN — Tunnel Status by IP
+                </h1>
+                {/* 
           <Button type="primary" onClick={handleExport}>
             Export / Preview
           </Button> */}
-        </div>
-    
+            </div>
 
-      <Table
-        loading={loading}
-        columns={columns}
-        dataSource={rows}
-        bordered
-        pagination={false}
-        rowKey={(r) => r.systemIp}
-        size={mode === "widget" ? "small" : "middle"}
-      />
 
-      {/* {mode === "page" && (
+            <Table
+                loading={loading}
+                columns={columns}
+                dataSource={rows}
+                bordered
+                pagination={false}
+                rowKey={(r) => r.systemIp}
+                size={mode === "widget" ? "small" : "middle"}
+            />
+
+            {/* {mode === "page" && (
         <Modal
           open={showPreview}
           title="Export Preview"
@@ -277,6 +278,6 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
           />
         </Modal>
       )} */}
-    </div>
-  );
+        </div>
+    );
 }

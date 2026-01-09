@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Extract token from Authorization header
     const token = authHeader.replace("Bearer ", "").trim();
 
     if (!token) {
@@ -34,14 +33,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ❌ NEVER forward frontend auth field
+    /* ===================== CLEAN PAYLOAD ===================== */
+    // ❌ Do NOT inject auth for Zabbix 7.4
+    // ❌ Do NOT forward frontend auth field
     delete body.auth;
-
-    /* ===================== ZABBIX PAYLOAD ===================== */
 
     const zabbixPayload = {
       ...body,
-      auth: token, // ✅ Inject token ONLY here
     };
 
     /* ===================== ZABBIX REQUEST ===================== */
@@ -49,6 +47,7 @@ export async function POST(req: NextRequest) {
     const resp = await axios.post(ZABBIX_URL, zabbixPayload, {
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // ✅ Zabbix 7.4 expects this
       },
       httpsAgent,
       timeout: 15000,

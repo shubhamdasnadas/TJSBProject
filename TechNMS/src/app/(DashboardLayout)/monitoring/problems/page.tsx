@@ -18,10 +18,16 @@ interface EventRow {
 }
 
 export default function EventsPage() {
-  const token =
+  const user_token =
     typeof window !== "undefined"
       ? localStorage.getItem("zabbix_auth")
       : "";
+  const axiosCfg = {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${user_token}`,
+    },
+  };
 
   const [groups, setGroups] = useState<any[]>([]);
   const [hosts, setHosts] = useState<any[]>([]);
@@ -46,9 +52,7 @@ export default function EventsPage() {
           params: { output: ["groupid", "name"] },
           id: 1,
         },
-        {
-          headers: { Authorization: token || "" },
-        }
+        axiosCfg
       )
       .then((r) => setGroups(r.data.result ?? []));
   }, []);
@@ -74,9 +78,7 @@ export default function EventsPage() {
           },
           id: 2,
         },
-        {
-          headers: { Authorization: token || "" },
-        }
+        axiosCfg
       )
       .then((r) => setHosts(r.data.result ?? []));
   }, [groupids]);
@@ -116,9 +118,7 @@ export default function EventsPage() {
           },
           id: 3,
         },
-        {
-          headers: { Authorization: token || "" },
-        }
+        axiosCfg
       );
 
       const rows: EventRow[] = (r.data.result ?? []).map((e: any) => ({
