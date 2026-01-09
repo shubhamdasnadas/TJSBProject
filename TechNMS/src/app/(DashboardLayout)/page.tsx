@@ -50,8 +50,8 @@ const WIDGETS = [
       />
     ),
     x: 0,
-    y: 9,
-    w: 12,
+    y: 8,
+    w: 5,
     h: 8,
   },
   {
@@ -64,9 +64,9 @@ const WIDGETS = [
         showPreviewData={true}
       />
     ),
-    x: 0,
-    y: 0,
-    w: 12,
+    x: 5,
+    y: 8,
+    w: 7,
     h: 9,
   },
   {

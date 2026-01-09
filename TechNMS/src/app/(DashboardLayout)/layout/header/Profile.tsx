@@ -37,7 +37,7 @@ const Profile = () => {
       </IconButton>
 
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseMenu}>
-        <Box
+        {/* <Box
           sx={{
             padding: "10px 14px",
             display: "flex",
@@ -49,7 +49,7 @@ const Profile = () => {
           <IconButton size="small" onClick={toggleMode}>
             {mode === "light" ? <IconMoon size={18} /> : <IconSun size={18} />}
           </IconButton>
-        </Box>
+        </Box> */}
 
         <Box px={2} pb={2}>
           <Button
