@@ -21,6 +21,7 @@ const Profile = () => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("zabbix_auth");
     localStorage.setItem("zabbix_login_status", "false");
+    localStorage.removeItem("preloaded_tunnels");
 
     // go to login
     window.location.href = "/authentication/login";
