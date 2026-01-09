@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Modal } from "antd";
 import branches from "../data/data";
+import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -22,6 +23,28 @@ function getBranchNameByHostname(hostname: string) {
   );
 
   return found ? found.name : "Unknown";
+}
+
+/**
+ * ✅ Normalize tunnel ISP name using ISP_BRANCHES
+ * Does NOT affect existing logic
+ */
+function resolveIspName(text: string) {
+  if (!text) return text;
+
+  let result = text;
+
+  ISP_BRANCHES.forEach((isp) => {
+    const type = isp.type.toLowerCase();
+    if (result.toLowerCase().includes(type)) {
+      result = result.replace(
+        new RegExp(type, "gi"),
+        isp.name
+      );
+    }
+  });
+
+  return result;
 }
 
 interface Props {
@@ -45,7 +68,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
       const data: IpRow[] = JSON.parse(cached);
 
-      // down → partial → up
       const order = { down: 0, partial: 1, up: 2 };
       data.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
@@ -136,7 +158,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
                 fontWeight: t.state === "down" ? 700 : 400,
               }}
             >
-              {t.tunnelName} — {t.uptime}
+              {resolveIspName(t.tunnelName)} — {t.uptime}
             </option>
           ))}
         </select>
@@ -181,7 +203,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   return (
     <div>
-      {/* ✅ PAGE MODE HEADER ONLY */}
       {mode === "page" && (
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">
@@ -194,7 +215,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         </div>
       )}
 
-      {/* ✅ TABLE ALWAYS RENDERS */}
       <Table
         loading={loading}
         columns={columns}
@@ -205,7 +225,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         size={mode === "widget" ? "small" : "middle"}
       />
 
-      {/* ✅ MODAL ONLY FOR PAGE MODE */}
       {mode === "page" && (
         <Modal
           open={showPreview}
