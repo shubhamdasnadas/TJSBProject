@@ -61,7 +61,8 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     setLoading(true);
 
     try {
-      const cached = localStorage.getItem("preloaded_tunnels");
+      const tunnelRows = await loadTunnels();
+      const cached = JSON.stringify(tunnelRows);
       if (!cached) {
         setRows([]);
         return;

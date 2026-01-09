@@ -86,14 +86,17 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
         load();
     }, []);
 
-    //   useEffect(() => {
-    //     const timeoutId = setTimeout(async () => {
-    //       const res = await loadTunnels();
-    //       localStorage.setItem(
-    //         "preloaded_tunnels",
-    //         JSON.stringify(res)
-    //       );
-    //     }, 180000);
+    useEffect(() => {
+        const timeoutId = setTimeout(async () => {
+            const res = await loadTunnels();
+            localStorage.setItem(
+                "preloaded_tunnels",
+                JSON.stringify(res)
+            );
+        }, 180000);
+
+        return () => clearTimeout(timeoutId);
+    }, []);
 
     //     return () => clearTimeout(timeoutId);
     //   }, []);
