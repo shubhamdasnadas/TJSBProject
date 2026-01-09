@@ -183,7 +183,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   return (
     <div className={mode === "widget" ? "" : "p-4"}>
-      {mode === "page" && (
+      {mode === "widget" && (
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">
             SD-WAN — Tunnel Status by IP
