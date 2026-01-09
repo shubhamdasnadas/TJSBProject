@@ -67,13 +67,13 @@ const Login2 = () => {
               width: "100%",
               maxWidth: 460,
               p: { xs: 2.5, sm: 4 },
-              backgroundColor: "rgba(15, 23, 42, 0.45)",
+              backgroundColor: "rgba(201, 213, 240, 0.45)",
               backdropFilter: "blur(12px)",
               border: "1px solid rgba(60, 130, 246, 0.3)",
               borderRadius: 3,
               // Make input fields more visible
               "& .MuiOutlinedInput-root": {
-                backgroundColor: "rgba(30, 41, 59, 0.6)",
+                backgroundColor: "rgba(170, 196, 238, 0.6)",
                 "& fieldset": {
                   borderColor: "rgba(59, 130, 246, 0.5)",
                   borderWidth: "2px",
