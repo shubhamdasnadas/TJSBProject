@@ -49,10 +49,14 @@ type DateRange = {
 /* =========================
    AXIOS CONFIG
 ========================= */
+const user_token =
+  typeof window !== "undefined"
+    ? localStorage.getItem("zabbix_auth")
+    : "";
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
-    Authorization: "Bearer f367bb14b4c8d2cc37da595aabc75950",
+    Authorization: `Bearer ${user_token}`,
   },
 };
 
