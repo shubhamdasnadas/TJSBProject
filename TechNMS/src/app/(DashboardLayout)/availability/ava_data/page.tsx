@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Table, Button, Modal } from "antd";
 import branches from "../data/data";
 import jsPDF from "jspdf";
@@ -33,12 +33,12 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 
-  const loadFromLocalStorage = () => {
-     setLoading(true);
+  /* ================= LOAD FROM LOCAL STORAGE ================= */
+  const loadFromLocalStorage = useCallback(() => {
+    setLoading(true);
 
     try {
       const cached = localStorage.getItem("preloaded_tunnels");
-      setLoading(true);
       if (!cached) {
         setRows([]);
         return;
@@ -46,6 +46,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
       const data: IpRow[] = JSON.parse(cached);
 
+      // down → partial → up
       const order = { down: 0, partial: 1, up: 2 };
       data.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
@@ -56,40 +57,37 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  /* ---------------- INITIAL LOAD ---------------- */
+  /* ================= INITIAL LOAD (ONCE) ================= */
   useEffect(() => {
     loadFromLocalStorage();
-  }, [mode, loading]);
+  }, [loadFromLocalStorage]);
 
-  /* ---------------- AUTO REFRESH (NO PAGE RELOAD) ---------------- */
+  /* ================= CROSS-TAB REFRESH ================= */
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (
-        e.key === "preloaded_tunnels" ||
-        e.key === "sdwan_api_success"
-      ) {
+      if (e.key === "preloaded_tunnels") {
         loadFromLocalStorage();
       }
     };
 
     window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [loadFromLocalStorage]);
 
-    // fallback for same-tab updates
+  /* ================= SAME-TAB REFRESH ================= */
+  useEffect(() => {
     const interval = setInterval(() => {
       const apiFlag = localStorage.getItem("sdwan_api_success");
       if (apiFlag === "true") {
         loadFromLocalStorage();
         localStorage.removeItem("sdwan_api_success");
       }
-    }, 2000);
+    }, 1500);
 
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      clearInterval(interval);
-    };
-  }, []);
+    return () => clearInterval(interval);
+  }, [loadFromLocalStorage]);
 
   function handleExport() {
     setShowPreview(true);
