@@ -67,7 +67,7 @@ const Login2 = () => {
               width: "100%",
               maxWidth: 460,
               p: { xs: 2.5, sm: 4 },
-              backgroundColor: "rgba(201, 213, 240, 0.45)",
+              backgroundColor: "rgba(201, 212, 238, 0.45)",
               backdropFilter: "blur(12px)",
               border: "1px solid rgba(60, 130, 246, 0.3)",
               borderRadius: 3,
