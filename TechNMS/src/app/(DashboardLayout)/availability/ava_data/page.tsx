@@ -6,6 +6,7 @@ import branches from "../data/data";
 import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadTunnels } from "@/utils/loadTunnels";
 
 type IpRow = {
   hostname: string;
@@ -83,6 +84,13 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   useEffect(() => {
     load();
   }, []);
+
+  setInterval(async () => {
+    const res = await loadTunnels();
+    localStorage.setItem("preloaded_tunnels", JSON.stringify(res));
+
+  }, 180000); // every 5 minutes
+
 
   function handleExport() {
     setShowPreview(true);

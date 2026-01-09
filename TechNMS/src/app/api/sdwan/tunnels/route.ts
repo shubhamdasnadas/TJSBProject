@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 const BASE = "https://vmanage-31949190.sdwan.cisco.com";
-const CONCURRENCY = 10;
+const CONCURRENCY = 8;
 
 /* ---------------- EMAIL TRANSPORT ---------------- */
 const transporter = nodemailer.createTransport({
