@@ -102,12 +102,11 @@ export default function LatestDataPage() {
         output: ['hostid', 'name'],
         groupids: groupIds,
       },
-      auth: user_token,
       id: 2,
     };
 
     try {
-        const res = await axios.post('/api/zabbix-proxy', payload, axiosCfg);
+      const res = await axios.post('/api/zabbix-proxy', payload, axiosCfg);
 
       setHosts(res?.data?.result ?? []);
     } catch (err: any) {
@@ -152,7 +151,6 @@ export default function LatestDataPage() {
       jsonrpc: '2.0',
       method: 'item.get',
       params,
-      auth: user_token,
       id: 3,
     };
 

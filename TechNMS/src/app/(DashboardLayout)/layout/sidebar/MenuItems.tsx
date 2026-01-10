@@ -20,14 +20,14 @@ import {
 } from "@ant-design/icons";
 
 // 👇 CHANGE ROUTE PREFIX HERE ONLY
-const PREFIX = "/dash";
+const PREFIX = "/";
 
 const p = (path: string) => `${PREFIX}${path}`;
 
 const Menuitems = [
   {
     title: "Dashboard",
-    href: p(""),
+    href: "/",
     icon: <DashboardOutlined />,
   },
 

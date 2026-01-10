@@ -214,7 +214,7 @@ const ColumnModal: React.FC<Props> = ({
       onCancel={onCancel}
       onOk={handleSubmit}
       width={700}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form layout="vertical" form={form}>
         <Form.Item label="Name" name="name" required>

@@ -36,7 +36,7 @@ const Login2 = () => {
             right: 0,
             bottom: 0,
             zIndex: 0,
-            
+
             backgroundImage: {
               xs: "none",
               sm: "none",
@@ -45,7 +45,7 @@ const Login2 = () => {
             backgroundRepeat: "no-repeat",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            
+
             // ✅ Apply blur to the SVG background
             filter: "blur(2px)",
           }}

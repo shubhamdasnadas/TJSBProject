@@ -49,33 +49,73 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
 
   return (
     <>
-      {title && <Typography variant="h2">{title}</Typography>}
-      {subtext}
+      <Stack spacing={3}>
+        {/* USERNAME */}
+        <Box>
+          <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
+            Username
+          </Typography>
+          <CustomTextField
+            fullWidth
+            value={userData.userName}
+            onChange={(e: any) =>
+              setUserData({ ...userData, userName: e.target.value })
+            }
+            sx={{
+              backgroundColor: "#94a3b8",
+              borderRadius: 1,
+            }}
+          />
+        </Box>
 
-      <Stack>
-        <CustomTextField
-          fullWidth
-          value={userData.userName}
-          onChange={(e: any) =>
-            setUserData({ ...userData, userName: e.target.value })
-          }
-        />
+        {/* PASSWORD */}
+        <Box>
+          <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
+            Password
+          </Typography>
+          <CustomTextField
+            type="password"
+            fullWidth
+            value={userData.password}
+            onChange={(e: any) =>
+              setUserData({ ...userData, password: e.target.value })
+            }
+            sx={{
+              backgroundColor: "#94a3b8",
+              borderRadius: 1,
+            }}
+          />
+        </Box>
 
-        <CustomTextField
-          type="password"
+        {/* REMEMBER */}
+        <FormGroup>
+          <FormControlLabel
+            control={<Checkbox defaultChecked />}
+            label={
+              <Typography fontSize={14} color="#cbd5f5">
+                Remember this device
+              </Typography>
+            }
+          />
+        </FormGroup>
+
+        {/* BUTTON */}
+        <Button
           fullWidth
-          value={userData.password}
-          onChange={(e: any) =>
-            setUserData({ ...userData, password: e.target.value })
-          }
-        />
+          size="large"
+          variant="contained"
+          sx={{
+            py: 1.6,
+            background: "linear-gradient(90deg,#3b82f6,#2563eb)",
+            fontWeight: 600,
+          }}
+          onClick={handleSubmit}
+        >
+          Sign In
+        </Button>
+
+        {subtitle}
       </Stack>
-
-      <Button fullWidth variant="contained" onClick={handleSubmit}>
-        Sign In
-      </Button>
-
-      {subtitle}
     </>
   );
 };
