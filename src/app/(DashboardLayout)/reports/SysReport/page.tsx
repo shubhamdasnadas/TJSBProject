@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -47,19 +46,24 @@ type DateRange = {
 /* =========================
    AXIOS CONFIG
 ========================= */
+const user_token =
+  typeof window !== "undefined"
+    ? localStorage.getItem("zabbix_auth")
+    : "";
+
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
-    Authorization: "Bearer f367bb14b4c8d2cc37da595aabc75950",
+    Authorization: `Bearer ${user_token}`,
   },
 };
 
 /* =========================
-   PDF EXPORT
+   PDF HELPERS
 ========================= */
 const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
 
-/** SVG → PNG for jsPDF */
+/* SVG → PNG */
 const loadSvgAsPng = async (url: string) => {
   const svgText = await fetch(url).then((r) => r.text());
   const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
@@ -80,6 +84,28 @@ const loadSvgAsPng = async (url: string) => {
   });
 };
 
+/* 🔲 PAGE BORDER (BULLETPROOF) */
+const drawPageBorder = (doc: jsPDF) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const margin = 20;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(2);
+
+  // 🔥 FORCE STROKE MODE
+  doc.rect(
+    margin,
+    margin,
+    w - margin * 2,
+    h - margin * 2,
+    "S"
+  );
+};
+
+/* =========================
+   PDF EXPORT
+========================= */
 const exportHistoryToPDF = async (
   title: string,
   data: any[],
@@ -88,27 +114,30 @@ const exportHistoryToPDF = async (
   const doc = new jsPDF("l", "pt", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  /* PAGE 1 – COVER */
+  /* ===== PAGE 1: COVER ===== */
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
   doc.addImage(logoPng, "PNG", pageWidth / 2 - 150, 80, 300, 170);
 
-
-
   doc.setFontSize(26);
-  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, { align: "center",  });
+  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, {
+    align: "center",
+  });
 
+  doc.setFontSize(14);
   doc.text(
-    `Generated: ${new Date().toLocaleString()}`,     pageWidth / 2,      440,     { align: "center" }   );
-    
+    `Generated: ${new Date().toLocaleString()}`,
+    pageWidth / 2,
+    440,
+    { align: "center" }
+  );
+
   doc.setFontSize(16);
   doc.text(`Metric: ${title}`, pageWidth / 2, 470, { align: "center" });
-  
 
-  doc.setFontSize(12);
-  doc.setTextColor(90);
+  drawPageBorder(doc); // ✅ LAST on page
 
-  /* PAGE 2 – CHART */
+  /* ===== PAGE 2: CHART ===== */
   if (chartEl) {
     const canvas = await html2canvas(chartEl, {
       scale: 3,
@@ -116,18 +145,30 @@ const exportHistoryToPDF = async (
     });
 
     doc.addPage();
+
     doc.setFontSize(18);
-    doc.text("Utilization Graph", 40, 40);
-    doc.addImage(canvas.toDataURL("image/png"), "PNG", 40, 60, 760, 320);
+    doc.text("Utilization Graph", 40, 50);
+
+    doc.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      40,
+      70,
+      760,
+      320
+    );
+
+    drawPageBorder(doc); // ✅ LAST
   }
 
-  /* PAGE 3 – TABLE */
+  /* ===== PAGE 3: TABLE ===== */
   doc.addPage();
+
   doc.setFontSize(18);
-  doc.text("History Data", 40, 40);
+  doc.text("History Data", 40, 50);
 
   autoTable(doc, {
-    startY: 70,
+    startY: 80,
     head: [["Time", "Value"]],
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
@@ -135,6 +176,11 @@ const exportHistoryToPDF = async (
     ]),
     styles: { fontSize: 10 },
     headStyles: { fillColor: [30, 30, 30] },
+
+    // 🔥 BORDER AFTER TABLE (CRITICAL)
+    didDrawPage: () => {
+      drawPageBorder(doc);
+    },
   });
 
   doc.save(`techsec_history_${Date.now()}.pdf`);
@@ -331,7 +377,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
-            listHeight={600}
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -347,7 +392,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
-            listHeight={600}
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -394,29 +438,6 @@ export default function LatestDataPage() {
                 }))}
               />
             </div>
-
-            <Table
-              size="small"
-              pagination={false}
-              loading={historyLoading}
-              columns={[
-                {
-                  title: "Time",
-                  dataIndex: "clock",
-                  render: (v) => new Date(v * 1000).toLocaleString(),
-                },
-                {
-                  title: "Value",
-                  dataIndex: "value",
-                  render: (v) => Number(v).toFixed(2),
-                },
-              ]}
-              dataSource={filterHistory().map((r: any) => ({
-                key: r.clock,
-                clock: r.clock,
-                value: r.value,
-              }))}
-            />
           </Space>
         </Modal>
       </Space>
