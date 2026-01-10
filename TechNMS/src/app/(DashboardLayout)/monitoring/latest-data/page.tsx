@@ -182,17 +182,6 @@ export default function LatestDataPage() {
       setTableData(formatted);
     } catch (err: any) {
       console.error('Table fetch failed', err);
-      if (err?.response) {
-        console.error('item.get - response status:', err.response.status);
-        console.error('item.get - response data:', err.response.data);
-        message.error(`item.get failed: HTTP ${err.response.status}`);
-      } else if (err?.request) {
-        console.error('item.get - no response received');
-        message.error('item.get failed: no response from server');
-      } else {
-        console.error('item.get - error:', err?.message);
-        message.error('item.get failed: see console');
-      }
       setTableData([]);
     } finally {
       setLoadingTable(false);
