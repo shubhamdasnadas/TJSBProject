@@ -1,17 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import {
   Card,
   Input,
   Select,
   Button,
-  Space,
   Form,
   Row,
   Col,
   Divider,
-  Tag,
   Table,
 } from "antd";
 
@@ -24,12 +21,13 @@ interface LatestInterface {
   port: string;
   type: string;
   available: string;
-  active_available?: string; // NMS availability
+  active_available?: string;
 }
 
 interface HostItem {
   hostid: string;
-  host: string;
+  host: string;       // BR-C057-KTHRD
+  hostName: string;   // Zabbix name
   latest_interface: LatestInterface;
   latest_ip: string;
 }
@@ -42,6 +40,8 @@ interface Props {
   updateFilter: HostItem[] | [];
 }
 
+import branches from "../../availability/data/data";
+
 // =========================
 // Component
 // =========================
@@ -52,76 +52,25 @@ const HostFilterCard = ({
   handleapply,
   updateFilter,
 }: Props) => {
-  const paginationPlacement: ("topLeft" | "bottomRight")[] = [
-    "topLeft",
+  const paginationPlacement: ("bottomRight")[] = [
+  
     "bottomRight",
   ];
 
   // =========================
-  // TYPE NAME LOGIC
+  // BRANCH NAME (USING YOUR FUNCTION)
   // =========================
-  const getTypeName = (type: string | number) => {
-    const t = Number(type);
+  const findBranch = (hostName: string | undefined) => {
+    if (!hostName) return "-";
 
-    switch (t) {
-      case 1:
-        return "Zabbix Agent";
-      case 2:
-        return "SNMP";
-      case 3:
-        return "JMX";
-      case 4:
-        return "IPMI";
-      default:
-        return "Unknown";
-    }
-  };
+    const match =
+      branches.find(
+        (b: any) =>
+          hostName.includes(b.code) ||
+          hostName.toLowerCase() === b.name.toLowerCase()
+      ) ?? null;
 
-  // =========================
-  // AVAILABILITY LOGIC
-  // =========================
-  const getAvailabilityTag = (iface: LatestInterface) => {
-    if (!iface) return <Tag color="default">Unknown</Tag>;
-
-    const type = Number(iface.type);
-    const available = Number(iface.available);
-    const activeAvailable = Number(iface.active_available || 0);
-
-    let status = "Unknown";
-    let color: "green" | "red" | "grey" | "default" = "default";
-
-    const typeName =
-      type === 1 ? "NMS" :
-        type === 2 ? "SNMP" :
-          type === 3 ? "JMX" :
-            type === 4 ? "IPMI" : "Unknown";
-
-    // NMS (type=1) → active_available logic
-    if (type === 1) {
-      if (activeAvailable === 1) {
-        status = "Available";
-        color = "green";
-      } else {
-        status = "Not available";
-        color = "red";
-      }
-    }
-
-    // SNMP / JMX / IPMI → available logic
-    else {
-      if (available === 1) {
-        status = "Available";
-        color = "green";
-      } else if (available === 2) {
-        status = "Not available";
-        color = "red";
-      } else if (available === 0) {
-        status = "Unknown";
-        color = "grey";
-      }
-    }
-
-    return <Tag color={color}>({typeName})  {status}</Tag>;
+    return match ? match.name : "-";
   };
 
   // =========================
@@ -130,64 +79,45 @@ const HostFilterCard = ({
   const columns = [
     {
       title: "Host",
-      dataIndex: "host",
-      key: "host",
+      dataIndex: "hostName",
+      key: "hostName",
     },
     {
-      title: "Type",
-      key: "type",
-      render: (_: any, record: HostItem) => (
-        <span>{getTypeName(record.latest_interface?.type)}</span>
-      ),
+      title: "Branch",
+      key: "branch",
+      render: (_: any, record: HostItem) =>
+        findBranch(record.hostName),
     },
     {
       title: "Latest Interface (IP:Port)",
       key: "interface",
       render: (_: any, record: HostItem) => (
-        <div>
-          {record.latest_interface?.ip}:{record.latest_interface?.port}
-        </div>
+        <span>
+          {record.latest_interface?.ip ?? "-"}:
+          {record.latest_interface?.port ?? "-"}
+        </span>
       ),
-    },
-    {
-      title: "Availability",
-      key: "availability",
-      render: (_: any, record: HostItem) =>
-        getAvailabilityTag(record.latest_interface),
     },
   ];
 
+  // =========================
+  // TABLE DATA
+  // =========================
   const data = Array.isArray(updateFilter)
-    ? updateFilter.map((item: HostItem) => ({
-      key: item.hostid,
-      hostid: item.hostid,
-      host: item.host,
-      latest_interface: item.latest_interface,
-      latest_ip: item.latest_ip,
-    }))
+    ? updateFilter.map((item) => ({
+        key: item.hostid,
+        hostid: item.hostid,
+        host: item.host,
+        hostName: item.hostName,
+        latest_interface: item.latest_interface,
+        latest_ip: item.latest_ip,
+      }))
     : [];
-
-  // =========================
-  // TAGS HANDLING
-  // =========================
-  const [tags, setTags] = useState([{ tag: "", value: "" }]);
-
-  const addTagRow = () => setTags([...tags, { tag: "", value: "" }]);
-
-  const updateTag = (index: number, field: "tag" | "value", value: string) => {
-    const updated = [...tags];
-    updated[index][field] = value;
-    setTags(updated);
-  };
-
-  const removeTag = (index: number) =>
-    setTags(tags.filter((_, i) => i !== index));
 
   return (
     <>
-      <Card  style={{ margin: 2, marginBottom: 16 }}>
+      <Card style={{ margin: 2, marginBottom: 16 }}>
         <Form layout="vertical">
-          {/* Row 1 */}
           <Row gutter={16}>
             <Col span={6}>
               <Form.Item label="Name">
@@ -229,79 +159,10 @@ const HostFilterCard = ({
                 <Input placeholder="Enter IP" />
               </Form.Item>
             </Col>
-
-            <Col span={6}>
-              <Form.Item label="DNS">
-                <Input placeholder="Enter DNS" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          {/* Row 2 */}
-          <Row gutter={16}>
-            <Col span={6}>
-              <Form.Item label="Port">
-                <Input placeholder="Port" />
-              </Form.Item>
-            </Col>
-
-            
           </Row>
 
           <Divider />
 
-          {/* Status + Tags */}
-          <Row gutter={16}>
-            <Col span={6}>
-              <Form.Item label="Status">
-                <Space>
-                  <Button>Any</Button>
-                  <Button>Enabled</Button>
-                  <Button>Disabled</Button>
-                </Space>
-              </Form.Item>
-            </Col>
-
-            <Col span={18}>
-              <Form.Item label="Tags">
-                {tags.map((item, i) => (
-                  <Row key={i} gutter={8} style={{ marginBottom: 8 }}>
-                    <Col span={8}>
-                      <Input
-                        placeholder="tag"
-                        value={item.tag}
-                        onChange={(e) => updateTag(i, "tag", e.target.value)}
-                      />
-                    </Col>
-
-                    <Col span={8}>
-                      <Input
-                        placeholder="value"
-                        value={item.value}
-                        onChange={(e) =>
-                          updateTag(i, "value", e.target.value)
-                        }
-                      />
-                    </Col>
-
-                    <Col span={4}>
-                      <Button danger onClick={() => removeTag(i)}>
-                        Remove
-                      </Button>
-                    </Col>
-                  </Row>
-                ))}
-
-                <Button type="dashed" onClick={addTagRow}>
-                  + Add Tag
-                </Button>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider />
-
-          {/* APPLY/RESET */}
           <Row justify="end" gutter={16}>
             <Col>
               <Button>Reset</Button>
@@ -315,7 +176,6 @@ const HostFilterCard = ({
         </Form>
       </Card>
 
-      {/* TABLE */}
       <Table
         columns={columns}
         dataSource={data}

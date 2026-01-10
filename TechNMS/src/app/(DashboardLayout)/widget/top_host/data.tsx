@@ -15,12 +15,33 @@ interface TopHostProps {
   mode?: "preview" | "widget";
   onConfigChange?: (config: any) => void;
   initialConfig?: any;
+  topHostName?: ("host1" | "host2")[];
+  showPreviewData?: boolean;
+
 }
 
+
+
+const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
+  host1: [
+    'Interface ["GigabitEthernet0/0/0"]: Operational status',
+    'Interface ["GigabitEthernet0/0/1"]: Operational status',
+  ],
+  host2: [
+    'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+    'Interface ["GigabitEthernet0/0/0"]: Bits received',
+    'Interface ["GigabitEthernet0/0/0"]: Speed',
+    "Memory utilization",
+    "CPU utilization",
+    "Certificate validity",
+  ],
+};
 const TopHost: React.FC<TopHostProps> = ({
   mode = "widget",
   onConfigChange,
   initialConfig,
+  topHostName,
+  showPreviewData
 }) => {
   const { hostGroups, hosts, items, fetchZabbixData } = useZabbixData();
 
@@ -37,6 +58,70 @@ const TopHost: React.FC<TopHostProps> = ({
   const [showPreview, setShowPreview] = useState<boolean>(
     mode === "preview" ? true : false
   );
+  useEffect(() => {
+    if (
+      mode !== "preview" ||
+      !showPreviewData ||
+      !topHostName?.length
+    ) {
+      return;
+    }
+
+    const fetchDashboardData = async () => {
+      try {
+        const responses = await Promise.all(
+          topHostName.map((hostKey) =>
+            axios.post("/api/tjsb/get_item", {
+              auth: user_token,
+              name: HOST_ITEM_MAP[hostKey],
+              groupids: ["210"],
+            })
+          )
+        );
+        console.log("response", responses)
+        const apiResult = responses.flatMap(
+          (res) => res.data?.result ?? []
+        );
+
+        setColumnsConfig(() => {
+          const updated: ColumnConfig[] = [];
+
+          apiResult.forEach((row: any) => {
+            const resolvedHostName =
+              row.hostname ||                           // ✅ FIX
+              row.hosts?.[0]?.name ||
+              hosts.find((h) => h.hostid === row.hostid)?.name ||
+              row.hostid;
+
+            updated.push({
+              id: makeId(),
+              name: row.name,
+              data: "Item value",
+              display: "as_is",
+              extraHostGroups: ["210"],
+
+              hostId: row.hostid,
+              hostName: resolvedHostName,               // ✅ NOW CORRECT
+              itemId: row.itemid,
+              itemKey: row.key_,
+              itemName: row.name,
+
+              apiData: {
+                ...row,
+                hostname: resolvedHostName,             // keep normalized
+              },
+            });
+          });
+
+          return updated;
+        });
+      } catch (err) {
+        console.error("Dashboard fetch failed:", err);
+      }
+    };
+
+    fetchDashboardData();
+  }, [mode, showPreviewData, topHostName, user_token, hosts]);
 
   useEffect(() => {
     columnsRef.current = columnsConfig;
@@ -54,64 +139,66 @@ const TopHost: React.FC<TopHostProps> = ({
   /* ===================== SAVE COLUMN ===================== */
 
   const handleSaveColumn = async (c: ColumnConfig) => {
-    let apiResult: any[] = [];
+    // let apiResult: any[] = [];
 
-    const existing = columnsConfig.find((col) => col.id === c.id);
+    // const existing = columnsConfig.find((col) => col.id === c.id);
 
-    if (existing && existing.apiData) {
-      apiResult = [existing.apiData];
-    } else {
-      try {
-        if (c.itemName) {
-          const response = await axios.post("/api/tjsb/get_item", {
-            auth: user_token,
-            name: c.itemName,
-            groupids: c.extraHostGroups,
-          });
+    // if (existing && existing.apiData) {
+    //   apiResult = [existing.apiData];
+    // } else {
+    //   try {
+    //     if (c.itemName) {
+    //       const response = await axios.post("/api/tjsb/get_item", {
+    //         auth: user_token,
+    //         name: c.itemName,
+    //         groupids: c.extraHostGroups,
+    //       });
 
-          apiResult = response.data?.result ?? [];
-        }
-      } catch (err) {
-        console.error("API error:", err);
-      }
-    }
+    //       apiResult = response.data?.result ?? [];
+    //     }
+    //   } catch (err) {
+    //     console.error("API error:", err);
+    //   }
+    // }
 
-    setColumnsConfig((prev) => {
-      let updated = [...prev];
+    // setColumnsConfig((prev) => {
+    //   let updated = [...prev];
 
-      apiResult.forEach((row) => {
-        const resolvedHostName =
-          hosts.find((h) => h.hostid === row.hostid)?.name ?? c.hostName;
+    //   apiResult.forEach((row) => {
+    //     const resolvedHostName =
+    //       hosts.find((h) => h.hostid === row.hostid)?.name ?? c.hostName;
 
-        const found = updated.find((r) => r.id === c.id);
+    //     const found = updated.find((r) => r.id === c.id);
 
-        if (found) {
-          Object.assign(found, {
-            ...found,
-            ...c,
-            hostName: resolvedHostName,
-            apiData: row || found.apiData,
-          });
-        } else {
-          updated.push({
-            ...c,
-            id: makeId(),
-            hostId: row.hostid,
-            hostName: resolvedHostName,
-            itemId: row.itemid,
-            itemKey: row.key_,
-            itemName: row.name,
-            apiData: row,
-          });
-        }
-      });
+    //     if (found) {
+    //       Object.assign(found, {
+    //         ...found,
+    //         ...c,
+    //         hostName: resolvedHostName,
+    //         apiData: row || found.apiData,
+    //       });
+    //     } else {
+    //       updated.push({
+    //         ...c,
+    //         id: makeId(),
+    //         hostId: row.hostid,
+    //         hostName: resolvedHostName,
+    //         itemId: row.itemid,
+    //         itemKey: row.key_,
+    //         itemName: row.name,
+    //         apiData: row,
+    //       });
+    //     }
+    //   });
 
-      return updated;
-    });
+    //   return updated;
+    // });
 
-    setEditing(null);
-    setOpen(false);
+    // setEditing(null);
+    // setOpen(false);
   };
+
+
 
   /* ===================== AUTO REFRESH ===================== */
 
@@ -171,7 +258,7 @@ const TopHost: React.FC<TopHostProps> = ({
       } catch (err) {
         console.warn("Preview refresh error:", err);
       }
-    }, 10000);
+    }, 300000);
 
     return () => clearInterval(interval);
   }, [showPreview, user_token]);

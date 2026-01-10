@@ -15,62 +15,33 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 
 import CustomTextField from "../../(DashboardLayout)/components/forms/theme-elements/CustomTextField";
+import { loadTunnels } from "@/utils/loadTunnels";
 
-interface LoginProps {
-  title?: string;
-  subtitle?: React.ReactNode;
-  subtext?: React.ReactNode;
-
-  userData: {
-    userName: string;
-    password: string;
-  };
-
-  setUserData: React.Dispatch<
-    React.SetStateAction<{
-      userName: string;
-      password: string;
-    }>
-  >;
-}
-
-const AuthLogin: React.FC<LoginProps> = ({
-  title,
-  subtitle,
-  subtext,
-  userData,
-  setUserData,
-}) => {
+const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => {
   const router = useRouter();
 
   const handleSubmit = async () => {
-    console.log("Login submitted:", userData);
-
     try {
       const response = await axios.post("/api/zabbix-login", {
         username: userData.userName,
         password: userData.password,
       });
 
-      const data = response.data;
+      if (!response.data?.result) return;
 
-      if (data.result) {
-        const token = data.result;
+      const token = response.data.result;
 
-        console.log("User Token:", token);
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("zabbix_auth", token);
+      localStorage.setItem("zabbix_login_status", "true");
 
-        // main app token
-        localStorage.setItem("auth_token", token);
+      router.replace("/");
+      // 🔹 preload tunnels
 
-        // keep zabbix auth also
-        localStorage.setItem("zabbix_auth", token);
-        localStorage.setItem("zabbix_login_status", "true");
 
-        // go root — layout controls dashboard
-        router.replace("/dash");
-      } else {
-        console.error("Login Failed:", data.error || "Unknown error");
-      }
+      // 🔹 GLOBAL API SUCCESS FLAG (TABLE REFRESH TRIGGER)
+      localStorage.setItem("sdwan_api_success", "true");
+
     } catch (err) {
       console.error("Login error:", err);
     }
@@ -78,94 +49,31 @@ const AuthLogin: React.FC<LoginProps> = ({
 
   return (
     <>
-      {title && (
-        <Typography fontWeight="700" variant="h2" mb={1}>
-          {title}
-        </Typography>
-      )}
-
+      {title && <Typography variant="h2">{title}</Typography>}
       {subtext}
 
       <Stack>
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            component="label"
-            htmlFor="username"
-            mb="5px"
-          >
-            Username
-          </Typography>
-          <CustomTextField
-            id="username"
-            variant="outlined"
-            fullWidth
-            value={userData.userName}
-            onChange={(e: any) =>
-              setUserData({ ...userData, userName: e.target.value })
-            }
-          />
-        </Box>
+        <CustomTextField
+          fullWidth
+          value={userData.userName}
+          onChange={(e: any) =>
+            setUserData({ ...userData, userName: e.target.value })
+          }
+        />
 
-        <Box mt="25px">
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            component="label"
-            htmlFor="password"
-            mb="5px"
-          >
-            Password
-          </Typography>
-          <CustomTextField
-            id="password"
-            type="password"
-            variant="outlined"
-            fullWidth
-            value={userData.password}
-            onChange={(e: any) =>
-              setUserData({ ...userData, password: e.target.value })
-            }
-          />
-        </Box>
-
-        <Stack
-          justifyContent="space-between"
-          direction="row"
-          alignItems="center"
-          my={2}
-        >
-          <FormGroup>
-            <FormControlLabel
-              control={<Checkbox defaultChecked />}
-              label="Remember this Device"
-            />
-          </FormGroup>
-
-          <Typography
-            component={Link}
-            href="/"
-            fontWeight="500"
-            sx={{ textDecoration: "none", color: "primary.main" }}
-          >
-            Forgot Password?
-          </Typography>
-        </Stack>
+        <CustomTextField
+          type="password"
+          fullWidth
+          value={userData.password}
+          onChange={(e: any) =>
+            setUserData({ ...userData, password: e.target.value })
+          }
+        />
       </Stack>
 
-      <Box>
-        <Button
-          color="primary"
-          variant="contained"
-          size="large"
-          fullWidth
-          sx={{ py: 1.6, mb: 2 }}
-          onClick={handleSubmit}
-        >
-          Sign In
-        </Button>
-      </Box>
+      <Button fullWidth variant="contained" onClick={handleSubmit}>
+        Sign In
+      </Button>
 
       {subtitle}
     </>

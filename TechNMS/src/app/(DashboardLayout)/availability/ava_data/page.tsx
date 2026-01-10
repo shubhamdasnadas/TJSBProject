@@ -1,11 +1,12 @@
 "use client";
 
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { Table, Button, Modal } from "antd";
 import branches from "../data/data";
+import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadTunnels } from "@/utils/loadTunnels";
 
 type IpRow = {
   hostname: string;
@@ -25,52 +26,57 @@ function getBranchNameByHostname(hostname: string) {
   return found ? found.name : "Unknown";
 }
 
-export default function TunnelsPage() {
+/**
+ * ✅ Normalize tunnel ISP name using ISP_BRANCHES
+ * Does NOT affect existing logic
+ */
+function resolveIspName(text: string) {
+  if (!text) return text;
+
+  let result = text;
+
+  ISP_BRANCHES.forEach((isp) => {
+    const type = isp.type.toLowerCase();
+    if (result.toLowerCase().includes(type)) {
+      result = result.replace(
+        new RegExp(type, "gi"),
+        isp.name
+      );
+    }
+  });
+
+  return result;
+}
+
+interface Props {
+  mode?: "page" | "widget";
+}
+
+export default function TunnelsTable({ mode = "page" }: Props) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 👇 for preview popup
   const [showPreview, setShowPreview] = useState(false);
 
   async function load() {
+    setLoading(true);
+
     try {
-      const res = await axios.post("/api/sdwan/tunnels");
+      const tunnelRows = await loadTunnels();
+      const cached = JSON.stringify(tunnelRows);
+      if (!cached) {
+        setRows([]);
+        return;
+      }
 
-      const devices = res.data.devices || {};
+      const data: IpRow[] = JSON.parse(cached);
 
-      const final: IpRow[] = Object.entries(devices).map(
-        ([systemIp, tunnels]: any) => {
-          const first = tunnels[0];
-          const hostname = first?.hostname || "NA";
-          const branchName = getBranchNameByHostname(hostname);
+      const order = { down: 0, partial: 1, up: 2 };
+      data.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
-          const sortedTunnels = tunnels.sort((a: any, b: any) => {
-            const priority = (v: string) =>
-              v === "down" ? 0 : v === "up" ? 1 : 2;
-
-            return priority(a.state) - priority(b.state);
-          });
-
-          const allUp = sortedTunnels.every((t: any) => t.state === "up");
-          const allDown = sortedTunnels.every((t: any) => t.state === "down");
-
-          let rowState: "up" | "down" | "partial" = "partial";
-          if (allUp) rowState = "up";
-          if (allDown) rowState = "down";
-
-          return {
-            hostname,
-            systemIp,
-            branchName,
-            tunnels: sortedTunnels,
-            rowState,
-          };
-        }
-      );
-
-      setRows(final);
+      setRows(data);
     } catch (e) {
       console.error("FRONTEND ERROR:", e);
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -80,22 +86,35 @@ export default function TunnelsPage() {
     load();
   }, []);
 
-  // 👇 instead of routing — just open preview popup
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      const res = await loadTunnels();
+      localStorage.setItem(
+        "preloaded_tunnels",
+        JSON.stringify(res)
+      );
+    }, 180000);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+
+
+
   function handleExport() {
     setShowPreview(true);
   }
 
   function downloadPdf() {
     const doc = new jsPDF();
-
     doc.setFontSize(14);
     doc.text("SD-WAN Tunnel Report", 14, 16);
 
     autoTable(doc, {
       startY: 22,
-      head: [["Branch", "Hostname", "System IP", "Tunnels"]],
+      head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
       body: rows.map((r: any) => [
-        r.branchName,
+        getBranchNameByHostname(r.hostname),
         r.hostname,
         r.systemIp,
         r.tunnels.length,
@@ -108,7 +127,6 @@ export default function TunnelsPage() {
   const columns: any = [
     {
       title: "Branch",
-      dataIndex: "branchName",
       key: "branchName",
       render: (_: any, row: IpRow) => {
         let bg = "#ddd";
@@ -118,10 +136,13 @@ export default function TunnelsPage() {
           bg = "#d7ffd7";
           color = "green";
         }
-
         if (row.rowState === "down") {
           bg = "#ffd6d6";
           color = "red";
+        }
+        if (row.rowState === "partial") {
+          bg = "#ffe5b4";
+          color = "orange";
         }
 
         return (
@@ -134,7 +155,7 @@ export default function TunnelsPage() {
               fontWeight: 700,
             }}
           >
-            {row.branchName}
+            {getBranchNameByHostname(row.hostname)}
           </span>
         );
       },
@@ -154,7 +175,7 @@ export default function TunnelsPage() {
                 fontWeight: t.state === "down" ? 700 : 400,
               }}
             >
-              {t.tunnelName} — {t.uptime}
+              {resolveIspName(t.tunnelName)} — {t.uptime}
             </option>
           ))}
         </select>
@@ -171,10 +192,13 @@ export default function TunnelsPage() {
           bg = "#d7ffd7";
           color = "green";
         }
-
         if (row.rowState === "down") {
           bg = "#ffd6d6";
           color = "red";
+        }
+        if (row.rowState === "partial") {
+          bg = "#ffe5b4";
+          color = "orange";
         }
 
         return (
@@ -195,14 +219,18 @@ export default function TunnelsPage() {
   ];
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">SD-WAN — Tunnel Status by IP</h1>
+    <div>
+      {mode === "page" && (
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold">
+            SD-WAN — Tunnel Status by IP
+          </h1>
 
-        <Button type="primary" onClick={handleExport}>
-          Export / Preview
-        </Button>
-      </div>
+          <Button type="primary" onClick={handleExport}>
+            Export / Preview
+          </Button>
+        </div>
+      )}
 
       <Table
         loading={loading}
@@ -211,39 +239,45 @@ export default function TunnelsPage() {
         bordered
         pagination={false}
         rowKey={(r) => r.systemIp}
+        size={mode === "widget" ? "small" : "middle"}
       />
 
-      {/* PREVIEW MODAL */}
-      <Modal
-        open={showPreview}
-        title="Export Preview"
-        onCancel={() => setShowPreview(false)}
-        width={900}
-        footer={[
-          <Button key="close" onClick={() => setShowPreview(false)}>
-            Close
-          </Button>,
-          <Button key="pdf" type="primary" onClick={downloadPdf}>
-            Download PDF
-          </Button>,
-        ]}
-      >
-        <Table
-          columns={[
-            { title: "Branch", dataIndex: "branchName" },
-            { title: "Hostname", dataIndex: "hostname" },
-            { title: "System IP", dataIndex: "systemIp" },
-            {
-              title: "Tunnels",
-              render: (_: any, row: any) => row.tunnels.length,
-            },
+      {mode === "page" && (
+        <Modal
+          open={showPreview}
+          title="Export Preview"
+          onCancel={() => setShowPreview(false)}
+          width={900}
+          footer={[
+            <Button key="close" onClick={() => setShowPreview(false)}>
+              Close
+            </Button>,
+            <Button key="pdf" type="primary" onClick={downloadPdf}>
+              Download PDF
+            </Button>,
           ]}
-          dataSource={rows}
-          bordered
-          pagination={false}
-          rowKey={(r: any) => r.systemIp}
-        />
-      </Modal>
+        >
+          <Table
+            columns={[
+              {
+                title: "Branch",
+                render: (_: any, r: any) =>
+                  getBranchNameByHostname(r.hostname),
+              },
+              { title: "Hostname", dataIndex: "hostname" },
+              { title: "System IP", dataIndex: "systemIp" },
+              {
+                title: "Tunnels",
+                render: (_: any, row: any) => row.tunnels.length,
+              },
+            ]}
+            dataSource={rows}
+            bordered
+            pagination={false}
+            rowKey={(r: any) => r.systemIp}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

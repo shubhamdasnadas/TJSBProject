@@ -18,7 +18,7 @@ export async function POST(req: Request) {
             method: "host.get",
             params: {
                 groupids: groupid,
-                output: ["hostid", "host", "status", "active_available", "monitored_by"],
+                output: ["hostid", "host", "name", "status", "active_available", "monitored_by"],
                 selectInterfaces: ["interfaceid", "ip", "dns", "port", "type", "available"],
                 selectTags: ["tag", "value"]
             },
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
                 return {
                     hostid: host.hostid,
                     host: host.host,
+                    hostName: host.name,
                     status: host.status,
                     latest_interface: latest,
                     latest_ip: latest?.ip || null,

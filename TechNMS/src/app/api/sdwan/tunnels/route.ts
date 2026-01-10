@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 const BASE = "https://vmanage-31949190.sdwan.cisco.com";
-const CONCURRENCY = 8;
+const CONCURRENCY = 6;
 
 /* ---------------- EMAIL TRANSPORT ---------------- */
 const transporter = nodemailer.createTransport({
@@ -81,35 +81,44 @@ export async function POST() {
 
     const systemIps = Array.from(deviceMap.keys());
 
-    /* ---------------- WORKERS ---------------- */
     const results: any[] = [];
     let index = 0;
+
+    /* ---------------- WORKERS ---------------- */
+    const MAX_RETRY = 2;
 
     const worker = async () => {
       while (true) {
         const systemIp = systemIps[index++];
         if (!systemIp) break;
 
-        try {
-          const res = await vmanage.get(
-            `/dataservice/device/bfd/sessions?deviceId=${systemIp}`
-          );
+        let sessions: any[] = [];
 
-          results.push({
-            systemIp,
-            hostname: deviceMap.get(systemIp),
-            sessions: res.data?.data || [],
-          });
-        } catch {
-          results.push({
-            systemIp,
-            hostname: deviceMap.get(systemIp),
-            sessions: [],
-          });
+        for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+          try {
+            const res = await vmanage.get(
+              `/dataservice/device/bfd/sessions?deviceId=${systemIp}`
+            );
+
+            sessions = res.data?.data || [];
+
+            // Accept snapshot only if meaningful
+            if (sessions.length > 0) break;
+
+            // vManage lazy-load warmup delay
+            await new Promise((r) => setTimeout(r, 300));
+          } catch {
+            sessions = [];
+          }
         }
+
+        results.push({
+          systemIp,
+          hostname: deviceMap.get(systemIp),
+          sessions,
+        });
       }
     };
-
     await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
     /* ---------------- DEVICE-WISE ---------------- */
@@ -154,11 +163,11 @@ export async function POST() {
           <hr />
           <ul>
             ${tunnels
-              .map(
-                (t: any) =>
-                  `<li>${t.tunnelName} — uptime: ${t.uptime} — <b>${t.state}</b></li>`
-              )
-              .join("")}
+            .map(
+              (t: any) =>
+                `<li>${t.tunnelName} — uptime: ${t.uptime} — <b>${t.state}</b></li>`
+            )
+            .join("")}
           </ul>
         `;
 
@@ -176,11 +185,11 @@ export async function POST() {
           <hr />
           <ul>
             ${tunnels
-              .map(
-                (t: any) =>
-                  `<li>${t.tunnelName} — uptime: ${t.uptime} — <b>${t.state}</b></li>`
-              )
-              .join("")}
+            .map(
+              (t: any) =>
+                `<li>${t.tunnelName} — uptime: ${t.uptime} — <b>${t.state}</b></li>`
+            )
+            .join("")}
           </ul>
         `;
 

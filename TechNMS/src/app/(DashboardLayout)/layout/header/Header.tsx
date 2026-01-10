@@ -72,7 +72,7 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
           }}
         >
           <EncryptedText
-            text="TECHSEC NMS - Cybersecurity Operations"
+            text="TECHSEC NMS - TJSB"
             encryptedClassName="encrypted"
             revealedClassName="revealed"
             revealDelayMs={30}

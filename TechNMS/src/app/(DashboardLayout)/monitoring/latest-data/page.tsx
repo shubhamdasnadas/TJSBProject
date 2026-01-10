@@ -38,7 +38,15 @@ export default function LatestDataPage() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [loadingTable, setLoadingTable] = useState(false);
   const user_token =
-    typeof window !== "undefined" ? localStorage.getItem("zabbix_auth") : null;
+    typeof window !== "undefined"
+      ? localStorage.getItem("zabbix_auth")
+      : "";
+  const axiosCfg = {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${user_token}`,
+    },
+  };
   const onFormLayoutChange: FormProps<any>['onValuesChange'] = ({ size }) => {
     setComponentSize(size);
   };
@@ -58,9 +66,7 @@ export default function LatestDataPage() {
     };
 
     try {
-      const response = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json', },
-      });
+      const response = await axios.post('/api/zabbix-proxy', payload, axiosCfg);
 
       const items = response?.data?.result ?? [];
       const normalized = Array.isArray(items)
@@ -101,9 +107,7 @@ export default function LatestDataPage() {
     };
 
     try {
-      const res = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+        const res = await axios.post('/api/zabbix-proxy', payload, axiosCfg);
 
       setHosts(res?.data?.result ?? []);
     } catch (err: any) {
@@ -153,9 +157,7 @@ export default function LatestDataPage() {
     };
 
     try {
-      const res = await axios.post('/api/zabbix-proxy', payload, {
-        headers: { 'Content-Type': 'application/json', },
-      });
+      const res = await axios.post('/api/zabbix-proxy', payload, axiosCfg);
 
       const items = res?.data?.result ?? [];
       console.log('Apply result count:', Array.isArray(items) ? items.length : 'non-array', items);
@@ -285,7 +287,7 @@ export default function LatestDataPage() {
         <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} />
 
         {/* ---------------------- ROW 2 ---------------------- */}
-        <Row gutter={[24, 16]}>
+        {/* <Row gutter={[24, 16]}>
           <Col span={6}>
             <Form.Item label="Show tags">
               <Radio.Group defaultValue="3" size="middle">
@@ -322,13 +324,13 @@ export default function LatestDataPage() {
               </Radio.Group>
             </Form.Item>
           </Col>
-        </Row>
+        </Row> */}
 
         {/* BREAK LINE */}
-        <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} />
+        {/* <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} /> */}
 
         {/* ---------------------- ROW 3 — TAGS (Dynamic) ---------------------- */}
-        <Row gutter={[24, 16]}>
+        {/* <Row gutter={[24, 16]}>
           <Col span={24}>
             <Form.Item label="Tags">
 
@@ -337,7 +339,7 @@ export default function LatestDataPage() {
                 {tags.map((item, index) => (
                   <Row key={index} gutter={16} align="middle">
 
-                    {/* TAG INPUT */}
+                    TAG INPUT
                     <Col span={6}>
                       <Input
                         placeholder="tag"
@@ -352,7 +354,7 @@ export default function LatestDataPage() {
                       />
                     </Col>
 
-                    {/* OPERATOR SELECT */}
+                    OPERATOR SELECT
                     <Col span={6}>
                       <Select
                         value={item.operator}
@@ -373,7 +375,7 @@ export default function LatestDataPage() {
                       </Select>
                     </Col>
 
-                    {/* VALUE INPUT */}
+                    VALUE INPUT
                     <Col span={6}>
                       <Input
                         placeholder="value"
@@ -388,7 +390,7 @@ export default function LatestDataPage() {
                       />
                     </Col>
 
-                    {/* REMOVE BUTTON */}
+                    REMOVE BUTTON
                     <Col span={6}>
                       <Button
                         danger
@@ -408,7 +410,7 @@ export default function LatestDataPage() {
                 ))}
 
                 {/* ADD TAG BUTTON */}
-                <Button
+        {/* <Button
                   type="dashed"
                   size="middle"
                   style={{ width: 100, borderRadius: 6 }}
@@ -421,17 +423,17 @@ export default function LatestDataPage() {
 
             </Form.Item>
           </Col>
-        </Row>
+        </Row> */}
 
         {/* BREAK LINE */}
-        <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} />
+        {/* <div style={{ borderBottom: "1px solid #eee", margin: "20px 0" }} /> */}
 
         {/* ---------------------- ROW 4 ---------------------- */}
-        <Row style={{ marginBottom: 16 }}>
+        {/* <Row style={{ marginBottom: 16 }}>
           <Col span={24}>
             <Checkbox>Show details</Checkbox>
           </Col>
-        </Row>
+        </Row> */}
 
         {/* ---------------------- ACTION BUTTONS ---------------------- */}
         <Row justify="center" gutter={16} style={{ marginTop: 10 }}>
@@ -460,7 +462,7 @@ export default function LatestDataPage() {
       {/* Render the table with filtered results when Apply is pressed */}
       <div style={{ marginTop: 24 }}>
         <Suspense fallback={<div>Loading....</div>}>
-        <LatestDataTable data={tableData} loading={loadingTable} />
+          <LatestDataTable data={tableData} loading={loadingTable} />
         </Suspense>
       </div>
     </div>

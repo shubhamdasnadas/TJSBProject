@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, Suspense, lazy } from "react";
+import React, { useEffect, useRef, useState, Suspense, lazy, Component } from "react";
 import { Button, Form, Modal, Select } from "antd";
 import axios from "axios";
 import { GridStack } from "gridstack";
@@ -9,6 +9,7 @@ import { WIDGET_TYPES } from "./widget/widgetRegistry";
 import { safeStorage } from "@/utils/safeStorage";
 
 import { io } from "socket.io-client";
+import { xAxisDefaultProps } from "recharts/types/cartesian/XAxis";
 
 /* ===================== LAZY LOAD WIDGETS ===================== */
 const DashboardSummaryCount = lazy(() => import("./DashboardSummaryCount"));
@@ -20,6 +21,7 @@ const ItemValue = lazy(() => import("./widget/itemvalue"));
 const ProblemSeverity = lazy(() => import("./Problemseverity"));
 const ActionLog = lazy(() => import("./widget/actionLog"));
 const TopHost = lazy(() => import("./widget/top_host/data"));
+const DashboardTunnel = lazy(() => import("../(DashboardLayout)/DashboardTunnel"));
 
 /* ================= STORAGE KEYS ================= */
 const STORAGE_KEY = "dashboard_layout_v2";
@@ -29,24 +31,57 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
   {
-    id: "summary-count",
-    title: "Summary Count",
-    component: DashboardSummaryCount,
+    id: "sdwan_tunnels",
+    title: "SD-WAN Tunnel Status",
+    component: () => <DashboardTunnel mode="widget" />,
     x: 0,
     y: 0,
     w: 12,
-    h: 2,
+    h: 8,
+  },
+  {
+    id: "top_host1",
+    title: "Top Host",
+    component: (props: any) => (
+      <TopHost
+        mode="preview"
+        topHostName={["host1"]}
+        showPreviewData={true}
+      />
+    ),
+    x: 0,
+    y: 8,
+    w: 5,
+    h: 8,
+  },
+  {
+    id: "top_host2",
+    title: "Top Host",
+    component: (props: any) => (
+      <TopHost
+        mode="preview"
+        topHostName={["host2"]}
+        showPreviewData={true}
+      />
+    ),
+    x: 5,
+    y: 8,
+    w: 7,
+    h: 9,
   },
   {
     id: "problems-table",
     title: "Active Problems",
     component: ProblemsTablePage,
-    x: 6,
-    y: 4,
-    w: 6,
-    h: 3,
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 9,
   },
+
+
 ];
+
 
 const getWidgetTitle = (type: string) => {
   if (type === "graph") return "Graph";
@@ -97,35 +132,7 @@ export default function Dashboard() {
   const user_token =
     typeof window !== "undefined" ? safeStorage.get("zabbix_auth") : null;
 
-  // /* ================= SOCKET INIT ================= */
-  // useEffect(() => {
-  //   socketRef.current = io({
-  //     path: "/app/api/socket_io",
-  //   });
 
-  //   // when server broadcasts dashboard
-  //   socketRef.current.on("dashboard:sync", (serverState: any) => {
-  //     const { layout = [], dynamicWidgets = [], removedStatic = [] } =
-  //       serverState || {};
-
-  //     setLayout(layout);
-  //     setDynamicWidgets(dynamicWidgets);
-  //     setRemovedStaticIds(removedStatic);
-
-  //     safeStorage.set(STORAGE_KEY, JSON.stringify(layout));
-  //     safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(dynamicWidgets));
-  //     safeStorage.set(REMOVED_STATIC_KEY, JSON.stringify(removedStatic));
-
-  //     if (grid.current) {
-  //       requestAnimationFrame(() => {
-  //         grid.current!.load(layout);
-  //         window.dispatchEvent(new Event("resize"));
-  //       });
-  //     }
-  //   });
-
-  //   return () => socketRef.current?.disconnect();
-  // }, []);
 
   /* ================= BROADCAST TO SERVER (socket + api) ================= */
   const broadcastDashboard = (normalized: any[]) => {
@@ -233,6 +240,7 @@ export default function Dashboard() {
     }
   };
 
+
   /* ================= LOAD FIRST ================= */
   useEffect(() => {
     loadFromServer();
@@ -271,7 +279,7 @@ export default function Dashboard() {
       .then((res) =>
         setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
       )
-      .catch(() => {});
+      .catch(() => { });
   }, [user_token]);
 
   /* ================= GRID INIT ================= */
@@ -320,7 +328,7 @@ export default function Dashboard() {
 
     let layout: any[] = JSON.parse(safeStorage.get(STORAGE_KEY) || "[]");
 
-    layout = layout.map((l: any) => ({
+    layout = layout.slice(1).map((l: any) => ({
       ...l,
       w: Math.max(l.w || 2, 2),
       h: Math.max(l.h || 2, 2),
@@ -328,21 +336,10 @@ export default function Dashboard() {
 
     const existingIds = new Set(layout.map((l) => l.id));
 
+    // ✅ only inject missing STATIC widgets
     WIDGETS.forEach((w) => {
       if (!existingIds.has(w.id)) {
         layout.push({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h });
-      }
-    });
-
-    dynamicWidgets.forEach((w) => {
-      if (!existingIds.has(w.id)) {
-        layout.push({
-          id: w.id,
-          x: 0,
-          y: 0,
-          w: 6,
-          h: 4,
-        });
       }
     });
 
@@ -352,7 +349,7 @@ export default function Dashboard() {
       grid.current!.load(layout);
       window.dispatchEvent(new Event("resize"));
     });
-  }, [gridReady, dynamicWidgets]);
+  }, [gridReady]);
 
   /* ================= REGISTER DYNAMIC ================= */
   useEffect(() => {
@@ -375,6 +372,28 @@ export default function Dashboard() {
     grid.current.setStatic(!editMode);
   }, [editMode]);
 
+
+  const updateLayoutWithDynamicWidget = (id: string) => {
+    const raw = JSON.parse(safeStorage.get(STORAGE_KEY) || "[]");
+
+    const exists = raw.some((l: any) => l.id === id);
+    if (exists) return raw;
+
+    const next = [
+      ...raw,
+      {
+        id,
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 4,
+      },
+    ];
+
+    safeStorage.set(STORAGE_KEY, JSON.stringify(next));
+    return next;
+  };
+
   /* ================= ADD WIDGET ================= */
   const handleAddWidget = () => {
     if (!selectType) return;
@@ -382,24 +401,29 @@ export default function Dashboard() {
     hasUserModifiedWidgets.current = true;
     const id = `${selectType}-${Date.now()}`;
 
+    const widgetConfig =
+      selectType === "pie_chart"
+        ? pieConfig
+        : selectType === "item_value"
+          ? itemConfig
+          : selectType === "problems_by_severity"
+            ? problemSeverityConfig
+            : selectType === "top_host"
+              ? tophostConfig
+              : graphConfig;
+
     setDynamicWidgets((prev) => {
       const next = [
         ...prev,
         {
           id,
           type: selectType,
-          config:
-            selectType === "pie_chart"
-              ? pieConfig
-              : selectType === "item_value"
-              ? itemConfig
-              : selectType === "problems_by_severity"
-              ? problemSeverityConfig
-              : selectType === "top_host"
-              ? tophostConfig
-              : graphConfig,
+          config: widgetConfig,
         },
       ];
+
+      // 🔥 IMPORTANT: sync layout also
+      updateLayoutWithDynamicWidget(id);
 
       safeStorage.set(DYNAMIC_WIDGETS_KEY, JSON.stringify(next));
       saveToServer();
@@ -416,6 +440,7 @@ export default function Dashboard() {
     setProblemSeverityConfig(null);
     setEditingTopHostConfig(null);
   };
+
 
   /* ================= REMOVE ================= */
   const removeWidget = (id: string) => {
