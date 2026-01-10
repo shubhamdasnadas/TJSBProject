@@ -151,7 +151,7 @@ export default function LatestDataPage() {
       jsonrpc: '2.0',
       method: 'item.get',
       params,
-      id: 3,
+      id: 1,
     };
 
     try {
@@ -189,10 +189,10 @@ export default function LatestDataPage() {
   };
 
   // Load all items on initial mount
-  useEffect(() => {
-    handleApply();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // useEffect(() => {
+  //   handleApply();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   const [tags, setTags] = useState([
     { tag: "", operator: "contains", value: "" }
