@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Table, Button, Modal } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { loadTunnels } from "@/utils/loadTunnels";
-
+const CACHE_KEY = "sdwan_tunnel_cache";
 type IpRow = {
   hostname: string;
   systemIp: string;
@@ -57,7 +57,23 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 
+  const fetchingRef = useRef(false);
+  /* ============== LOAD CACHE ============== */
+
+  useEffect(() => {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        setRows(JSON.parse(cached));
+      } catch {
+        sessionStorage.removeItem(CACHE_KEY);
+      }
+    }
+  }, []);
+
   async function load() {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoading(true);
 
     try {
@@ -72,12 +88,13 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
 
       const order = { down: 0, partial: 1, up: 2 };
       data.sort((a, b) => order[a.rowState] - order[b.rowState]);
-
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
       console.error("FRONTEND ERROR:", e);
       setRows([]);
     } finally {
+      fetchingRef.current = false;
       setLoading(false);
     }
   }
@@ -105,24 +122,24 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     setShowPreview(true);
   }
 
-//   function downloadPdf() {
-//     const doc = new jsPDF();
-//     doc.setFontSize(14);
-//     doc.text("SD-WAN Tunnel Report", 14, 16);
+  //   function downloadPdf() {
+  //     const doc = new jsPDF();
+  //     doc.setFontSize(14);
+  //     doc.text("SD-WAN Tunnel Report", 14, 16);
 
-//     autoTable(doc, {
-//       startY: 22,
-//       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
-//       body: rows.map((r: any) => [
-//         getBranchNameByHostname(r.hostname),
-//         r.hostname,
-//         r.systemIp,
-//         r.tunnels.length,
-//       ]),
-//     });
+  //     autoTable(doc, {
+  //       startY: 22,
+  //       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
+  //       body: rows.map((r: any) => [
+  //         getBranchNameByHostname(r.hostname),
+  //         r.hostname,
+  //         r.systemIp,
+  //         r.tunnels.length,
+  //       ]),
+  //     });
 
-//     doc.save("sdwan_report.pdf");
-//   }
+  //     doc.save("sdwan_report.pdf");
+  //   }
 
   const columns: any = [
     {

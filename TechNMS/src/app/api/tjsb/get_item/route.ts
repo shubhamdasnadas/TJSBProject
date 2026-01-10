@@ -2,44 +2,44 @@ import { NextResponse } from "next/server";
 import axios from "axios";
 import https from "https";
 
-/* ===================== HELPERS ===================== */
+/* ===================== HOST2 ITEM NAMES ===================== */
 
-/**
- * bits → K / M (base 1024)
- */
-const normalizeBitsValue = (value: any) => {
-  const bits = Number(value);
-  if (isNaN(bits)) {
-    return { value, unit: "" };
-  }
-
-  const kb = bits / 1024;
-
-  if (kb >= 1024) {
-    return {
-      value: Number((kb / 1024).toFixed(2)),
-      unit: "M",
-    };
-  }
-
-  return {
-    value: Number(kb.toFixed(2)),
-    unit: "K",
-  };
+const HOST2_ITEMS = {
+  BITS_SENT: 'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+  BITS_RECEIVED: 'Interface ["GigabitEthernet0/0/0"]: Bits received',
+  SPEED: 'Interface ["GigabitEthernet0/0/0"]: Speed',
+  CPU: "CPU utilization",
+  MEMORY: "Memory utilization",
+  CERT: "Certificate validity",
 };
 
-/**
- * CPU / Memory → 2 decimals
- */
+const HOST2_ITEM_NAMES = Object.values(HOST2_ITEMS);
+
+/* ===================== HELPERS ===================== */
+
+const normalizeBitsValue = (value: any) => {
+  const bits = Number(value);
+  if (isNaN(bits)) return { value, unit: "" };
+
+  const kb = bits / 1024;
+  if (kb >= 1024) {
+    return { value: Number((kb / 1024).toFixed(2)), unit: "M" };
+  }
+  return { value: Number(kb.toFixed(2)), unit: "K" };
+};
+
 const normalizePercentValue = (value: any) => {
   const num = Number(value);
   if (isNaN(num)) return value;
   return Number(num.toFixed(2));
 };
 
-/**
- * Fix reversed traffic names using key_
- */
+const getUtilizationColor = (value: number) => {
+  if (value < 50) return "green";
+  if (value < 75) return "orange";
+  return "red";
+};
+
 const normalizeTrafficName = (name: string, key_: string) => {
   if (!name || !key_) return name;
 
@@ -59,8 +59,6 @@ export async function POST(req: Request) {
     const { auth, groupids, key_, name, itemid, itemids } =
       await req.json();
 
-    /* ===================== VALIDATION ===================== */
-
     if (!auth) {
       return NextResponse.json(
         { error: "Missing auth token" },
@@ -70,22 +68,14 @@ export async function POST(req: Request) {
 
     if (!groupids && !itemid && !itemids) {
       return NextResponse.json(
-        {
-          error:
-            "Missing required identifiers (groupids or itemid/itemids)",
-        },
+        { error: "Missing required identifiers" },
         { status: 400 }
       );
     }
 
-    const ZABBIX_URL =
-      process.env.NEXT_PUBLIC_ZABBIX_URL as string;
+    const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL as string;
 
-    const httpsAgent = new https.Agent({
-      rejectUnauthorized: false,
-    });
-
-    /* ===================== BUILD PARAMS ===================== */
+    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
     const params: any = {
       output: [
@@ -113,8 +103,6 @@ export async function POST(req: Request) {
       params.filter = { key_ };
     }
 
-    /* ===================== PAYLOAD ===================== */
-
     const payload = {
       jsonrpc: "2.0",
       method: "item.get",
@@ -130,37 +118,71 @@ export async function POST(req: Request) {
       httpsAgent,
     });
 
-    const result = res.data?.result ?? [];
+    let result = res.data?.result ?? [];
+
+    /* ===================== SORT: HOST2 BITS RECEIVED ONLY ===================== */
+
+    const host2BitsReceived = result.filter(
+      (i: any) => i.name === HOST2_ITEMS.BITS_RECEIVED
+    );
+
+    const others = result.filter(
+      (i: any) => i.name !== HOST2_ITEMS.BITS_RECEIVED
+    );
+
+    host2BitsReceived.sort(
+      (a: any, b: any) => Number(b.lastvalue) - Number(a.lastvalue)
+    );
+
+    result = [...host2BitsReceived, ...others];
 
     /* ===================== FORMAT RESPONSE ===================== */
 
     const formatted = result.map((item: any) => {
-      let lastvalue = item.lastvalue;
+      let lastvalue: any = item.lastvalue;
       let units = item.units;
-      let itemName = item.name;
+      let itemName = normalizeTrafficName(item.name, item.key_);
+      let statusColor: string | undefined;
 
-      // ✅ Fix reversed column names
-      itemName = normalizeTrafficName(itemName, item.key_);
+      const isHost2Item = HOST2_ITEM_NAMES.includes(itemName);
 
-      // 🔹 Traffic items (received + sent + speed)
+      /* 🔹 HOST2 ONLY: Bits */
       if (
-        typeof itemName === "string" &&
-        (itemName.includes("Bits received") ||
-          itemName.includes("Bits sent") ||
-          itemName.includes("Speed"))
+        isHost2Item &&
+        [
+          HOST2_ITEMS.BITS_SENT,
+          HOST2_ITEMS.BITS_RECEIVED,
+          HOST2_ITEMS.SPEED,
+        ].includes(itemName)
       ) {
         const normalized = normalizeBitsValue(item.lastvalue);
         lastvalue = normalized.value;
         units = normalized.unit;
       }
 
-      // 🔹 CPU / Memory
+      /* 🔹 HOST2 ONLY: CPU / Memory */
       if (
-        typeof itemName === "string" &&
-        (itemName.includes("CPU utilization") ||
-          itemName.includes("Memory utilization"))
+        isHost2Item &&
+        [HOST2_ITEMS.CPU, HOST2_ITEMS.MEMORY].includes(itemName)
       ) {
-        lastvalue = normalizePercentValue(item.lastvalue);
+        const val = normalizePercentValue(item.lastvalue);
+        lastvalue = val;
+        statusColor = getUtilizationColor(val);
+      }
+
+      /* 🔹 HOST2 ONLY: zero handling */
+      if (
+        isHost2Item &&
+        Number(lastvalue) === 0 &&
+        itemName !== HOST2_ITEMS.CERT
+      ) {
+        lastvalue = "NA";
+        statusColor = undefined;
+      }
+
+      /* ❌ No color for Certificate validity */
+      if (itemName === HOST2_ITEMS.CERT) {
+        statusColor = undefined;
       }
 
       return {
@@ -168,19 +190,16 @@ export async function POST(req: Request) {
         hostname: item.hosts?.[0]?.name ?? "Unknown",
         itemid: item.itemid,
         key_: item.key_,
-        name: itemName,   // ✅ corrected heading
+        name: itemName,
         lastvalue,
         units,
+        statusColor,
       };
     });
 
     return NextResponse.json({ result: formatted });
   } catch (e: any) {
-    console.error(
-      "item.get error:",
-      e?.response?.data || e?.message
-    );
-
+    console.error("item.get error:", e?.response?.data || e?.message);
     return NextResponse.json(
       { error: "Server error fetching items" },
       { status: 500 }
