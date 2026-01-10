@@ -67,7 +67,7 @@ const AuthLogin: React.FC<LoginProps> = ({
         localStorage.setItem("zabbix_login_status", "true");
 
         // go root — layout controls dashboard
-        router.replace("/");
+        router.replace("/dash");
       } else {
         console.error("Login Failed:", data.error || "Unknown error");
       }
