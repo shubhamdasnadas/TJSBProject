@@ -63,7 +63,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     if (cached) {
       try {
         setRows(JSON.parse(cached));
-        setLoading(false); // ✅ stop loader if cache exists
+        setLoading(false);
       } catch {
         sessionStorage.removeItem(CACHE_KEY);
       }
@@ -76,18 +76,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     setLoading(true);
 
     try {
-      const tunnelRows = await loadTunnels();
-      const cached = JSON.stringify(tunnelRows);
-      if (!cached) {
-        setRows([]);
-        return;
-      }
-
-      const data: IpRow[] = JSON.parse(cached);
-
-      const order = { down: 0, partial: 1, up: 2 };
-      data.sort((a, b) => order[a.rowState] - order[b.rowState]);
-
+      const data = await loadTunnels();
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
@@ -99,23 +88,19 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     }
   }
 
-  /* ============== INITIAL API LOAD ============== */
+  /* ============== INITIAL LOAD ============== */
   useEffect(() => {
     load();
   }, []);
 
-  /* ============== TAB / BAR OPEN–CLOSE FIX ============== */
+  /* ============== VISIBILITY CACHE RESTORE ============== */
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         const cached = sessionStorage.getItem(CACHE_KEY);
         if (cached) {
-          try {
-            setRows(JSON.parse(cached));
-            setLoading(false); // ✅ no spinner on return
-          } catch {
-            sessionStorage.removeItem(CACHE_KEY);
-          }
+          setRows(JSON.parse(cached));
+          setLoading(false);
         }
       }
     };
@@ -128,6 +113,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
       );
   }, []);
 
+<<<<<<< HEAD
   /* ============== PRELOAD (UNCHANGED) ============== */
   useEffect(() => {
     const handleVisibility = () => {
@@ -148,6 +134,8 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
       );
   }, []);
 
+=======
+>>>>>>> cae4743 (data chnages')
   const columns: any = [
     {
       title: "Branch",
