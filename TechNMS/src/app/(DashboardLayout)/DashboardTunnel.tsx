@@ -54,7 +54,6 @@ interface Props {
 export default function DashboardTunnel({ mode = "page" }: Props) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPreview, setShowPreview] = useState(false);
 
   const fetchingRef = useRef(false);
 
@@ -64,7 +63,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     if (cached) {
       try {
         setRows(JSON.parse(cached));
-        setLoading(false); // ✅ stop loader if cache exists
+        setLoading(false);
       } catch {
         sessionStorage.removeItem(CACHE_KEY);
       }
@@ -77,18 +76,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     setLoading(true);
 
     try {
-      const tunnelRows = await loadTunnels();
-      const cached = JSON.stringify(tunnelRows);
-      if (!cached) {
-        setRows([]);
-        return;
-      }
-
-      const data: IpRow[] = JSON.parse(cached);
-
-      const order = { down: 0, partial: 1, up: 2 };
-      data.sort((a, b) => order[a.rowState] - order[b.rowState]);
-
+      const data = await loadTunnels();
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
@@ -100,23 +88,19 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     }
   }
 
-  /* ============== INITIAL API LOAD ============== */
+  /* ============== INITIAL LOAD ============== */
   useEffect(() => {
     load();
   }, []);
 
-  /* ============== TAB / BAR OPEN–CLOSE FIX ============== */
+  /* ============== VISIBILITY CACHE RESTORE ============== */
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         const cached = sessionStorage.getItem(CACHE_KEY);
         if (cached) {
-          try {
-            setRows(JSON.parse(cached));
-            setLoading(false); // ✅ no spinner on return
-          } catch {
-            sessionStorage.removeItem(CACHE_KEY);
-          }
+          setRows(JSON.parse(cached));
+          setLoading(false);
         }
       }
     };
@@ -129,46 +113,9 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
       );
   }, []);
 
-  /* ============== PRELOAD (UNCHANGED) ============== */
-  useEffect(() => {
-    const timeoutId = setTimeout(async () => {
-      const res = await loadTunnels();
-      localStorage.setItem(
-        "preloaded_tunnels",
-        JSON.stringify(res)
-      );
-    }, 180000);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-  function handleExport() {
-    setShowPreview(true);
-  }
-
-  //   function downloadPdf() {
-  //     const doc = new jsPDF();
-  //     doc.setFontSize(14);
-  //     doc.text("SD-WAN Tunnel Report", 14, 16);
-  //
-  //     autoTable(doc, {
-  //       startY: 22,
-  //       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
-  //       body: rows.map((r: any) => [
-  //         getBranchNameByHostname(r.hostname),
-  //         r.hostname,
-  //         r.systemIp,
-  //         r.tunnels.length,
-  //       ]),
-  //     });
-  //
-  //     doc.save("sdwan_report.pdf");
-  //   }
-
   const columns: any = [
     {
       title: "Branch",
-      key: "branchName",
       render: (_: any, row: IpRow) => {
         let bg = "#ddd";
         let color = "#000";
@@ -205,7 +152,6 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     { title: "System IP", dataIndex: "systemIp" },
     {
       title: "Tunnels (Name + Uptime)",
-      key: "tunnelInfo",
       render: (_: any, row: IpRow) => (
         <select style={{ padding: 4 }}>
           {row.tunnels.map((t: any, i: number) => (
@@ -224,7 +170,6 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     },
     {
       title: "State",
-      key: "state",
       render: (_: any, row: IpRow) => {
         let bg = "#ccc";
         let color = "black";
@@ -260,65 +205,14 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
   ];
 
   return (
-    <div>
-      {/* {mode === "page" && (
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold">
-            SD-WAN — Tunnel Status by IP
-          </h1>
-
-          <Button type="primary" onClick={handleExport}>
-            Export / Preview
-          </Button>
-        </div>
-      )} */}
-
-      <Table
-        loading={loading}
-        columns={columns}
-        dataSource={rows}
-        bordered
-        pagination={false}
-        rowKey={(r) => r.systemIp}
-        size={mode === "widget" ? "small" : "middle"}
-      />
-
-      {/* {mode === "page" && (
-        <Modal
-          open={showPreview}
-          title="Export Preview"
-          onCancel={() => setShowPreview(false)}
-          width={900}
-          footer={[
-            <Button key="close" onClick={() => setShowPreview(false)}>
-              Close
-            </Button>,
-            <Button key="pdf" type="primary" onClick={downloadPdf}>
-              Download PDF
-            </Button>,
-          ]}
-        >
-          <Table
-            columns={[
-              {
-                title: "Branch",
-                render: (_: any, r: any) =>
-                  getBranchNameByHostname(r.hostname),
-              },
-              { title: "Hostname", dataIndex: "hostname" },
-              { title: "System IP", dataIndex: "systemIp" },
-              {
-                title: "Tunnels",
-                render: (_: any, row: any) => row.tunnels.length,
-              },
-            ]}
-            dataSource={rows}
-            bordered
-            pagination={false}
-            rowKey={(r: any) => r.systemIp}
-          />
-        </Modal>
-      )} */}
-    </div>
+    <Table
+      loading={loading}
+      columns={columns}
+      dataSource={rows}
+      bordered
+      pagination={false}
+      rowKey={(r) => r.systemIp}
+      size={mode === "widget" ? "small" : "middle"}
+    />
   );
 }

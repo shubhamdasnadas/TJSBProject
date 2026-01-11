@@ -36,14 +36,16 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
       localStorage.setItem("zabbix_login_status", "true");
 
       router.replace("/");
-      // 🔹 preload tunnels
-
-
-      // 🔹 GLOBAL API SUCCESS FLAG (TABLE REFRESH TRIGGER)
-      localStorage.setItem("sdwan_api_success", "true");
-
     } catch (err) {
       console.error("Login error:", err);
+    }
+  };
+
+  // ✅ ENTER KEY HANDLER
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -61,6 +63,7 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
             onChange={(e: any) =>
               setUserData({ ...userData, userName: e.target.value })
             }
+            onKeyDown={handleKeyDown} // ✅ ENTER
             sx={{
               backgroundColor: "#94a3b8",
               borderRadius: 1,
@@ -80,6 +83,7 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
             onChange={(e: any) =>
               setUserData({ ...userData, password: e.target.value })
             }
+            onKeyDown={handleKeyDown} // ✅ ENTER
             sx={{
               backgroundColor: "#94a3b8",
               borderRadius: 1,

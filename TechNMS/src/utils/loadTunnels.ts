@@ -1,5 +1,6 @@
 import axios from "axios";
 
+
 export type IpRow = {
   hostname: string;
   systemIp: string;

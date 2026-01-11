@@ -19,16 +19,27 @@
       "y": 17,
       "w": 12,
       "h": 8,
-      "id": "top_host2"
+      "id": "top_host1"
     },
     {
       "x": 0,
       "y": 25,
       "w": 12,
       "h": 8,
-      "id": "top_host1"
+      "id": "top_host2"
     }
   ],
-  "dynamicWidgets": [],
+  "dynamicWidgets": [
+    {
+      "id": "pie_chart-1766038840916",
+      "type": "pie_chart",
+      "config": null
+    },
+    {
+      "id": "pie_chart-1766042850728",
+      "type": "pie_chart",
+      "config": null
+    }
+  ],
   "removedStatic": []
 }
