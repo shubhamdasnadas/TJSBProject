@@ -10,7 +10,6 @@ import {
   Stack,
   Checkbox,
 } from "@mui/material";
-import Link from "next/link";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
@@ -20,7 +19,9 @@ import { loadTunnels } from "@/utils/loadTunnels";
 const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => {
   const router = useRouter();
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault(); // 🔑 enables Enter key login
+
     try {
       const response = await axios.post("/api/zabbix-login", {
         username: userData.userName,
@@ -34,6 +35,8 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
       localStorage.setItem("auth_token", token);
       localStorage.setItem("zabbix_auth", token);
       localStorage.setItem("zabbix_login_status", "true");
+
+
 
       router.replace("/");
     } catch (err) {
@@ -51,13 +54,59 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
 
   return (
     <>
-      <Stack spacing={3}>
-        {/* USERNAME */}
-        <Box>
-          <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
-            Username
-          </Typography>
-          <CustomTextField
+      {title}
+
+      {subtext}
+
+      {/* 🔥 FORM = Enter key works */}
+      <form onSubmit={handleSubmit}>
+        <Stack spacing={3}>
+          {/* USERNAME */}
+          <Box>
+            <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
+              Username
+            </Typography>
+            <CustomTextField
+              fullWidth
+              value={userData.userName}
+              onChange={(e: any) =>
+                setUserData({ ...userData, userName: e.target.value })
+              }
+              sx={{ backgroundColor: "#94a3b8", borderRadius: 1 }}
+            />
+          </Box>
+
+          {/* PASSWORD */}
+          <Box>
+            <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
+              Password
+            </Typography>
+            <CustomTextField
+              type="password"
+              fullWidth
+              value={userData.password}
+              onChange={(e: any) =>
+                setUserData({ ...userData, password: e.target.value })
+              }
+              sx={{ backgroundColor: "#94a3b8", borderRadius: 1 }}
+            />
+          </Box>
+
+          {/* REMEMBER */}
+          <FormGroup>
+            <FormControlLabel
+              control={<Checkbox defaultChecked />}
+              label={
+                <Typography fontSize={14} color="#cbd5f5">
+                  Remember this device
+                </Typography>
+              }
+            />
+          </FormGroup>
+
+          {/* SUBMIT */}
+          <Button
+            type="submit" // ⭐ Enter key trigger
             fullWidth
             value={userData.userName}
             onChange={(e: any) =>
@@ -65,63 +114,65 @@ const AuthLogin = ({ title, subtitle, subtext, userData, setUserData }: any) => 
             }
             onKeyDown={handleKeyDown} // ✅ ENTER
             sx={{
-              backgroundColor: "#94a3b8",
-              borderRadius: 1,
+              py: 1.6,
+              background: "linear-gradient(90deg,#3b82f6,#2563eb)",
+              fontWeight: 600,
             }}
-          />
-        </Box>
+          >
+            Sign In
+          </Button>
 
-        {/* PASSWORD */}
-        <Box>
-          <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
-            Password
-          </Typography>
-          <CustomTextField
-            type="password"
+          {/* PASSWORD */}
+          <Box>
+            <Typography fontWeight={600} mb={0.5} color="#cbd5f5">
+              Password
+            </Typography>
+            <CustomTextField
+              type="password"
+              fullWidth
+              value={userData.password}
+              onChange={(e: any) =>
+                setUserData({ ...userData, password: e.target.value })
+              }
+              onKeyDown={handleKeyDown} // ✅ ENTER
+              sx={{
+                backgroundColor: "#94a3b8",
+                borderRadius: 1,
+              }}
+            />
+          </Box>
+
+          {/* REMEMBER */}
+          <FormGroup>
+            <FormControlLabel
+              control={<Checkbox defaultChecked />}
+              label={
+                <Typography fontSize={14} color="#cbd5f5">
+                  Remember this device
+                </Typography>
+              }
+            />
+          </FormGroup>
+
+          {/* BUTTON */}
+          <Button
             fullWidth
-            value={userData.password}
-            onChange={(e: any) =>
-              setUserData({ ...userData, password: e.target.value })
-            }
-            onKeyDown={handleKeyDown} // ✅ ENTER
+            size="large"
+            variant="contained"
             sx={{
-              backgroundColor: "#94a3b8",
-              borderRadius: 1,
+              py: 1.6,
+              background: "linear-gradient(90deg,#3b82f6,#2563eb)",
+              fontWeight: 600,
             }}
-          />
-        </Box>
+            onClick={handleSubmit}
+          >
+            Sign In
+          </Button>
 
-        {/* REMEMBER */}
-        <FormGroup>
-          <FormControlLabel
-            control={<Checkbox defaultChecked />}
-            label={
-              <Typography fontSize={14} color="#cbd5f5">
-                Remember this device
-              </Typography>
-            }
-          />
-        </FormGroup>
-
-        {/* BUTTON */}
-        <Button
-          fullWidth
-          size="large"
-          variant="contained"
-          sx={{
-            py: 1.6,
-            background: "linear-gradient(90deg,#3b82f6,#2563eb)",
-            fontWeight: 600,
-          }}
-          onClick={handleSubmit}
-        >
-          Sign In
-        </Button>
-
-        {subtitle}
-      </Stack>
-    </>
-  );
+          {subtitle}
+        </Stack>
+      </>
+      );
 };
 
-export default AuthLogin;
+      export default AuthLogin;
