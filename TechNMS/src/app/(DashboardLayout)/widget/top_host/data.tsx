@@ -34,17 +34,6 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
   ],
 };
 
-/* ===================== HOST2 COLUMN ORDER (ONLY CHANGE) ===================== */
-
-const HOST2_COLUMN_ORDER: string[] = [
-  'Interface ["GigabitEthernet0/0/0"]: Bits received',
-  "CPU utilization",
-  "Certificate validity",
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent',
-  'Interface ["GigabitEthernet0/0/0"]: Speed',
-  "Memory utilization",
-];
-
 const TopHost: React.FC<TopHostProps> = ({
   mode = "widget",
   onConfigChange,
@@ -239,17 +228,9 @@ const TopHost: React.FC<TopHostProps> = ({
 
   let previewRows: any[] = Object.values(hostsMap);
 
-  const uniqueColumns = columnsConfig
-    .filter((c, i, arr) => arr.findIndex((x) => x.name === c.name) === i)
-    .sort((a, b) => {
-      const aIdx = HOST2_COLUMN_ORDER.indexOf(a.name!);
-      const bIdx = HOST2_COLUMN_ORDER.indexOf(b.name!);
-
-      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-      if (aIdx !== -1) return -1;
-      if (bIdx !== -1) return 1;
-      return 0;
-    });
+  const uniqueColumns = columnsConfig.filter(
+    (c, i, arr) => arr.findIndex((x) => x.name === c.name) === i
+  );
 
   /* ===================== HOST1 SORTING (UNCHANGED) ===================== */
 
@@ -330,7 +311,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            up
+            up ({num.toFixed(2)})
           </span>
         );
       }
@@ -347,7 +328,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            down
+            down ({num.toFixed(2)})
           </span>
         );
       }
