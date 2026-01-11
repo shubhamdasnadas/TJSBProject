@@ -113,29 +113,6 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
       );
   }, []);
 
-<<<<<<< HEAD
-  /* ============== PRELOAD (UNCHANGED) ============== */
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          setRows(JSON.parse(cached));
-          setLoading(false);
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () =>
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibility
-      );
-  }, []);
-
-=======
->>>>>>> cae4743 (data chnages')
   const columns: any = [
     {
       title: "Branch",
