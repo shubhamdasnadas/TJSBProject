@@ -21,9 +21,9 @@ const normalizeBitsValue = (value: any) => {
   const bits = Number(value);
   if (isNaN(bits)) return { value, unit: "" };
 
-  const kb = bits / 1024;
-  if (kb >= 1024) {
-    return { value: Number((kb / 1024).toFixed(2)), unit: "M" };
+  const kb = bits / 1000;
+  if (kb >= 1000) {
+    return { value: Number((kb / 1000).toFixed(2)), unit: "M" };
   }
   return { value: Number(kb.toFixed(2)), unit: "K" };
 };

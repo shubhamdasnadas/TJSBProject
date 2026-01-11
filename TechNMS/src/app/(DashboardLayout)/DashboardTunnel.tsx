@@ -7,7 +7,9 @@ import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { loadTunnels } from "@/utils/loadTunnels";
+
 const CACHE_KEY = "sdwan_tunnel_cache";
+
 type IpRow = {
   hostname: string;
   systemIp: string;
@@ -38,10 +40,7 @@ function resolveIspName(text: string) {
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
     if (result.toLowerCase().includes(type)) {
-      result = result.replace(
-        new RegExp(type, "gi"),
-        isp.name
-      );
+      result = result.replace(new RegExp(type, "gi"), isp.name);
     }
   });
 
@@ -58,13 +57,14 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
   const [showPreview, setShowPreview] = useState(false);
 
   const fetchingRef = useRef(false);
-  /* ============== LOAD CACHE ============== */
 
+  /* ============== LOAD CACHE (INITIAL) ============== */
   useEffect(() => {
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
       try {
         setRows(JSON.parse(cached));
+        setLoading(false); // ✅ stop loader if cache exists
       } catch {
         sessionStorage.removeItem(CACHE_KEY);
       }
@@ -88,6 +88,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
 
       const order = { down: 0, partial: 1, up: 2 };
       data.sort((a, b) => order[a.rowState] - order[b.rowState]);
+
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
@@ -99,10 +100,36 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     }
   }
 
+  /* ============== INITIAL API LOAD ============== */
   useEffect(() => {
     load();
   }, []);
 
+  /* ============== TAB / BAR OPEN–CLOSE FIX ============== */
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          try {
+            setRows(JSON.parse(cached));
+            setLoading(false); // ✅ no spinner on return
+          } catch {
+            sessionStorage.removeItem(CACHE_KEY);
+          }
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+  }, []);
+
+  /* ============== PRELOAD (UNCHANGED) ============== */
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
       const res = await loadTunnels();
@@ -115,9 +142,6 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     return () => clearTimeout(timeoutId);
   }, []);
 
-
-
-
   function handleExport() {
     setShowPreview(true);
   }
@@ -126,7 +150,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
   //     const doc = new jsPDF();
   //     doc.setFontSize(14);
   //     doc.text("SD-WAN Tunnel Report", 14, 16);
-
+  //
   //     autoTable(doc, {
   //       startY: 22,
   //       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
@@ -137,7 +161,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
   //         r.tunnels.length,
   //       ]),
   //     });
-
+  //
   //     doc.save("sdwan_report.pdf");
   //   }
 
