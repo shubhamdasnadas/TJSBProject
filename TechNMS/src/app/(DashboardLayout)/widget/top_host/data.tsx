@@ -38,11 +38,11 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
 
 const HOST2_COLUMN_ORDER: string[] = [
   'Interface ["GigabitEthernet0/0/0"]: Bits received',
-  "CPU utilization",
-  "Certificate validity",
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+  'Interface ["GigabitEth ernet0/0/0"]: Bits sent',
   'Interface ["GigabitEthernet0/0/0"]: Speed',
   "Memory utilization",
+  "CPU utilization",
+  "Certificate validity",
 ];
 
 const TopHost: React.FC<TopHostProps> = ({
