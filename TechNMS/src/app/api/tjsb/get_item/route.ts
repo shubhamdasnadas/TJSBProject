@@ -15,6 +15,17 @@ const HOST2_ITEMS = {
 
 const HOST2_ITEM_NAMES = Object.values(HOST2_ITEMS);
 
+/* ===================== HOST2 COLUMN ORDER (NEW – ONLY ADDITION) ===================== */
+
+const HOST2_COLUMN_ORDER: string[] = [
+  'Interface ["GigabitEthernet0/0/0"]: Bits received',
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+  'Interface ["GigabitEthernet0/0/0"]: Speed',
+  "Memory utilization",
+  "CPU utilization",
+  "Certificate validity",
+];
+
 /* ===================== HELPERS ===================== */
 
 const normalizeBitsValue = (value: any) => {
@@ -56,8 +67,7 @@ const normalizeTrafficName = (name: string, key_: string) => {
 
 export async function POST(req: Request) {
   try {
-    const { auth, groupids, key_, name, itemid, itemids } =
-      await req.json();
+    const { auth, groupids, key_, name, itemid, itemids } = await req.json();
 
     if (!auth) {
       return NextResponse.json(
@@ -74,7 +84,6 @@ export async function POST(req: Request) {
     }
 
     const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL as string;
-
     const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
     const params: any = {
@@ -120,7 +129,7 @@ export async function POST(req: Request) {
 
     let result = res.data?.result ?? [];
 
-    /* ===================== SORT: HOST2 BITS RECEIVED ONLY ===================== */
+    /* ===================== SORT: HOST2 BITS RECEIVED ONLY (UNCHANGED) ===================== */
 
     const host2BitsReceived = result.filter(
       (i: any) => i.name === HOST2_ITEMS.BITS_RECEIVED
@@ -146,7 +155,6 @@ export async function POST(req: Request) {
 
       const isHost2Item = HOST2_ITEM_NAMES.includes(itemName);
 
-      /* 🔹 HOST2 ONLY: Bits */
       if (
         isHost2Item &&
         [
@@ -160,7 +168,6 @@ export async function POST(req: Request) {
         units = normalized.unit;
       }
 
-      /* 🔹 HOST2 ONLY: CPU / Memory */
       if (
         isHost2Item &&
         [HOST2_ITEMS.CPU, HOST2_ITEMS.MEMORY].includes(itemName)
@@ -170,7 +177,6 @@ export async function POST(req: Request) {
         statusColor = getUtilizationColor(val);
       }
 
-      /* 🔹 HOST2 ONLY: zero handling */
       if (
         isHost2Item &&
         Number(lastvalue) === 0 &&
@@ -180,7 +186,6 @@ export async function POST(req: Request) {
         statusColor = undefined;
       }
 
-      /* ❌ No color for Certificate validity */
       if (itemName === HOST2_ITEMS.CERT) {
         statusColor = undefined;
       }
@@ -197,7 +202,19 @@ export async function POST(req: Request) {
       };
     });
 
-    return NextResponse.json({ result: formatted });
+    /* ===================== HOST2 COLUMN ORDER ENFORCEMENT (NEW) ===================== */
+
+    const ordered = formatted.sort((a: any, b: any) => {
+      const aIdx = HOST2_COLUMN_ORDER.indexOf(a.name);
+      const bIdx = HOST2_COLUMN_ORDER.indexOf(b.name);
+
+      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+      if (aIdx !== -1) return -1;
+      if (bIdx !== -1) return 1;
+      return 0;
+    });
+
+    return NextResponse.json({ result: ordered });
   } catch (e: any) {
     console.error("item.get error:", e?.response?.data || e?.message);
     return NextResponse.json(

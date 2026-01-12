@@ -6,15 +6,32 @@ import branches from "../data/data";
 import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { loadTunnels } from "@/utils/loadTunnels";
+
+// ✅ IMPORT JSON DATA
+import tunnelJson from "../../sdwan_tunnels.json";
+
+/* ===================== TYPES ===================== */
+
+type Tunnel = {
+  tunnelName: string;
+  localSystemIp: string;
+  remoteSystemIp: string;
+  localColor: string;
+  remoteColor: string;
+  state: "up" | "down";
+  uptime: string;
+  hostname: string;
+};
 
 type IpRow = {
   hostname: string;
   systemIp: string;
   branchName: string;
-  tunnels: any[];
+  tunnels: Tunnel[];
   rowState: "up" | "down" | "partial";
 };
+
+/* ===================== HELPERS ===================== */
 
 function getBranchNameByHostname(hostname: string) {
   if (!hostname) return "Unknown";
@@ -26,10 +43,6 @@ function getBranchNameByHostname(hostname: string) {
   return found ? found.name : "Unknown";
 }
 
-/**
- * ✅ Normalize tunnel ISP name using ISP_BRANCHES
- * Does NOT affect existing logic
- */
 function resolveIspName(text: string) {
   if (!text) return text;
 
@@ -38,15 +51,49 @@ function resolveIspName(text: string) {
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
     if (result.toLowerCase().includes(type)) {
-      result = result.replace(
-        new RegExp(type, "gi"),
-        isp.name
-      );
+      result = result.replace(new RegExp(type, "gi"), isp.name);
     }
   });
 
   return result;
 }
+
+/* ===================== JSON → TABLE TRANSFORM ===================== */
+/* ✅ THIS IS THE FIX FOR YOUR ERROR */
+
+function transformJsonToRows(json: any): IpRow[] {
+  const devices = json?.devices ?? {};
+  const rows: IpRow[] = [];
+
+  Object.entries(devices).forEach(([systemIp, tunnels]) => {
+    if (!Array.isArray(tunnels) || tunnels.length === 0) return;
+
+    const hostname = tunnels[0].hostname ?? "Unknown";
+
+    const upCount = tunnels.filter((t: any) => t.state === "up").length;
+    const downCount = tunnels.filter((t: any) => t.state === "down").length;
+
+    let rowState: "up" | "down" | "partial" = "partial";
+    if (upCount === tunnels.length) rowState = "up";
+    else if (downCount === tunnels.length) rowState = "down";
+
+    rows.push({
+      hostname,
+      systemIp,
+      branchName: getBranchNameByHostname(hostname),
+      tunnels: tunnels as Tunnel[],
+      rowState,
+    });
+  });
+
+  // ✅ REQUIRED SORT: down → partial → up
+  const order = { down: 0, partial: 1, up: 2 };
+  rows.sort((a, b) => order[a.rowState] - order[b.rowState]);
+
+  return rows;
+}
+
+/* ===================== COMPONENT ===================== */
 
 interface Props {
   mode?: "page" | "widget";
@@ -59,23 +106,12 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   async function load() {
     setLoading(true);
-
     try {
-      const tunnelRows = await loadTunnels();
-      const cached = JSON.stringify(tunnelRows);
-      if (!cached) {
-        setRows([]);
-        return;
-      }
-
-      const data: IpRow[] = JSON.parse(cached);
-
-      const order = { down: 0, partial: 1, up: 2 };
-      data.sort((a, b) => order[a.rowState] - order[b.rowState]);
-
+      // ✅ FIXED: transform JSON properly
+      const data = transformJsonToRows(tunnelJson);
       setRows(data);
     } catch (e) {
-      console.error("FRONTEND ERROR:", e);
+      console.error("JSON LOAD ERROR:", e);
       setRows([]);
     } finally {
       setLoading(false);
@@ -85,21 +121,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   useEffect(() => {
     load();
   }, []);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(async () => {
-      const res = await loadTunnels();
-      localStorage.setItem(
-        "preloaded_tunnels",
-        JSON.stringify(res)
-      );
-    }, 180000);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-
-
 
   function handleExport() {
     setShowPreview(true);
@@ -113,7 +134,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     autoTable(doc, {
       startY: 22,
       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
-      body: rows.map((r: any) => [
+      body: rows.map((r) => [
         getBranchNameByHostname(r.hostname),
         r.hostname,
         r.systemIp,
@@ -124,10 +145,11 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     doc.save("sdwan_report.pdf");
   }
 
+  /* ===================== TABLE (UNCHANGED) ===================== */
+
   const columns: any = [
     {
       title: "Branch",
-      key: "branchName",
       render: (_: any, row: IpRow) => {
         let bg = "#ddd";
         let color = "#000";
@@ -164,10 +186,9 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     { title: "System IP", dataIndex: "systemIp" },
     {
       title: "Tunnels (Name + Uptime)",
-      key: "tunnelInfo",
       render: (_: any, row: IpRow) => (
         <select style={{ padding: 4 }}>
-          {row.tunnels.map((t: any, i: number) => (
+          {row.tunnels.map((t, i) => (
             <option
               key={i}
               style={{
@@ -183,7 +204,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     },
     {
       title: "State",
-      key: "state",
       render: (_: any, row: IpRow) => {
         let bg = "#ccc";
         let color = "black";
@@ -225,7 +245,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
           <h1 className="text-xl font-bold">
             SD-WAN — Tunnel Status by IP
           </h1>
-
           <Button type="primary" onClick={handleExport}>
             Export / Preview
           </Button>
