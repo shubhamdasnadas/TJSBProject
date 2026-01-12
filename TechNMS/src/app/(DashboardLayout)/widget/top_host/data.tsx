@@ -34,6 +34,14 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
   ],
 };
 
+/* HOST2 TRAFFIC COLUMNS */
+const HOST2_TRAFFIC_ITEMS = [
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+  'Interface ["GigabitEthernet0/0/0"]: Bits received',
+  'Interface ["GigabitEthernet0/0/0"]: Speed',
+];
+
+
 const TopHost: React.FC<TopHostProps> = ({
   mode = "widget",
   onConfigChange,
@@ -215,15 +223,26 @@ const TopHost: React.FC<TopHostProps> = ({
       };
     }
 
-    // 🔹 Preserve raw value for host1
-    // 🔹 Extend object for host2 CPU / Memory
-    hostsMap[c.hostName!][c.name!] =
-      c.name === "CPU utilization" || c.name === "Memory utilization"
-        ? {
-          value: api?.lastvalue ?? 0,
-          statusColor: api?.statusColor,
-        }
-        : api?.lastvalue ?? 0;
+    /* HOST2 TRAFFIC → store value + units */
+    if (HOST2_TRAFFIC_ITEMS.includes(c.name!)) {
+      hostsMap[c.hostName!][c.name!] = {
+        value: api?.lastvalue ?? 0,
+        units: api?.units,
+      };
+      return;
+    }
+
+    /* CPU / MEMORY */
+    if (c.name === "CPU utilization" || c.name === "Memory utilization") {
+      hostsMap[c.hostName!][c.name!] = {
+        value: api?.lastvalue ?? 0,
+        statusColor: api?.statusColor,
+      };
+      return;
+    }
+
+    /* DEFAULT */
+    hostsMap[c.hostName!][c.name!] = api?.lastvalue ?? 0;
   });
 
   let previewRows: any[] = Object.values(hostsMap);
@@ -262,6 +281,21 @@ const TopHost: React.FC<TopHostProps> = ({
     title: c.name,
     dataIndex: c.name!,
     render: (cell: any) => {
+      /* HOST2 TRAFFIC: KBPS / MBPS */
+      if (cell && typeof cell === "object" && "units" in cell) {
+        const unit =
+          cell.units === "M"
+            ? "MBPS"
+            : cell.units === "K"
+              ? "KBPS"
+              : "";
+
+        return (
+          <span style={{ fontWeight: 600 }}>
+            {cell.value} {unit}
+          </span>
+        );
+      }
       // 🔹 HOST2 CPU / MEMORY COLORING
       if (
         c.name === "CPU utilization" ||

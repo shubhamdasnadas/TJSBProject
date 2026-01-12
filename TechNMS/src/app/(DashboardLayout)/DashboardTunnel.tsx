@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Table, Button, Modal } from "antd";
+import { Table } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 import jsPDF from "jspdf";
@@ -9,6 +9,7 @@ import autoTable from "jspdf-autotable";
 import { loadTunnels } from "@/utils/loadTunnels";
 
 const CACHE_KEY = "sdwan_tunnel_cache";
+const AUTO_REFRESH_MS = 60 * 1000; // ✅ 1 minute
 
 type IpRow = {
   hostname: string;
@@ -91,6 +92,15 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
   /* ============== INITIAL LOAD ============== */
   useEffect(() => {
     load();
+  }, []);
+
+  /* ============== AUTO REFRESH (EVERY 1 MIN) ============== */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      load();
+    }, AUTO_REFRESH_MS);
+
+    return () => clearInterval(interval);
   }, []);
 
   /* ============== VISIBILITY CACHE RESTORE ============== */

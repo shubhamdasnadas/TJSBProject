@@ -11,15 +11,15 @@
       "x": 0,
       "y": 8,
       "w": 12,
-      "h": 9,
-      "id": "problems-table"
+      "h": 8,
+      "id": "top_host1"
     },
     {
       "x": 0,
-      "y": 17,
+      "y": 16,
       "w": 12,
-      "h": 8,
-      "id": "top_host1"
+      "h": 9,
+      "id": "problems-table"
     },
     {
       "x": 0,
@@ -43,17 +43,6 @@
       "y": 33
     }
   ],
-  "dynamicWidgets": [
-    {
-      "id": "pie_chart-1766038840916",
-      "type": "pie_chart",
-      "config": null
-    },
-    {
-      "id": "pie_chart-1766042850728",
-      "type": "pie_chart",
-      "config": null
-    }
-  ],
+  "dynamicWidgets": [],
   "removedStatic": []
 }
