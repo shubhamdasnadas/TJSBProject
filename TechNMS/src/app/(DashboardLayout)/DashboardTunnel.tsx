@@ -5,9 +5,6 @@ import { Table } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 
-// ✅ IMPORT JSON DATA
-import tunnelJson from "../(DashboardLayout)/sdwan_tunnels.json";
-
 const CACHE_KEY = "sdwan_tunnel_cache";
 const AUTO_REFRESH_MS = 60 * 1000; // 1 minute
 
@@ -29,14 +26,10 @@ function getBranchNameByHostname(hostname: string) {
   return found ? found.name : "Unknown";
 }
 
-/**
- * Normalize tunnel ISP name using ISP_BRANCHES
- */
 function resolveIspName(text: string) {
   if (!text) return text;
 
   let result = text;
-
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
     if (result.toLowerCase().includes(type)) {
@@ -74,18 +67,8 @@ function transformJsonToRows(json: any): IpRow[] {
     });
   });
 
-  /* ===================== SORTING LOGIC ===================== */
-  /* down → partial → up */
-
-  const priority: Record<IpRow["rowState"], number> = {
-    down: 0,
-    partial: 1,
-    up: 2,
-  };
-
-  rows.sort(
-    (a, b) => priority[a.rowState] - priority[b.rowState]
-  );
+  const priority = { down: 0, partial: 1, up: 2 };
+  rows.sort((a, b) => priority[a.rowState] - priority[b.rowState]);
 
   return rows;
 }
@@ -119,7 +102,11 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     setLoading(true);
 
     try {
-      const data = transformJsonToRows(tunnelJson);
+      // ✅ CORRECT PATH (SERVER READS FILE)
+      const res = await fetch("/api/sdwan/tunnels");
+      const json = await res.json();
+
+      const data = transformJsonToRows(json);
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
@@ -131,18 +118,15 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     }
   }
 
-  /* ============== INITIAL LOAD ============== */
   useEffect(() => {
     load();
   }, []);
 
-  /* ============== AUTO REFRESH (EVERY 1 MIN) ============== */
   useEffect(() => {
     const interval = setInterval(load, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, []);
 
-  /* ============== VISIBILITY CACHE RESTORE ============== */
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -156,13 +140,8 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () =>
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibility
-      );
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
-
-  /* ===================== TABLE (UNCHANGED) ===================== */
 
   const columns: any = [
     {
@@ -185,15 +164,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
         }
 
         return (
-          <span
-            style={{
-              padding: "4px 10px",
-              borderRadius: 6,
-              background: bg,
-              color,
-              fontWeight: 700,
-            }}
-          >
+          <span style={{ padding: "4px 10px", borderRadius: 6, background: bg, color, fontWeight: 700 }}>
             {getBranchNameByHostname(row.hostname)}
           </span>
         );
@@ -206,13 +177,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
       render: (_: any, row: IpRow) => (
         <select style={{ padding: 4 }}>
           {row.tunnels.map((t: any, i: number) => (
-            <option
-              key={i}
-              style={{
-                color: t.state === "down" ? "red" : "black",
-                fontWeight: t.state === "down" ? 700 : 400,
-              }}
-            >
+            <option key={i} style={{ color: t.state === "down" ? "red" : "black", fontWeight: t.state === "down" ? 700 : 400 }}>
               {resolveIspName(t.tunnelName)} — {t.uptime}
             </option>
           ))}
@@ -239,15 +204,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
         }
 
         return (
-          <span
-            style={{
-              padding: "2px 10px",
-              borderRadius: 6,
-              background: bg,
-              color,
-              fontWeight: 700,
-            }}
-          >
+          <span style={{ padding: "2px 10px", borderRadius: 6, background: bg, color, fontWeight: 700 }}>
             {row.rowState}
           </span>
         );

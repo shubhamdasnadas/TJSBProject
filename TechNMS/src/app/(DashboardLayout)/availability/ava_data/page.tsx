@@ -7,9 +7,6 @@ import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// ✅ IMPORT JSON DATA
-import tunnelJson from "../../sdwan_tunnels.json";
-
 /* ===================== TYPES ===================== */
 
 type Tunnel = {
@@ -59,34 +56,33 @@ function resolveIspName(text: string) {
 }
 
 /* ===================== JSON → TABLE TRANSFORM ===================== */
-/* ✅ THIS IS THE FIX FOR YOUR ERROR */
 
 function transformJsonToRows(json: any): IpRow[] {
   const devices = json?.devices ?? {};
   const rows: IpRow[] = [];
 
-  Object.entries(devices).forEach(([systemIp, tunnels]) => {
+  Object.entries(devices).forEach(([systemIp, tunnels]: any) => {
     if (!Array.isArray(tunnels) || tunnels.length === 0) return;
 
-    const hostname = tunnels[0].hostname ?? "Unknown";
+    const hostname = tunnels[0]?.hostname ?? "Unknown";
 
-    const upCount = tunnels.filter((t: any) => t.state === "up").length;
-    const downCount = tunnels.filter((t: any) => t.state === "down").length;
+    const up = tunnels.filter((t: any) => t.state === "up").length;
+    const down = tunnels.filter((t: any) => t.state === "down").length;
 
     let rowState: "up" | "down" | "partial" = "partial";
-    if (upCount === tunnels.length) rowState = "up";
-    else if (downCount === tunnels.length) rowState = "down";
+    if (up === tunnels.length) rowState = "up";
+    else if (down === tunnels.length) rowState = "down";
 
     rows.push({
       hostname,
       systemIp,
       branchName: getBranchNameByHostname(hostname),
-      tunnels: tunnels as Tunnel[],
+      tunnels,
       rowState,
     });
   });
 
-  // ✅ REQUIRED SORT: down → partial → up
+  // ✅ Required sorting: down → partial → up
   const order = { down: 0, partial: 1, up: 2 };
   rows.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
@@ -107,8 +103,11 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   async function load() {
     setLoading(true);
     try {
-      // ✅ FIXED: transform JSON properly
-      const data = transformJsonToRows(tunnelJson);
+      // ✅ LOAD FROM /public
+      const res = await fetch("/sdwan_tunnels.json");
+      const json = await res.json();
+
+      const data = transformJsonToRows(json);
       setRows(data);
     } catch (e) {
       console.error("JSON LOAD ERROR:", e);
