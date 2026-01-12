@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { Table } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { loadTunnels } from "@/utils/loadTunnels";
+
+// ✅ IMPORT JSON DATA
+import tunnelJson from "../(DashboardLayout)/sdwan_tunnels.json";
 
 const CACHE_KEY = "sdwan_tunnel_cache";
-const AUTO_REFRESH_MS = 60 * 1000; // ✅ 1 minute
+const AUTO_REFRESH_MS = 60 * 1000; // 1 minute
 
 type IpRow = {
   hostname: string;
@@ -30,8 +30,7 @@ function getBranchNameByHostname(hostname: string) {
 }
 
 /**
- * ✅ Normalize tunnel ISP name using ISP_BRANCHES
- * Does NOT affect existing logic
+ * Normalize tunnel ISP name using ISP_BRANCHES
  */
 function resolveIspName(text: string) {
   if (!text) return text;
@@ -46,6 +45,37 @@ function resolveIspName(text: string) {
   });
 
   return result;
+}
+
+/* ===================== JSON → TABLE TRANSFORM ===================== */
+/* ⚠️ REQUIRED because JSON is NOT IpRow[] */
+
+function transformJsonToRows(json: any): IpRow[] {
+  const devices = json?.devices ?? {};
+  const rows: IpRow[] = [];
+
+  Object.entries(devices).forEach(([systemIp, tunnels]: any) => {
+    if (!Array.isArray(tunnels) || tunnels.length === 0) return;
+
+    const hostname = tunnels[0]?.hostname ?? "Unknown";
+
+    const upCount = tunnels.filter((t: any) => t.state === "up").length;
+    const downCount = tunnels.filter((t: any) => t.state === "down").length;
+
+    let rowState: "up" | "down" | "partial" = "partial";
+    if (upCount === tunnels.length) rowState = "up";
+    else if (downCount === tunnels.length) rowState = "down";
+
+    rows.push({
+      hostname,
+      systemIp,
+      branchName: getBranchNameByHostname(hostname),
+      tunnels,
+      rowState,
+    });
+  });
+
+  return rows;
 }
 
 interface Props {
@@ -77,11 +107,12 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     setLoading(true);
 
     try {
-      const data = await loadTunnels();
+      // ✅ JSON → TABLE DATA
+      const data = transformJsonToRows(tunnelJson);
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
-      console.error("FRONTEND ERROR:", e);
+      console.error("JSON LOAD ERROR:", e);
       setRows([]);
     } finally {
       fetchingRef.current = false;
@@ -96,10 +127,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
 
   /* ============== AUTO REFRESH (EVERY 1 MIN) ============== */
   useEffect(() => {
-    const interval = setInterval(() => {
-      load();
-    }, AUTO_REFRESH_MS);
-
+    const interval = setInterval(load, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, []);
 
@@ -122,6 +150,8 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
         handleVisibility
       );
   }, []);
+
+  /* ===================== TABLE (UNCHANGED) ===================== */
 
   const columns: any = [
     {
