@@ -57,8 +57,8 @@ const Certificate = () => {
         const items = res.data?.result ?? [];
         items.forEach((item: any) => {
           const value = Number(item.lastvalue);
-          if (!isNaN(value) && value > 0) validCount++;
-          else invalidCount++;
+          if (!isNaN(value) && value > 0) invalidCount++;
+          else validCount++;
         });
       });
 
