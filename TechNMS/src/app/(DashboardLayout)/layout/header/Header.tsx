@@ -5,17 +5,16 @@ import {
   AppBar,
   Toolbar,
   Stack,
-  IconButton,
   Button,
   useMediaQuery,
 } from "@mui/material";
 import { Theme } from "@mui/material/styles";
-import { IconMenu } from "@tabler/icons-react";
+import { IconMenu4 } from "@tabler/icons-react";
 import Link from "next/link";
 import Profile from "./Profile";
 import { EncryptedText } from "./EncryptedText";
 import { useThemeMode } from "@/app/context/ThemeContext";
-import { useState } from "react";
+import { useState, useEffect, useCallback, startTransition } from "react";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -23,23 +22,28 @@ interface HeaderProps {
 }
 
 const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
-  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down("lg"));
+  const isMobile = useMediaQuery((theme: Theme) =>
+    theme.breakpoints.down("lg")
+  );
   const { mode } = useThemeMode();
-
   const [logoAnimTrigger, setLogoAnimTrigger] = useState(0);
+  const [loginStatus, setLoginStatus] = useState("false");
 
-  const loginStatus =
-    typeof window !== "undefined"
-      ? localStorage.getItem("zabbix_login_status")
-      : "false";
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setLoginStatus(localStorage.getItem("zabbix_login_status") || "false");
+    }
+  }, []);
 
-  const handleClick = () => {
-    // 🔥 trigger encrypted animation EVERY time
+  // ✅ TRANSITION-SAFE SIDEBAR TOGGLE (NO REMOUNT)
+  const handleToggle = useCallback(() => {
     setLogoAnimTrigger((v) => v + 1);
 
-    if (isMobile) toggleMobileSidebar();
-    else toggleSidebar();
-  };
+    startTransition(() => {
+      if (isMobile) toggleMobileSidebar();
+      else toggleSidebar();
+    });
+  }, [isMobile, toggleMobileSidebar, toggleSidebar]);
 
   return (
     <AppBar
@@ -51,11 +55,29 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
         borderBottom: "1px solid var(--card-border)",
       }}
     >
-      <Toolbar>
-        <IconButton onClick={handleClick}>
-          <IconMenu width={22} height={22} />
-        </IconButton>
+      <Toolbar component="div">
+        {/* ☰ MENU */}
+        <Box
+          onClick={handleToggle}
+          onPointerDown={(e) => e.preventDefault()}
+          sx={{
+            width: 40,
+            height: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            borderRadius: 1,
+            userSelect: "none",
+            "&:hover": {
+              backgroundColor: "rgba(0,0,0,0.06)",
+            },
+          }}
+        >
+          <IconMenu4 width={22} height={22} />
+        </Box>
 
+        {/* LOGO */}
         <Box
           sx={{
             ml: 2,
@@ -63,9 +85,7 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
             fontSize: "1.25rem",
             letterSpacing: "0.5px",
             textTransform: "uppercase",
-            "& .encrypted": {
-              color: "#06b6d4",
-            },
+            "& .encrypted": { color: "#06b6d4" },
             "& .revealed": {
               color: mode === "dark" ? "#ffffff" : "#014d8c",
             },
@@ -82,8 +102,8 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }: HeaderProps) => {
 
         <Box flexGrow={1} />
 
-        {loginStatus === "true" ? null : (
-          <Stack direction="row" spacing={1} alignItems="center">
+        {loginStatus !== "true" && (
+          <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
               component={Link}

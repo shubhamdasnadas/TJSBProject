@@ -169,7 +169,7 @@ const Menuitems = [
     title: "Availability",
     icon: <FileTextOutlined />,
     children: [
-      { title: "Availability Data", href: p("/availability/ava_data"), icon: <AuditOutlined /> },
+      { title: "Availability Data", href: "/availability/ava_data", icon: <AuditOutlined /> },
     ],
   },
 ];

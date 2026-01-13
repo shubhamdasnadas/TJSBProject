@@ -22,6 +22,7 @@ export default function EventsPage() {
     typeof window !== "undefined"
       ? localStorage.getItem("zabbix_auth")
       : "";
+
   const axiosCfg = {
     headers: {
       "Content-Type": "application/json",
@@ -84,7 +85,7 @@ export default function EventsPage() {
   }, [groupids]);
 
   /* =========================
-     Apply filters (event.get)
+     Apply filters
   ========================= */
   const applyFilters = async () => {
     setLoading(true);
@@ -140,12 +141,37 @@ export default function EventsPage() {
     }
   };
 
-  /* =========================
-     Helpers
-  ========================= */
-  const severityTag = (s: string) => {
-    const colors = ["#aaa", "#1890ff", "#fa8c16", "#faad14", "#f5222d", "#722ed1"];
-    return <Tag color={colors[Number(s)]}>{s}</Tag>;
+  /* ===================== PROBLEM BACKGROUND COLOR ===================== */
+  const getProblemBg = (severity: string) => {
+    switch (severity) {
+      case "5":
+        return "#B22222"; // disaster
+      case "4":
+        return "#F59F1D"; // high
+      case "3":
+        return "#FAD800"; // average
+      case "2":
+        return "#ff9966"; // warning
+      case "1":
+        return "#79b1e6"; // info
+      default:
+        return "#51A687"; // default info
+    }
+  };
+
+  /* ===================== SEVERITY TAG ===================== */
+  const getSeverityTag = (severity: string) => {
+    const map: Record<string, { color: string; label: string }> = {
+      "5": { color: "red", label: "Disaster" },
+      "4": { color: "volcano", label: "High" },
+      "3": { color: "orange", label: "Average" },
+      "2": { color: "gold", label: "Warning" },
+      "1": { color: "blue", label: "Information" },
+      "0": { color: "default", label: "Not classified" },
+    };
+
+    const item = map[severity] ?? map["0"];
+    return <Tag color={item.color}>{item.label}</Tag>;
   };
 
   const columns = [
@@ -153,8 +179,8 @@ export default function EventsPage() {
     {
       title: "Severity",
       dataIndex: "severity",
-      width: 100,
-      render: (s: string) => severityTag(s),
+      width: 110,
+      render: (s: string) => getSeverityTag(s),
     },
     {
       title: "Recovery time",
@@ -174,7 +200,23 @@ export default function EventsPage() {
         ),
     },
     { title: "Host", dataIndex: "hostname", width: 200 },
-    { title: "Problem", dataIndex: "problem" },
+    {
+      title: "Problem",
+      dataIndex: "problem",
+      width: 280,
+      render: (text: string, record: EventRow) => (
+        <div
+          style={{
+            background: getProblemBg(record.severity),
+            padding: "6px 8px",
+            borderRadius: 6,
+            fontWeight: 500,
+          }}
+        >
+          {text}
+        </div>
+      ),
+    },
   ];
 
   return (

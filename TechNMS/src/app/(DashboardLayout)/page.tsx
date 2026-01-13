@@ -10,6 +10,8 @@ import { safeStorage } from "@/utils/safeStorage";
 
 import { io } from "socket.io-client";
 import { xAxisDefaultProps } from "recharts/types/cartesian/XAxis";
+import Vmanage from "./widget/cardDashboard/vmanage/page";
+import DashboardCard from "./widget/cardDashboard/page";
 
 /* ===================== LAZY LOAD WIDGETS ===================== */
 const DashboardSummaryCount = lazy(() => import("./DashboardSummaryCount"));
@@ -30,6 +32,7 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
+
   {
     id: "sdwan_tunnels",
     title: "SD-WAN Tunnel Status",
@@ -38,6 +41,15 @@ const WIDGETS = [
     y: 0,
     w: 12,
     h: 8,
+  },
+  {
+    id: "problems-table",
+    title: "Active Problems",
+    component: ProblemsTablePage,
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 9,
   },
   {
     id: "top_host1",
@@ -50,8 +62,8 @@ const WIDGETS = [
       />
     ),
     x: 0,
-    y: 8,
-    w: 5,
+    y: 0,
+    w: 12,
     h: 8,
   },
   {
@@ -64,22 +76,11 @@ const WIDGETS = [
         showPreviewData={true}
       />
     ),
-    x: 5,
-    y: 8,
-    w: 7,
-    h: 9,
-  },
-  {
-    id: "problems-table",
-    title: "Active Problems",
-    component: ProblemsTablePage,
     x: 0,
     y: 0,
     w: 12,
-    h: 9,
+    h: 8,
   },
-
-
 ];
 
 
@@ -492,7 +493,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div
+      {/* <div
         style={{
           display: "flex",
           justifyContent: "flex-end",
@@ -513,7 +514,7 @@ export default function Dashboard() {
         <Suspense fallback={<span>Loading date range…</span>}>
           <RangePickerDemo onRangeChange={setRangeData} />
         </Suspense>
-      </div>
+      </div> */}
 
       <div className="grid-stack" ref={gridRef}>
         {WIDGETS.filter((w) => !removedStaticIds.includes(w.id)).map(
@@ -529,7 +530,7 @@ export default function Dashboard() {
             >
               <div className="grid-stack-item-content dashboard-card">
                 <div className="dashboard-card-header">
-                  {title}
+                  {/* {title} */}
                   {editMode && (
                     <span
                       onClick={() => removeWidget(id)}

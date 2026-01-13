@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Table, Tag, Checkbox, Button, Modal, Select } from "antd";
 import axios from "axios";
 
-/* ===================== API RESPONSE TYPE (problem.get) ===================== */
+const CACHE_KEY = "zabbix_problems_cache";
+
+/* ===================== API RESPONSE TYPE ===================== */
 
 interface ApiTriggerItem {
   eventid: string;
@@ -35,7 +37,6 @@ interface TableRow {
   description: string;
   priority: string;
   status: string;
-  depends_on?: string;
   tags?: { tag: string; value?: string }[];
 }
 
@@ -56,6 +57,23 @@ export default function ProblemsTablePage() {
   const [loading, setLoading] = useState(false);
   const [filterVisible, setFilterVisible] = useState(false);
 
+  const fetchingRef = useRef(false);
+  const firstLoadRef = useRef(true);
+
+  /* ===================== LOAD CACHE ===================== */
+
+  useEffect(() => {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        setData(JSON.parse(cached));
+        firstLoadRef.current = false;
+      } catch {
+        sessionStorage.removeItem(CACHE_KEY);
+      }
+    }
+  }, []);
+
   /* ===================== TAG HELPERS ===================== */
 
   const getSeverityTag = (priority: string) => {
@@ -73,22 +91,37 @@ export default function ProblemsTablePage() {
   };
 
   const getStatusTag = (status: string) => {
-    if (status === "0") {
-      return <Tag color="red">Problem</Tag>;
-    }
-
-    if (status === "1") {
-      return <Tag color="green">OK</Tag>;
-    }
-
+    if (status === "0") return <Tag color="red">Problem</Tag>;
+    if (status === "1") return <Tag color="green">OK</Tag>;
     return <Tag>-</Tag>;
   };
 
+  /* ===================== PROBLEM CELL COLOR (✅ NEW) ===================== */
+
+  const getProblemBg = (priority: string) => {
+    switch (priority) {
+      case "5":
+        return "#B22222"; // disaster
+      case "4":
+        return "#F59F1D"; // high
+      case "3":
+        return "#FAD800"; // average
+      case "2":
+        return "#ff9966"; // warning
+      case "1":
+        return "#79b1e6"; // info
+      default:
+        return "transparent";
+    }
+  };
 
   /* ===================== API FETCH ===================== */
 
   const fetchProblems = async () => {
-    setLoading(true);
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
+    if (firstLoadRef.current) setLoading(true);
 
     try {
       const res = await axios.post("/api/zabbix/problem_table", {
@@ -101,65 +134,54 @@ export default function ProblemsTablePage() {
         ? res.data.result
         : [];
 
-      /* ===================== MAP API → TABLE ===================== */
-
       const mapped: TableRow[] = problems.map((p, index) => ({
         key: p.eventid ?? String(index),
-
         triggerid: p.trigger?.triggerid ?? "",
-
         timestamp: p.clock ?? "",
         time_from: p.clock ? Number(p.clock) : undefined,
         time_till:
           p.r_clock && p.r_clock !== "0"
             ? Number(p.r_clock)
             : undefined,
-
         hostname: p.trigger?.hosts?.[0]?.name || "Unknown",
-
         hostid: p.trigger?.hosts?.[0]?.hostid
           ? String(p.trigger.hosts[0].hostid)
           : "",
-
-        description:
-          p.name ||
-          p.trigger?.description ||
-          "",
-
+        description: p.name || p.trigger?.description || "",
         priority: p.severity || p.trigger?.priority || "0",
         status: p.trigger?.status || "0",
-
-        depends_on: undefined,
         tags: Array.isArray(p.tags) ? p.tags : [],
       }));
 
-      setData(mapped);
+      if (mapped.length) {
+        setData(mapped);
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
+      }
+
+      firstLoadRef.current = false;
     } catch (err) {
       console.error("❌ Failed to fetch problems:", err);
-      setData([]);
     } finally {
+      fetchingRef.current = false;
       setLoading(false);
     }
   };
-
-  /* ===================== EFFECT ===================== */
 
   useEffect(() => {
     fetchProblems();
   }, []);
 
-  /* ===================== TABLE COLUMNS ===================== */
+  useEffect(() => {
+    const interval = setInterval(fetchProblems, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  /* ===================== COLUMNS ===================== */
 
   const columns = [
-    {
-      title: <Checkbox />,
-      key: "select",
-      width: 40,
-      render: () => <Checkbox />,
-    },
+    { title: <Checkbox />, width: 40, render: () => <Checkbox /> },
     {
       title: "Time",
-      key: "time",
       width: 160,
       render: (_: any, record: TableRow) => {
         if (!record.time_from) return "-";
@@ -179,131 +201,55 @@ export default function ProblemsTablePage() {
     {
       title: "Severity",
       dataIndex: "priority",
-      key: "priority",
       width: 110,
       render: (p: string) => getSeverityTag(p),
     },
     {
       title: "Status",
       dataIndex: "status",
-      key: "status",
       width: 90,
       render: (s: string) => getStatusTag(s),
     },
-
     {
       title: "Host",
       dataIndex: "hostname",
-      key: "hostname",
       width: 140,
       render: (text: string) => <a>{text}</a>,
     },
     {
       title: "Problem",
       dataIndex: "description",
-      key: "description",
       width: 280,
-      render: (text: string) => <a>{text}</a>,
-    },
-
-    {
-      title: "Actions",
-      key: "actions",
-      width: 100,
-      render: () => (
-        <Button type="link" size="small">
-          Actions
-        </Button>
+      render: (text: string, record: TableRow) => (
+        <div
+          style={{
+            background: getProblemBg(record.priority),
+            padding: "6px 8px",
+            borderRadius: 6,
+            fontWeight: 500,
+          }}
+        >
+          {text}
+        </div>
       ),
     },
+
   ];
-
-  /* ===================== FILTER UI ===================== */
-
-  const handleGetHostGroup = async () => {
-    try {
-      const res = await axios.post("/api/api_host/api_host_group", {
-        auth: user_token,
-      });
-      setHost_group(res.data.result);
-    } catch {
-      console.log("Error host group");
-    }
-  };
-
-  const handleGetHostList = async (groupid: any) => {
-    try {
-      const res = await axios.post("/api/api_host/api_get_host", {
-        auth: user_token,
-        groupids: groupid,
-      });
-      setTemplateList(res.data.result);
-    } catch {
-      console.log("error template list");
-    }
-  };
-
-  /* ===================== UI ===================== */
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      {/* <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h2 style={{ fontSize: 22, fontWeight: 600 }}>Active Problems</h2>
-        <Button
-          onClick={() => {
-            setFilterVisible(true);
-            handleGetHostGroup();
-          }}
-          disabled={loading}
-        >
+        <Button onClick={() => setFilterVisible(true)} disabled={loading}>
           Filter
         </Button>
-      </div>
-
-      <Modal
-        title="Filter Problems"
-        open={filterVisible}
-        onOk={() => {
-          setFilterVisible(false);
-          fetchProblems();
-        }}
-        onCancel={() => setFilterVisible(false)}
-      >
-        <Select
-          style={{ width: "100%" }}
-          mode="multiple"
-          placeholder="Select Group"
-          onChange={(v) => {
-            setSelectGroup(v as string[]);
-            handleGetHostList(v);
-          }}
-        >
-          {host_group.map((g: any) => (
-            <Select.Option key={g.groupid} value={g.groupid}>
-              {g.name}
-            </Select.Option>
-          ))}
-        </Select>
-
-        <Select
-          style={{ width: "100%", marginTop: 16 }}
-          mode="multiple"
-          placeholder="Select Host"
-          onChange={(v) => setSelectHost(v as string[])}
-        >
-          {templateList.map((h: any) => (
-            <Select.Option key={h.hostid} value={h.hostid}>
-              {h.name}
-            </Select.Option>
-          ))}
-        </Select>
-      </Modal>
+      </div> */}
 
       <Table
         rowKey="key"
         columns={columns}
         dataSource={data}
-        loading={loading}
+        loading={loading && data.length === 0}
         pagination={{ pageSize: 10, showSizeChanger: true }}
         size="small"
         style={{ marginTop: 16 }}

@@ -89,12 +89,11 @@ const HostFilterCard = ({
         findBranch(record.hostName),
     },
     {
-      title: "Latest Interface (IP:Port)",
+      title: "Latest Interface (IP)",
       key: "interface",
       render: (_: any, record: HostItem) => (
         <span>
-          {record.latest_interface?.ip ?? "-"}:
-          {record.latest_interface?.port ?? "-"}
+          {record.latest_interface?.ip ?? "-"}
         </span>
       ),
     },

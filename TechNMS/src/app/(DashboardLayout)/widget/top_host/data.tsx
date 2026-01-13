@@ -17,10 +17,7 @@ interface TopHostProps {
   initialConfig?: any;
   topHostName?: ("host1" | "host2")[];
   showPreviewData?: boolean;
-
 }
-
-
 
 const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
   host1: [
@@ -36,12 +33,32 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
     "Certificate validity",
   ],
 };
+/* ===================== COLUMN HEADER MAP ===================== */
+
+const COLUMN_HEADER_MAP: Record<string, string> = {
+  // HOST1
+  'Interface ["GigabitEthernet0/0/0"]: Operational status': "Primary Link",
+  'Interface ["GigabitEthernet0/0/1"]: Operational status': "Secondary Link",
+
+  // HOST2
+  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Bits Received",
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Bits Sent",
+  'Interface ["GigabitEthernet0/0/0"]: Speed': "Speed",
+};
+/* HOST2 TRAFFIC COLUMNS */
+const HOST2_TRAFFIC_ITEMS = [
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+  'Interface ["GigabitEthernet0/0/0"]: Bits received',
+  'Interface ["GigabitEthernet0/0/0"]: Speed',
+];
+
+
 const TopHost: React.FC<TopHostProps> = ({
   mode = "widget",
   onConfigChange,
   initialConfig,
   topHostName,
-  showPreviewData
+  showPreviewData,
 }) => {
   const { hostGroups, hosts, items, fetchZabbixData } = useZabbixData();
 
@@ -51,21 +68,16 @@ const TopHost: React.FC<TopHostProps> = ({
   const columnsRef = useRef<ColumnConfig[]>([]);
   const [editing, setEditing] = useState<ColumnConfig | null>(null);
   const [open, setOpen] = useState(false);
-
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
-  // ⭐ PREVIEW ALWAYS TRUE IN PREVIEW MODE
   const [showPreview, setShowPreview] = useState<boolean>(
     mode === "preview" ? true : false
   );
+
+  /* ===================== INITIAL FETCH ===================== */
+
   useEffect(() => {
-    if (
-      mode !== "preview" ||
-      !showPreviewData ||
-      !topHostName?.length
-    ) {
-      return;
-    }
+    if (mode !== "preview" || !showPreviewData || !topHostName?.length) return;
 
     const fetchDashboardData = async () => {
       try {
@@ -78,7 +90,7 @@ const TopHost: React.FC<TopHostProps> = ({
             })
           )
         );
-        console.log("response", responses)
+
         const apiResult = responses.flatMap(
           (res) => res.data?.result ?? []
         );
@@ -88,7 +100,7 @@ const TopHost: React.FC<TopHostProps> = ({
 
           apiResult.forEach((row: any) => {
             const resolvedHostName =
-              row.hostname ||                           // ✅ FIX
+              row.hostname ||
               row.hosts?.[0]?.name ||
               hosts.find((h) => h.hostid === row.hostid)?.name ||
               row.hostid;
@@ -101,14 +113,14 @@ const TopHost: React.FC<TopHostProps> = ({
               extraHostGroups: ["210"],
 
               hostId: row.hostid,
-              hostName: resolvedHostName,               // ✅ NOW CORRECT
+              hostName: resolvedHostName,
               itemId: row.itemid,
               itemKey: row.key_,
               itemName: row.name,
 
               apiData: {
                 ...row,
-                hostname: resolvedHostName,             // keep normalized
+                hostname: resolvedHostName,
               },
             });
           });
@@ -136,70 +148,6 @@ const TopHost: React.FC<TopHostProps> = ({
     onConfigChange({ columns: columnsConfig });
   }, [columnsConfig, onConfigChange]);
 
-  /* ===================== SAVE COLUMN ===================== */
-
-  const handleSaveColumn = async (c: ColumnConfig) => {
-    // let apiResult: any[] = [];
-
-    // const existing = columnsConfig.find((col) => col.id === c.id);
-
-    // if (existing && existing.apiData) {
-    //   apiResult = [existing.apiData];
-    // } else {
-    //   try {
-    //     if (c.itemName) {
-    //       const response = await axios.post("/api/tjsb/get_item", {
-    //         auth: user_token,
-    //         name: c.itemName,
-    //         groupids: c.extraHostGroups,
-    //       });
-
-    //       apiResult = response.data?.result ?? [];
-    //     }
-    //   } catch (err) {
-    //     console.error("API error:", err);
-    //   }
-    // }
-
-    // setColumnsConfig((prev) => {
-    //   let updated = [...prev];
-
-    //   apiResult.forEach((row) => {
-    //     const resolvedHostName =
-    //       hosts.find((h) => h.hostid === row.hostid)?.name ?? c.hostName;
-
-    //     const found = updated.find((r) => r.id === c.id);
-
-    //     if (found) {
-    //       Object.assign(found, {
-    //         ...found,
-    //         ...c,
-    //         hostName: resolvedHostName,
-    //         apiData: row || found.apiData,
-    //       });
-    //     } else {
-    //       updated.push({
-    //         ...c,
-    //         id: makeId(),
-    //         hostId: row.hostid,
-    //         hostName: resolvedHostName,
-    //         itemId: row.itemid,
-    //         itemKey: row.key_,
-    //         itemName: row.name,
-    //         apiData: row,
-    //       });
-    //     }
-    //   });
-
-    //   return updated;
-    // });
-
-    // setEditing(null);
-    // setOpen(false);
-  };
-
-
-
   /* ===================== AUTO REFRESH ===================== */
 
   useEffect(() => {
@@ -207,14 +155,12 @@ const TopHost: React.FC<TopHostProps> = ({
 
     const interval = setInterval(async () => {
       const rows = columnsRef.current.filter((c) => c.itemName);
-
       if (!rows.length) return;
 
       const uniqueRequests: Array<{ name: string; groupids: any }> = [];
 
       rows.forEach((c) => {
         const sig = `${c.itemName}-${JSON.stringify(c.extraHostGroups)}`;
-
         if (
           !uniqueRequests.some(
             (r) => `${r.name}-${JSON.stringify(r.groupids)}` === sig
@@ -239,20 +185,17 @@ const TopHost: React.FC<TopHostProps> = ({
         );
 
         setColumnsConfig((prev) => {
-          let updated = [...prev];
-
+          const updated = [...prev];
           responses.forEach((res) => {
             (res.data?.result ?? []).forEach((row: any) => {
               const target = updated.find(
                 (r) => r.hostId === row.hostid && r.itemName === row.name
               );
-
               if (target) {
                 (target as any).apiData = row;
               }
             });
           });
-
           return updated;
         });
       } catch (err) {
@@ -265,14 +208,12 @@ const TopHost: React.FC<TopHostProps> = ({
 
   const findBranch = (hostName: string | undefined) => {
     if (!hostName) return "-";
-
     const match =
       branches.find(
         (b: any) =>
           hostName.includes(b.code) ||
           hostName.toLowerCase() === b.name.toLowerCase()
       ) ?? null;
-
     return match ? match.name : "-";
   };
 
@@ -293,6 +234,25 @@ const TopHost: React.FC<TopHostProps> = ({
       };
     }
 
+    /* HOST2 TRAFFIC → store value + units */
+    if (HOST2_TRAFFIC_ITEMS.includes(c.name!)) {
+      hostsMap[c.hostName!][c.name!] = {
+        value: api?.lastvalue ?? 0,
+        units: api?.units,
+      };
+      return;
+    }
+
+    /* CPU / MEMORY */
+    if (c.name === "CPU utilization" || c.name === "Memory utilization") {
+      hostsMap[c.hostName!][c.name!] = {
+        value: api?.lastvalue ?? 0,
+        statusColor: api?.statusColor,
+      };
+      return;
+    }
+
+    /* DEFAULT */
     hostsMap[c.hostName!][c.name!] = api?.lastvalue ?? 0;
   });
 
@@ -302,31 +262,93 @@ const TopHost: React.FC<TopHostProps> = ({
     (c, i, arr) => arr.findIndex((x) => x.name === c.name) === i
   );
 
+  /* ===================== HOST1 SORTING (UNCHANGED) ===================== */
+
+  const COL_A = 'Interface ["GigabitEthernet0/0/0"]: Operational status';
+  const COL_B = 'Interface ["GigabitEthernet0/0/1"]: Operational status';
+
   previewRows = [...previewRows].sort((a, b) => {
+    const aA = Number(a[COL_A]) === 1 ? 1 : 0;
+    const bA = Number(b[COL_A]) === 1 ? 1 : 0;
+    if (aA !== bA) return bA - aA;
+
+    const aB = Number(a[COL_B]) === 1 ? 1 : 0;
+    const bB = Number(b[COL_B]) === 1 ? 1 : 0;
+    if (aB !== bB) return bB - aB;
+
     for (let col of uniqueColumns) {
       const colName = col.name!;
       const aVal = Number(a[colName]) === 1 ? 1 : 0;
       const bVal = Number(b[colName]) === 1 ? 1 : 0;
-
       if (aVal !== bVal) return bVal - aVal;
     }
 
     return 0;
   });
 
-  const dynamicColumns = uniqueColumns.map((c) => ({
-    title: c.name,
-    dataIndex: c.name!,
-    render: (value: any) => {
-      const num = Number(value);
-      const label = `(${num.toFixed(2)})`;
+  /* ===================== TABLE COLUMNS ===================== */
 
+  const dynamicColumns = uniqueColumns.map((c) => ({
+    title: COLUMN_HEADER_MAP[c.name!] ?? c.name,
+    dataIndex: c.name!,
+    render: (cell: any) => {
+      /* HOST2 TRAFFIC: KBPS / MBPS */
+      if (cell && typeof cell === "object" && "units" in cell) {
+        const unit =
+          cell.units === "M"
+            ? "Mbps"
+            : cell.units === "K"
+              ? "kbps"
+              : "";
+
+        return (
+          <span style={{ fontWeight: 600 }}>
+            {cell.value} {unit}
+          </span>
+        );
+      }
+      // 🔹 HOST2 CPU / MEMORY COLORING
+      if (
+        c.name === "CPU utilization" ||
+        c.name === "Memory utilization"
+      ) {
+        if (!cell) return "-";
+
+        const value = Number(cell.value);
+        const color = cell.statusColor;
+
+        const bg =
+          color === "green"
+            ? "#00b050"
+            : color === "orange"
+              ? "#ffa500"
+              : color === "red"
+                ? "#ff0000"
+                : undefined;
+
+        return (
+          <span
+            style={{
+              display: "block",
+              textAlign: "center",
+              padding: "4px 0",
+              background: bg,
+              color: bg ? "#fff" : "#000",
+              fontWeight: 600,
+            }}
+          >
+            {value.toFixed(2)}%
+          </span>
+        );
+      }
+
+      // 🔹 HOST1 OPERATIONAL STATUS (UNCHANGED)
+      const num = Number(cell);
       if (num === 0) {
         return (
           <span
             style={{
               display: "block",
-              width: "100%",
               textAlign: "center",
               padding: "4px 0",
               background: "#00b050",
@@ -334,7 +356,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            up {label}
+            up
           </span>
         );
       }
@@ -344,7 +366,6 @@ const TopHost: React.FC<TopHostProps> = ({
           <span
             style={{
               display: "block",
-              width: "100%",
               textAlign: "center",
               padding: "4px 0",
               background: "#ff0000",
@@ -352,12 +373,12 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            down {label}
+            down 
           </span>
         );
       }
 
-      return value ?? "-";
+      return cell ?? "-";
     },
   }));
 
@@ -366,85 +387,8 @@ const TopHost: React.FC<TopHostProps> = ({
   return (
     <>
       <Form layout="vertical">
-        {/* SHOW BUILDER CONTROLS ONLY IN WIDGET MODE */}
-        {mode === "widget" && (
-          <>
-            <Form.Item label="Host Groups">
-              <Select
-                mode="multiple"
-                onChange={(g) => {
-                  setSelectedGroups(g);
-                  fetchZabbixData("host", g);
-                }}
-                options={hostGroups.map((g) => ({
-                  label: g.name,
-                  value: g.groupid,
-                }))}
-              />
-            </Form.Item>
-
-            <Form.Item>
-              <Checkbox
-                checked={showPreview}
-                onChange={(e) => setShowPreview(e.target.checked)}
-              >
-                Show preview
-              </Checkbox>
-            </Form.Item>
-
-            <Button
-              type="primary"
-              onClick={() => {
-                setEditing(null);
-                setOpen(true);
-              }}
-            >
-              Add Column
-            </Button>
-
-            <Card title="Columns" style={{ marginTop: 20 }}>
-              <Table
-                size="small"
-                rowKey="id"
-                pagination={false}
-                dataSource={uniqueColumns}
-                columns={[
-                  { title: "Name", dataIndex: "name" },
-                  { title: "Data", dataIndex: "itemName" },
-                  {
-                    title: "Actions",
-                    render: (_, r) => (
-                      <>
-                        <a
-                          onClick={() => {
-                            setEditing(r);
-                            setOpen(true);
-                          }}
-                        >
-                          Edit
-                        </a>{" "}
-                        |{" "}
-                        <a
-                          onClick={() =>
-                            setColumnsConfig((p) =>
-                              p.filter((x) => x.id !== r.id)
-                            )
-                          }
-                        >
-                          Remove
-                        </a>
-                      </>
-                    ),
-                  },
-                ]}
-              />
-            </Card>
-          </>
-        )}
-
-        {/* ALWAYS SHOW PREVIEW IF TRUE */}
         {showPreview && (
-          <Card title="Preview Data" style={{ marginTop: 16 }}>
+          <Card style={{ marginTop: 16 }}>
             <Table
               size="small"
               rowKey="key"
@@ -469,7 +413,7 @@ const TopHost: React.FC<TopHostProps> = ({
         existingColumns={columnsConfig}
         onHostChange={(h) => fetchZabbixData("item", [h])}
         onCancel={() => setOpen(false)}
-        onSubmit={handleSaveColumn}
+        onSubmit={() => { }}
         selectedHostGroups={selectedGroups}
       />
     </>
