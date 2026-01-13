@@ -232,8 +232,8 @@ import fs from "fs";
 
 export async function GET() {
   try {
-    // const filePath = "/home/ec2-user/sdwan_tunnels.json";
-    const filePath = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+    const filePath = "/home/ec2-user/sdwan_tunnels.json";
+    // const filePath = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
     const raw = fs.readFileSync(filePath, "utf-8");
     const json = JSON.parse(raw);
 
