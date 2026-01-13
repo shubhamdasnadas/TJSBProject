@@ -7,6 +7,9 @@ import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// ✅ IMPORT JSON DATA (NO CHANGE)
+import tunnelJson from "/home/ec2-user/sdwan_tunnels.json";
+
 /* ===================== TYPES ===================== */
 
 type Tunnel = {
@@ -44,7 +47,6 @@ function resolveIspName(text: string) {
   if (!text) return text;
 
   let result = text;
-
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
     if (result.toLowerCase().includes(type)) {
@@ -61,28 +63,28 @@ function transformJsonToRows(json: any): IpRow[] {
   const devices = json?.devices ?? {};
   const rows: IpRow[] = [];
 
-  Object.entries(devices).forEach(([systemIp, tunnels]: any) => {
+  Object.entries(devices).forEach(([systemIp, tunnels]) => {
     if (!Array.isArray(tunnels) || tunnels.length === 0) return;
 
-    const hostname = tunnels[0]?.hostname ?? "Unknown";
+    const hostname = tunnels[0].hostname ?? "Unknown";
 
-    const up = tunnels.filter((t: any) => t.state === "up").length;
-    const down = tunnels.filter((t: any) => t.state === "down").length;
+    const upCount = tunnels.filter((t: any) => t.state === "up").length;
+    const downCount = tunnels.filter((t: any) => t.state === "down").length;
 
     let rowState: "up" | "down" | "partial" = "partial";
-    if (up === tunnels.length) rowState = "up";
-    else if (down === tunnels.length) rowState = "down";
+    if (upCount === tunnels.length) rowState = "up";
+    else if (downCount === tunnels.length) rowState = "down";
 
     rows.push({
       hostname,
       systemIp,
       branchName: getBranchNameByHostname(hostname),
-      tunnels,
+      tunnels: tunnels as Tunnel[],
       rowState,
     });
   });
 
-  // ✅ Required sorting: down → partial → up
+  // down → partial → up
   const order = { down: 0, partial: 1, up: 2 };
   rows.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
@@ -103,11 +105,12 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   async function load() {
     setLoading(true);
     try {
-      // ✅ LOAD FROM /public
-      const res = await fetch("/sdwan_tunnels.json");
+      // ✅ CORRECT PATH (SERVER READS FILE)
+      const res = await fetch("/api/sdwan/tunnels");
       const json = await res.json();
 
       const data = transformJsonToRows(json);
+      // sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
       console.error("JSON LOAD ERROR:", e);
@@ -144,7 +147,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     doc.save("sdwan_report.pdf");
   }
 
-  /* ===================== TABLE (UNCHANGED) ===================== */
+  /* ===================== TABLE ===================== */
 
   const columns: any = [
     {
@@ -185,21 +188,44 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     { title: "System IP", dataIndex: "systemIp" },
     {
       title: "Tunnels (Name + Uptime)",
-      render: (_: any, row: IpRow) => (
-        <select style={{ padding: 4 }}>
-          {row.tunnels.map((t, i) => (
-            <option
-              key={i}
-              style={{
-                color: t.state === "down" ? "red" : "black",
-                fontWeight: t.state === "down" ? 700 : 400,
-              }}
-            >
-              {resolveIspName(t.tunnelName)} — {t.uptime}
-            </option>
-          ))}
-        </select>
-      ),
+      render: (_: any, row: IpRow) => {
+        const sortedTunnels = [...row.tunnels].sort(
+          (a, b) => (a.state === "down" ? -1 : 1)
+        );
+
+        const selected = sortedTunnels[0];
+        const isDown = selected?.state === "down";
+
+        return (
+          <select
+            defaultValue={selected?.tunnelName}
+            style={{
+              padding: 6,
+              width: "100%",
+              background: isDown ? "#ffd6d6" : "#d7ffd7",
+              color: isDown ? "#000" : "#0f5132",
+              fontWeight: 700,
+              borderRadius: 4,
+              border: "1px solid #ccc",
+            }}
+          >
+            {sortedTunnels.map((t: any, i: number) => (
+              <option
+                key={i}
+                value={t.tunnelName}
+                style={{
+                  backgroundColor:
+                    t.state === "down" ? "#ffd6d6" : "#d7ffd7",
+                  color: t.state === "down" ? "#000" : "#0f5132",
+                  fontWeight: t.state === "down" ? 700 : 600,
+                }}
+              >
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </option>
+            ))}
+          </select>
+        );
+      },
     },
     {
       title: "State",

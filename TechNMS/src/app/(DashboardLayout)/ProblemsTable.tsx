@@ -37,7 +37,6 @@ interface TableRow {
   description: string;
   priority: string;
   status: string;
-  depends_on?: string;
   tags?: { tag: string; value?: string }[];
 }
 
@@ -97,16 +96,32 @@ export default function ProblemsTablePage() {
     return <Tag>-</Tag>;
   };
 
+  /* ===================== PROBLEM CELL COLOR (✅ NEW) ===================== */
+
+  const getProblemBg = (priority: string) => {
+    switch (priority) {
+      case "5":
+        return "#B22222"; // disaster
+      case "4":
+        return "#F59F1D"; // high
+      case "3":
+        return "#FAD800"; // average
+      case "2":
+        return "#ff9966"; // warning
+      case "1":
+        return "#79b1e6"; // info
+      default:
+        return "transparent";
+    }
+  };
+
   /* ===================== API FETCH ===================== */
 
   const fetchProblems = async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
-    // ✅ loading only on first load
-    if (firstLoadRef.current) {
-      setLoading(true);
-    }
+    if (firstLoadRef.current) setLoading(true);
 
     try {
       const res = await axios.post("/api/zabbix/problem_table", {
@@ -146,109 +161,89 @@ export default function ProblemsTablePage() {
       firstLoadRef.current = false;
     } catch (err) {
       console.error("❌ Failed to fetch problems:", err);
-      // ❌ DO NOT clear previous data
     } finally {
       fetchingRef.current = false;
       setLoading(false);
     }
   };
 
-  /* ===================== EFFECTS ===================== */
-
-  // initial load
   useEffect(() => {
     fetchProblems();
   }, []);
 
-  // 🔁 auto refresh every 2 minutes
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchProblems();
-    }, 120000); // 2 minutes
-
+    const interval = setInterval(fetchProblems, 120000);
     return () => clearInterval(interval);
   }, []);
 
-  /* ===================== FILTER HELPERS ===================== */
+  /* ===================== COLUMNS ===================== */
 
-  const handleGetHostGroup = async () => {
-    try {
-      const res = await axios.post("/api/api_host/api_host_group", {
-        auth: user_token,
-      });
-      setHost_group(res.data.result);
-    } catch {
-      console.log("Error host group");
-    }
-  };
+  const columns = [
+    { title: <Checkbox />, width: 40, render: () => <Checkbox /> },
+    {
+      title: "Time",
+      width: 160,
+      render: (_: any, record: TableRow) => {
+        if (!record.time_from) return "-";
+        const date = new Date(record.time_from * 1000);
+        return (
+          <div>
+            <div style={{ fontWeight: 600, color: "#1677ff" }}>
+              {date.toLocaleTimeString()}
+            </div>
+            <div style={{ fontSize: 11, color: "#999" }}>
+              {date.toLocaleDateString()}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: "Severity",
+      dataIndex: "priority",
+      width: 110,
+      render: (p: string) => getSeverityTag(p),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      width: 90,
+      render: (s: string) => getStatusTag(s),
+    },
+    {
+      title: "Host",
+      dataIndex: "hostname",
+      width: 140,
+      render: (text: string) => <a>{text}</a>,
+    },
+    {
+      title: "Problem",
+      dataIndex: "description",
+      width: 280,
+      render: (text: string, record: TableRow) => (
+        <div
+          style={{
+            background: getProblemBg(record.priority),
+            padding: "6px 8px",
+            borderRadius: 6,
+            fontWeight: 500,
+          }}
+        >
+          {text}
+        </div>
+      ),
+    },
 
-  const handleGetHostList = async (groupid: any) => {
-    try {
-      const res = await axios.post("/api/api_host/api_get_host", {
-        auth: user_token,
-        groupids: groupid,
-      });
-      setTemplateList(res.data.result);
-    } catch {
-      console.log("error template list");
-    }
-  };
-  const columns = [{ title: <Checkbox />, key: "select", width: 40, render: () => <Checkbox />, }, { title: "Time", key: "time", width: 160, render: (_: any, record: TableRow) => { if (!record.time_from) return "-"; const date = new Date(record.time_from * 1000); return (<div> <div style={{ fontWeight: 600, color: "#1677ff" }}> {date.toLocaleTimeString()} </div> <div style={{ fontSize: 11, color: "#999" }}> {date.toLocaleDateString()} </div> </div>); }, }, { title: "Severity", dataIndex: "priority", key: "priority", width: 110, render: (p: string) => getSeverityTag(p), }, { title: "Status", dataIndex: "status", key: "status", width: 90, render: (s: string) => getStatusTag(s), }, { title: "Host", dataIndex: "hostname", key: "hostname", width: 140, render: (text: string) => <a>{text}</a>, }, { title: "Problem", dataIndex: "description", key: "description", width: 280, render: (text: string) => <a>{text}</a>, }, { title: "Actions", key: "actions", width: 100, render: () => (<Button type="link" size="small"> Actions </Button>), },];
-  /* ===================== UI ===================== */
+  ];
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      {/* <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h2 style={{ fontSize: 22, fontWeight: 600 }}>Active Problems</h2>
-        <Button
-          onClick={() => {
-            setFilterVisible(true);
-            handleGetHostGroup();
-          }}
-          disabled={loading}
-        >
+        <Button onClick={() => setFilterVisible(true)} disabled={loading}>
           Filter
         </Button>
-      </div>
-
-      <Modal
-        title="Filter Problems"
-        open={filterVisible}
-        onOk={() => {
-          setFilterVisible(false);
-          fetchProblems();
-        }}
-        onCancel={() => setFilterVisible(false)}
-      >
-        <Select
-          style={{ width: "100%" }}
-          mode="multiple"
-          placeholder="Select Group"
-          onChange={(v) => {
-            setSelectGroup(v as string[]);
-            handleGetHostList(v);
-          }}
-        >
-          {host_group.map((g: any) => (
-            <Select.Option key={g.groupid} value={g.groupid}>
-              {g.name}
-            </Select.Option>
-          ))}
-        </Select>
-
-        <Select
-          style={{ width: "100%", marginTop: 16 }}
-          mode="multiple"
-          placeholder="Select Host"
-          onChange={(v) => setSelectHost(v as string[])}
-        >
-          {templateList.map((h: any) => (
-            <Select.Option key={h.hostid} value={h.hostid}>
-              {h.name}
-            </Select.Option>
-          ))}
-        </Select>
-      </Modal>
+      </div> */}
 
       <Table
         rowKey="key"

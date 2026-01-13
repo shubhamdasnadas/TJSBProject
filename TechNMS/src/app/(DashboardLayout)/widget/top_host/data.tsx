@@ -33,7 +33,18 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
     "Certificate validity",
   ],
 };
+/* ===================== COLUMN HEADER MAP ===================== */
 
+const COLUMN_HEADER_MAP: Record<string, string> = {
+  // HOST1
+  'Interface ["GigabitEthernet0/0/0"]: Operational status': "Primary Link",
+  'Interface ["GigabitEthernet0/0/1"]: Operational status': "Secondary Link",
+
+  // HOST2
+  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Bits Received",
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Bits Sent",
+  'Interface ["GigabitEthernet0/0/0"]: Speed': "Speed",
+};
 /* HOST2 TRAFFIC COLUMNS */
 const HOST2_TRAFFIC_ITEMS = [
   'Interface ["GigabitEthernet0/0/0"]: Bits sent',
@@ -278,16 +289,16 @@ const TopHost: React.FC<TopHostProps> = ({
   /* ===================== TABLE COLUMNS ===================== */
 
   const dynamicColumns = uniqueColumns.map((c) => ({
-    title: c.name,
+    title: COLUMN_HEADER_MAP[c.name!] ?? c.name,
     dataIndex: c.name!,
     render: (cell: any) => {
       /* HOST2 TRAFFIC: KBPS / MBPS */
       if (cell && typeof cell === "object" && "units" in cell) {
         const unit =
           cell.units === "M"
-            ? "MBPS"
+            ? "Mbps"
             : cell.units === "K"
-              ? "KBPS"
+              ? "kbps"
               : "";
 
         return (
@@ -345,7 +356,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            up
+            up ({num.toFixed(2)})
           </span>
         );
       }
@@ -362,7 +373,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            down
+            down ({num.toFixed(2)})
           </span>
         );
       }
@@ -377,7 +388,7 @@ const TopHost: React.FC<TopHostProps> = ({
     <>
       <Form layout="vertical">
         {showPreview && (
-          <Card title="Preview Data" style={{ marginTop: 16 }}>
+          <Card style={{ marginTop: 16 }}>
             <Table
               size="small"
               rowKey="key"

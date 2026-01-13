@@ -46,15 +46,13 @@ type DateRange = {
 /* =========================
    AXIOS CONFIG
 ========================= */
-const user_token =
-  typeof window !== "undefined"
-    ? localStorage.getItem("zabbix_auth")
-    : "";
-
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${user_token}`,
+    Authorization: `Bearer ${typeof window !== "undefined"
+        ? localStorage.getItem("zabbix_auth")
+        : ""
+      }`,
   },
 };
 
@@ -93,7 +91,6 @@ const drawPageBorder = (doc: jsPDF) => {
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(2);
 
-  // 🔥 FORCE STROKE MODE
   doc.rect(
     margin,
     margin,
@@ -117,7 +114,7 @@ const exportHistoryToPDF = async (
   /* ===== PAGE 1: COVER ===== */
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
-  doc.addImage(logoPng, "PNG", pageWidth / 2 - 150, 80, 300, 170);
+  doc.addImage(logoPng, "PNG", pageWidth / 2 - 125, 80, 250, 170);
 
   doc.setFontSize(26);
   doc.text("Techsec NMS – History Report", pageWidth / 2, 410, {
@@ -135,7 +132,7 @@ const exportHistoryToPDF = async (
   doc.setFontSize(16);
   doc.text(`Metric: ${title}`, pageWidth / 2, 470, { align: "center" });
 
-  drawPageBorder(doc); // ✅ LAST on page
+  drawPageBorder(doc);
 
   /* ===== PAGE 2: CHART ===== */
   if (chartEl) {
@@ -145,7 +142,6 @@ const exportHistoryToPDF = async (
     });
 
     doc.addPage();
-
     doc.setFontSize(18);
     doc.text("Utilization Graph", 40, 50);
 
@@ -158,12 +154,11 @@ const exportHistoryToPDF = async (
       320
     );
 
-    drawPageBorder(doc); // ✅ LAST
+    drawPageBorder(doc);
   }
 
   /* ===== PAGE 3: TABLE ===== */
   doc.addPage();
-
   doc.setFontSize(18);
   doc.text("History Data", 40, 50);
 
@@ -177,7 +172,6 @@ const exportHistoryToPDF = async (
     styles: { fontSize: 10 },
     headStyles: { fillColor: [30, 30, 30] },
 
-    // 🔥 BORDER AFTER TABLE (CRITICAL)
     didDrawPage: () => {
       drawPageBorder(doc);
     },
@@ -340,12 +334,14 @@ export default function LatestDataPage() {
 
     const start =
       new Date(
-        `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`
+        `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"
+        }`
       ).getTime() / 1000;
 
     const end =
       new Date(
-        `${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`
+        `${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"
+        }`
       ).getTime() / 1000;
 
     return historyData.filter(
@@ -362,7 +358,10 @@ export default function LatestDataPage() {
     {
       title: "History",
       render: (_, r) => (
-        <Button size="small" onClick={() => openHistory(r.itemid, r.name, r.host)}>
+        <Button
+          size="small"
+          onClick={() => openHistory(r.itemid, r.name, r.host)}
+        >
           View
         </Button>
       ),
@@ -377,6 +376,7 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
+            listHeight={600}
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -392,6 +392,7 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
+            listHeight={600}
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -404,7 +405,11 @@ export default function LatestDataPage() {
           </Button>
         </Space>
 
-        <Table columns={columns} dataSource={tableData} loading={loadingTable} />
+        <Table
+          columns={columns}
+          dataSource={tableData}
+          loading={loadingTable}
+        />
 
         <Modal
           title={`${historyHost} – ${historyTitle}`}
@@ -438,6 +443,29 @@ export default function LatestDataPage() {
                 }))}
               />
             </div>
+
+            <Table
+              size="small"
+              pagination={false}
+              loading={historyLoading}
+              columns={[
+                {
+                  title: "Time",
+                  dataIndex: "clock",
+                  render: (v) => new Date(v * 1000).toLocaleString(),
+                },
+                {
+                  title: "Value",
+                  dataIndex: "value",
+                  render: (v) => Number(v).toFixed(2),
+                },
+              ]}
+              dataSource={filterHistory().map((r: any) => ({
+                key: r.clock,
+                clock: r.clock,
+                value: r.value,
+              }))}
+            />
           </Space>
         </Modal>
       </Space>

@@ -80,7 +80,6 @@ interface Props {
 export default function DashboardTunnel({ mode = "page" }: Props) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
-
   const fetchingRef = useRef(false);
 
   /* ============== LOAD CACHE (INITIAL) ============== */
@@ -102,7 +101,6 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     setLoading(true);
 
     try {
-      // ✅ CORRECT PATH (SERVER READS FILE)
       const res = await fetch("/api/sdwan/tunnels");
       const json = await res.json();
 
@@ -127,21 +125,7 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          setRows(JSON.parse(cached));
-          setLoading(false);
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibility);
-  }, []);
+  /* ===================== TABLE ===================== */
 
   const columns: any = [
     {
@@ -164,7 +148,15 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
         }
 
         return (
-          <span style={{ padding: "4px 10px", borderRadius: 6, background: bg, color, fontWeight: 700 }}>
+          <span
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: bg,
+              color,
+              fontWeight: 700,
+            }}
+          >
             {getBranchNameByHostname(row.hostname)}
           </span>
         );
@@ -174,15 +166,44 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
     { title: "System IP", dataIndex: "systemIp" },
     {
       title: "Tunnels (Name + Uptime)",
-      render: (_: any, row: IpRow) => (
-        <select style={{ padding: 4 }}>
-          {row.tunnels.map((t: any, i: number) => (
-            <option key={i} style={{ color: t.state === "down" ? "red" : "black", fontWeight: t.state === "down" ? 700 : 400 }}>
-              {resolveIspName(t.tunnelName)} — {t.uptime}
-            </option>
-          ))}
-        </select>
-      ),
+      render: (_: any, row: IpRow) => {
+        const sortedTunnels = [...row.tunnels].sort(
+          (a, b) => (a.state === "down" ? -1 : 1)
+        );
+
+        const selected = sortedTunnels[0];
+        const isDown = selected?.state === "down";
+
+        return (
+          <select
+            defaultValue={selected?.tunnelName}
+            style={{
+              padding: 6,
+              width: "100%",
+              background: isDown ? "#ffd6d6" : "#d7ffd7",
+              color: isDown ? "#000" : "#0f5132",
+              fontWeight: 700,
+              borderRadius: 4,
+              border: "1px solid #ccc",
+            }}
+          >
+            {sortedTunnels.map((t: any, i: number) => (
+              <option
+                key={i}
+                value={t.tunnelName}
+                style={{
+                  backgroundColor:
+                    t.state === "down" ? "#ffd6d6" : "#d7ffd7",
+                  color: t.state === "down" ? "#000" : "#0f5132",
+                  fontWeight: t.state === "down" ? 700 : 600,
+                }}
+              >
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </option>
+            ))}
+          </select>
+        );
+      },
     },
     {
       title: "State",
@@ -204,7 +225,15 @@ export default function DashboardTunnel({ mode = "page" }: Props) {
         }
 
         return (
-          <span style={{ padding: "2px 10px", borderRadius: 6, background: bg, color, fontWeight: 700 }}>
+          <span
+            style={{
+              padding: "2px 10px",
+              borderRadius: 6,
+              background: bg,
+              color,
+              fontWeight: 700,
+            }}
+          >
             {row.rowState}
           </span>
         );
