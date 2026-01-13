@@ -10,6 +10,8 @@ import { safeStorage } from "@/utils/safeStorage";
 
 import { io } from "socket.io-client";
 import { xAxisDefaultProps } from "recharts/types/cartesian/XAxis";
+import Vmanage from "./widget/cardDashboard/vmanage/page";
+import DashboardCard from "./widget/cardDashboard/page";
 
 /* ===================== LAZY LOAD WIDGETS ===================== */
 const DashboardSummaryCount = lazy(() => import("./DashboardSummaryCount"));
@@ -30,6 +32,15 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
+   {
+    id: "card_sdwan_tunnels",
+    title: "SD-WAN Tunnel Card",
+    component: () => <DashboardCard />,
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 4,
+  },
   {
     id: "sdwan_tunnels",
     title: "SD-WAN Tunnel Status",
