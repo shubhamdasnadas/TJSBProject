@@ -356,7 +356,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            up ({num.toFixed(2)})
+            up
           </span>
         );
       }
@@ -373,7 +373,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            down ({num.toFixed(2)})
+            down 
           </span>
         );
       }
