@@ -4,33 +4,26 @@
       "x": 0,
       "y": 0,
       "w": 12,
-      "h": 4,
-      "id": "card_sdwan_tunnels"
-    },
-    {
-      "x": 0,
-      "y": 4,
-      "w": 12,
       "h": 8,
       "id": "sdwan_tunnels"
     },
     {
       "x": 0,
-      "y": 12,
+      "y": 8,
       "w": 12,
       "h": 9,
       "id": "problems-table"
     },
     {
       "x": 0,
-      "y": 21,
+      "y": 17,
       "w": 12,
       "h": 8,
       "id": "top_host1"
     },
     {
       "x": 0,
-      "y": 29,
+      "y": 25,
       "w": 12,
       "h": 8,
       "id": "top_host2"

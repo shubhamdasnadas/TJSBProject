@@ -49,10 +49,11 @@ type DateRange = {
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${typeof window !== "undefined"
+    Authorization: `Bearer ${
+      typeof window !== "undefined"
         ? localStorage.getItem("zabbix_auth")
         : ""
-      }`,
+    }`,
   },
 };
 
@@ -60,6 +61,27 @@ const axiosCfg = {
    PDF HELPERS
 ========================= */
 const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
+
+/* 🔲 PAGE BORDER */
+const drawPageBorder = (doc: jsPDF) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const margin = 20;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1.5);
+  doc.rect(margin, margin, w - margin * 2, h - margin * 2);
+};
+
+/* 🧊 WATERMARK */
+const drawWatermark = (doc: jsPDF, png: string) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+
+  doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
+  doc.addImage(png, "PNG", w / 2 - 110, h / 2 - 130, 220, 140);
+  doc.setGState(new (doc as any).GState({ opacity: 1 }));
+};
 
 /* SVG → PNG */
 const loadSvgAsPng = async (url: string) => {
@@ -73,8 +95,7 @@ const loadSvgAsPng = async (url: string) => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width * 3;
       canvas.height = img.height * 3;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(svgUrl);
       resolve(canvas.toDataURL("image/png"));
     };
@@ -82,55 +103,47 @@ const loadSvgAsPng = async (url: string) => {
   });
 };
 
-/* 🔲 PAGE BORDER (BULLETPROOF) */
-const drawPageBorder = (doc: jsPDF) => {
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  const margin = 20;
-
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(2);
-
-  doc.rect(
-    margin,
-    margin,
-    w - margin * 2,
-    h - margin * 2,
-    "S"
-  );
-};
-
 /* =========================
-   PDF EXPORT
+   PDF EXPORT (A4 PORTRAIT)
 ========================= */
 const exportHistoryToPDF = async (
   title: string,
   data: any[],
   chartEl: HTMLDivElement | null
 ) => {
-  const doc = new jsPDF("l", "pt", "a4");
+  const doc = new jsPDF("p", "pt", "a4"); // ✅ A4 Portrait
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-  /* ===== PAGE 1: COVER ===== */
+  const MARGIN_X = 40;
+  const CONTENT_WIDTH = pageWidth - MARGIN_X * 2;
+
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
-  doc.addImage(logoPng, "PNG", pageWidth / 2 - 125, 80, 250, 170);
+  /* ===== PAGE 1: COVER ===== */
+  doc.addImage(
+    logoPng,
+    "PNG",
+    pageWidth / 2 - 120,
+    110,
+    240,
+    150
+  );
 
-  doc.setFontSize(26);
-  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, {
+  doc.setFontSize(24);
+  doc.text("Techsec NMS – History Report", pageWidth / 2, 360, {
     align: "center",
   });
 
-  doc.setFontSize(14);
-  doc.text(
-    `Generated: ${new Date().toLocaleString()}`,
-    pageWidth / 2,
-    440,
-    { align: "center" }
-  );
+  doc.setFontSize(13);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 390, {
+    align: "center",
+  });
 
-  doc.setFontSize(16);
-  doc.text(`Metric: ${title}`, pageWidth / 2, 470, { align: "center" });
+  doc.setFontSize(15);
+  doc.text(`Metric: ${title}`, pageWidth / 2, 420, {
+    align: "center",
+  });
 
   drawPageBorder(doc);
 
@@ -142,37 +155,40 @@ const exportHistoryToPDF = async (
     });
 
     doc.addPage();
-    doc.setFontSize(18);
-    doc.text("Utilization Graph", 40, 50);
+    doc.setFontSize(16);
+    doc.text("Utilization Graph", MARGIN_X, 60);
 
     doc.addImage(
       canvas.toDataURL("image/png"),
       "PNG",
-      40,
-      70,
-      760,
-      320
+      MARGIN_X,
+      320,
+      CONTENT_WIDTH,
+      180
     );
 
+    drawWatermark(doc, logoPng);
     drawPageBorder(doc);
   }
 
-  /* ===== PAGE 3: TABLE ===== */
+  /* ===== PAGE 3+: TABLE ===== */
   doc.addPage();
-  doc.setFontSize(18);
-  doc.text("History Data", 40, 50);
 
   autoTable(doc, {
-    startY: 80,
+    startY: 90,
+    margin: { left: MARGIN_X, right: MARGIN_X },
     head: [["Time", "Value"]],
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
       Number(r.value).toFixed(2),
     ]),
-    styles: { fontSize: 10 },
+    styles: {
+      fontSize: 9,
+      cellPadding: 4,
+    },
     headStyles: { fillColor: [30, 30, 30] },
-
     didDrawPage: () => {
+      drawWatermark(doc, logoPng);
       drawPageBorder(doc);
     },
   });
@@ -234,7 +250,6 @@ export default function LatestDataPage() {
 
   const chartRef = useRef<HTMLDivElement>(null);
 
-  /* LOAD HOST GROUPS */
   useEffect(() => {
     axios
       .post(
@@ -334,13 +349,15 @@ export default function LatestDataPage() {
 
     const start =
       new Date(
-        `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"
+        `${historyDateRange.startDate} ${
+          historyDateRange.startTime || "00:00:00"
         }`
       ).getTime() / 1000;
 
     const end =
       new Date(
-        `${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"
+        `${historyDateRange.endDate} ${
+          historyDateRange.endTime || "23:59:59"
         }`
       ).getTime() / 1000;
 
@@ -376,7 +393,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
-            listHeight={600}
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -392,7 +408,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
-            listHeight={600}
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -423,6 +438,7 @@ export default function LatestDataPage() {
               <RangePickerDemo onRangeChange={setHistoryDateRange} />
               <Button
                 type="primary"
+                loading={historyLoading}
                 onClick={() =>
                   exportHistoryToPDF(
                     historyTitle,

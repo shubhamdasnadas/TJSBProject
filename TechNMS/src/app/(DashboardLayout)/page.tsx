@@ -32,15 +32,7 @@ const REMOVED_STATIC_KEY = "dashboard_removed_static_v1";
 
 /* ================= STATIC WIDGETS ================= */
 const WIDGETS = [
-   {
-    id: "card_sdwan_tunnels",
-    title: "SD-WAN Tunnel Card",
-    component: () => <DashboardCard />,
-    x: 0,
-    y: 0,
-    w: 12,
-    h: 4,
-  },
+
   {
     id: "sdwan_tunnels",
     title: "SD-WAN Tunnel Status",
