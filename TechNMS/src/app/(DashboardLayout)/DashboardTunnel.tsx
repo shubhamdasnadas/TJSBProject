@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Table } from "antd";
+import { Table, notification } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 import Certificate from "./widget/cardDashboard/certificate/page";
@@ -9,6 +9,7 @@ import Vmanage from "./widget/cardDashboard/vmanage/page";
 
 const CACHE_KEY = "sdwan_tunnel_cache";
 const AUTO_REFRESH_MS = 60 * 1000;
+const NOTIFICATION_DELAY_MS = 10000;
 
 /* ===================== TYPES ===================== */
 type IpRow = {
@@ -78,6 +79,56 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
   const fetchingRef = useRef(false);
   const [time, setTime] = useState({ hh: "00", mm: "00", ss: "00" });
 
+  const [api, contextHolder] = notification.useNotification();
+
+  const branchNotifyRef = useRef<Record<string, boolean>>({});
+  const queueRef = useRef<any[]>([]);
+  const isProcessingRef = useRef(false);
+
+  /* 🔊 FIXED AUDIO PATH (PUBLIC URL) */
+  const playSound = () => {
+    const audio = new Audio("/images/sound/soundalert.mp3");
+    audio.volume = 1;
+    audio.play().catch(() => { });
+  };
+
+  const processQueue = () => {
+    if (isProcessingRef.current) return;
+    if (queueRef.current.length === 0) return;
+
+    isProcessingRef.current = true;
+    const item = queueRef.current.shift();
+
+    playSound();
+
+    api.open({
+      type: "error",
+      duration: 8,
+      message: (
+        <div style={{ fontWeight: 700 }}>
+          {item.branch} — {item.systemIp}
+        </div>
+      ),
+      description: (
+        <div>
+          {item.downTunnels.map((t: string, i: number) => (
+            <div
+              key={i}
+              style={{ color: "red", fontWeight: 600, marginBottom: 4 }}
+            >
+              • {item.systemIp}:{t}
+            </div>
+          ))}
+        </div>
+      ),
+    });
+
+    setTimeout(() => {
+      isProcessingRef.current = false;
+      processQueue();
+    }, NOTIFICATION_DELAY_MS);
+  };
+
   useEffect(() => {
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -109,6 +160,25 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
       }
 
       const data = transformJsonToRows(json);
+
+      data.forEach((row) => {
+        const key = `${row.branchName}_${row.systemIp}`;
+        if (branchNotifyRef.current[key]) return;
+
+        const downTunnels = row.tunnels.filter((t) => t.state === "down");
+        if (downTunnels.length > 0) {
+          branchNotifyRef.current[key] = true;
+
+          queueRef.current.push({
+            branch: row.branchName,
+            systemIp: row.systemIp,
+            downTunnels: downTunnels.map((t) => resolveIspName(t.tunnelName)),
+          });
+
+          processQueue();
+        }
+      });
+
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } finally {
@@ -123,7 +193,7 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     return () => clearInterval(interval);
   }, []);
 
-  /* ===================== TABLE ===================== */
+  /* ===================== TABLE (UNCHANGED) ===================== */
   const columns: any = [
     {
       title: "Branch",
@@ -143,46 +213,47 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     },
     { title: "Hostname", dataIndex: "hostname" },
     { title: "System IP", dataIndex: "systemIp" },
-
-    /* ✅ FINAL FIXED DROPDOWN */
     {
       title: "Tunnels (Name + Uptime)",
       render: (_: any, row: IpRow) => {
-        const downTunnels = row.tunnels.filter((t: any) => t.state === "down");
-        const upTunnels = row.tunnels.filter((t: any) => t.state === "up");
+        // 1️⃣ Sort tunnels: DOWN first, then UP
+        const sortedTunnels = [...row.tunnels].sort((a: any, b: any) => {
+          if (a.state === "down" && b.state !== "down") return -1;
+          if (a.state !== "down" && b.state === "down") return 1;
+          return 0;
+        });
 
-        const bg = downTunnels.length > 0 ? "#ffd6d6" : "#d7ffd7";
+        // 2️⃣ First tunnel decides what is shown in input
+        const selectedTunnel = sortedTunnels[0];
+        const isDown = selectedTunnel?.state === "down";
 
         return (
           <select
+            defaultValue={selectedTunnel?.tunnelName}
             style={{
               padding: 6,
               width: "100%",
-              background: bg,
+              background: isDown ? "#ffd6d6" : "#d7ffd7",
               fontWeight: 700,
               borderRadius: 4,
             }}
           >
-            {downTunnels.length > 0 && (
-                downTunnels.map((t: any, i: number) => (
-                  <option key={`down-${i}`} style={{backgroundColor:"#ffd6d6"}}>
-                    {resolveIspName(t.tunnelName)} — {t.uptime}
-                  </option>
-                ))
-            )}
-
-            {upTunnels.length > 0 && (
-                upTunnels.map((t: any, i: number) => (
-                  <option key={`up-${i}`} style={{backgroundColor:"#d7ffd7"}}>
-                    {resolveIspName(t.tunnelName)} — {t.uptime}
-                  </option>
-                ))
-            )}
+            {sortedTunnels.map((t: any, i: number) => (
+              <option
+                key={i}
+                value={t.tunnelName}
+                style={{
+                  backgroundColor: t.state === "down" ? "#ffd6d6" : "#d7ffd7",
+                  fontWeight: t.state === "down" ? 700 : 500,
+                }}
+              >
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </option>
+            ))}
           </select>
         );
       },
     },
-
     {
       title: "State",
       render: (_: any, row: IpRow) => {
@@ -203,8 +274,11 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16, fontWeight: 600 }}>
-        Updated on : {time.hh}:{time.mm}:{time.ss}
+      {contextHolder}
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontWeight: 600 }}>
+        <h2>SD-WAN Tunnels Status</h2>
+        <h5>Updated on : {time.hh}:{time.mm}:{time.ss}</h5>
       </div>
 
       <div style={{ marginBottom: 20 }}>

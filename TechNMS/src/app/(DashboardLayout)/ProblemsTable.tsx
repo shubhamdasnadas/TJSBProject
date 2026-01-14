@@ -237,14 +237,14 @@ export default function ProblemsTablePage() {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
+    <div>
       {/* <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h2 style={{ fontSize: 22, fontWeight: 600 }}>Active Problems</h2>
         <Button onClick={() => setFilterVisible(true)} disabled={loading}>
           Filter
         </Button>
       </div> */}
-
+      <h2 style={{ fontSize: 22, fontWeight: 600 }}>Active Problems</h2>
       <Table
         rowKey="key"
         columns={columns}

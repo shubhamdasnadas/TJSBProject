@@ -1,246 +1,187 @@
-// import axios from "axios";
-// import { NextResponse } from "next/server";
-// import nodemailer from "nodemailer";
-
-// const BASE = "https://vmanage-31949190.sdwan.cisco.com";
-// const CONCURRENCY = 6;
-
-// /* =====================================================
-//    SERVER-SIDE CACHE (GLOBAL, SHARED)
-//    ===================================================== */
-// let SERVER_CACHE: any = null;
-// let LAST_FETCH = 0;
-// const CACHE_TTL = 60 * 1000; // 1 minute
-// let IN_PROGRESS: Promise<any> | null = null;
-
-// /* ---------------- EMAIL TRANSPORT ---------------- */
-// const transporter = nodemailer.createTransport({
-//   host: process.env.SMTP_HOST,
-//   port: Number(process.env.SMTP_PORT || 587),
-//   secure: false,
-//   auth: {
-//     user: process.env.SMTP_USER,
-//     pass: process.env.SMTP_PASS,
-//   },
-// });
-
-// async function sendAlertMail(subject: string, html: string) {
-//   try {
-//     await transporter.sendMail({
-//       from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
-//       to: process.env.ALERT_MAIL_TO,
-//       subject,
-//       html,
-//     });
-//   } catch (e) {
-//     console.error("MAIL ERROR:", e);
-//   }
-// }
-
-// /* =====================================================
-//    CORE FETCH FUNCTION (UNCHANGED LOGIC)
-//    ===================================================== */
-// async function fetchFromCiscoAndProcess() {
-//   const user = process.env.VMANAGE_USER!;
-//   const pass = process.env.VMANAGE_PASS!;
-
-//   /* ---------------- LOGIN ---------------- */
-//   const loginRes = await axios.post(
-//     `${BASE}/j_security_check`,
-//     `j_username=${user}&j_password=${pass}`,
-//     { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-//   );
-
-//   const cookieHeader = (loginRes.headers["set-cookie"] || [])
-//     .map((c: string) => c.split(";")[0])
-//     .join("; ");
-
-//   if (!cookieHeader) throw new Error("Login failed – no session cookie");
-
-//   /* ---------------- TOKEN ---------------- */
-//   const tokenRes = await axios.get(`${BASE}/dataservice/client/token`, {
-//     headers: { Cookie: cookieHeader },
-//   });
-
-//   const token = tokenRes.data || "";
-
-//   /* ---------------- SESSION ---------------- */
-//   const vmanage = axios.create({
-//     baseURL: BASE,
-//     headers: {
-//       Cookie: cookieHeader,
-//       "X-XSRF-TOKEN": token,
-//     },
-//     timeout: 15000,
-//   });
-
-//   /* ---------------- INVENTORY ---------------- */
-//   const deviceRes = await vmanage.get("/dataservice/device");
-//   const devices = deviceRes.data?.data || [];
-
-//   const wanEdges = devices.filter(
-//     (d: any) =>
-//       ["vedge", "cedge"].includes(d["device-type"]) &&
-//       d["reachability"] === "reachable" &&
-//       d["system-ip"]
-//   );
-
-//   const deviceMap = new Map<string, string>(
-//     wanEdges.map((d: any) => [d["system-ip"], d["host-name"]])
-//   );
-
-//   const systemIps = Array.from(deviceMap.keys());
-
-//   const results: any[] = [];
-//   let index = 0;
-
-//   /* ---------------- WORKERS ---------------- */
-//   const MAX_RETRY = 2;
-
-//   const worker = async () => {
-//     while (true) {
-//       const systemIp = systemIps[index++];
-//       if (!systemIp) break;
-
-//       let sessions: any[] = [];
-
-//       for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
-//         try {
-//           const res = await vmanage.get(
-//             `/dataservice/device/bfd/sessions?deviceId=${systemIp}`
-//           );
-
-//           sessions = res.data?.data || [];
-//           if (sessions.length > 0) break;
-
-//           await new Promise((r) => setTimeout(r, 300));
-//         } catch {
-//           sessions = [];
-//         }
-//       }
-
-//       results.push({
-//         systemIp,
-//         hostname: deviceMap.get(systemIp),
-//         sessions,
-//       });
-//     }
-//   };
-
-//   await Promise.all(
-//     Array.from({ length: CONCURRENCY }, () => worker())
-//   );
-
-//   /* ---------------- DEVICE-WISE ---------------- */
-//   const deviceWiseTunnels: Record<string, any[]> = {};
-
-//   for (const d of results) {
-//     deviceWiseTunnels[d.systemIp] = (d.sessions || []).map((s: any) => ({
-//       tunnelName: `${d.systemIp}:${s["local-color"]} → ${s["system-ip"]}:${s["color"]}`,
-//       localSystemIp: d.systemIp,
-//       remoteSystemIp: s["system-ip"],
-//       localColor: s["local-color"],
-//       remoteColor: s["color"],
-//       state: s.state,
-//       uptime: s.uptime,
-//       uptimeEpoch: s["uptime-date"],
-//       lastUpdated: s.lastupdated,
-//       transitions: s.transitions,
-//       protocol: s.proto,
-//       hostname: d.hostname,
-//     }));
-//   }
-
-//   /* =====================================================
-//      🔔 ALERT LOGIC – EXECUTED ONCE PER FETCH
-//      ===================================================== */
-//   for (const [systemIp, tunnels] of Object.entries(deviceWiseTunnels)) {
-//     if (!tunnels || tunnels.length === 0) continue;
-
-//     const hostname = tunnels[0].hostname || "NA";
-//     const states = tunnels.map((t: any) => t.state);
-
-//     const allUp = states.every((s: string) => s === "up");
-//     const allDown = states.every((s: string) => s === "down");
-
-//     if (!allUp && !allDown) {
-//       const html = `
-//         <h3>⚠️ Partial Tunnel Failure</h3>
-//         <p><b>System IP:</b> ${systemIp}</p>
-//         <p><b>Hostname:</b> ${hostname}</p>
-//         <ul>
-//           ${tunnels
-//           .map(
-//             (t: any) =>
-//               `<li>${t.tunnelName} — ${t.uptime} — <b>${t.state}</b></li>`
-//           )
-//           .join("")}
-//         </ul>
-//       `;
-//       await sendAlertMail(`PARTIAL DOWN — ${hostname}`, html);
-//       continue;
-//     }
-
-//     if (allDown) {
-//       const html = `
-//         <h3>🚨 ALL TUNNELS DOWN</h3>
-//         <p><b>Hostname:</b> ${hostname}</p>
-//         <p><b>System IP:</b> ${systemIp}</p>
-//       `;
-//       await sendAlertMail(`ALL DOWN — ${hostname}`, html);
-//     }
-//   }
-
-//   return {
-//     success: true,
-//     totalEdges: systemIps.length,
-//     devices: deviceWiseTunnels,
-//   };
-// }
-
-// /* =====================================================
-//    API HANDLER (CACHE + LOCK)
-//    ===================================================== */
-// export async function POST() {
-//   const now = Date.now();
-
-//   // ✅ Serve cached response
-//   if (SERVER_CACHE && now - LAST_FETCH < CACHE_TTL) {
-//     return NextResponse.json(SERVER_CACHE);
-//   }
-
-//   // ✅ Prevent parallel Cisco hits
-//   if (!IN_PROGRESS) {
-//     IN_PROGRESS = fetchFromCiscoAndProcess()
-//       .then((data) => {
-//         SERVER_CACHE = data;
-//         LAST_FETCH = Date.now();
-//         IN_PROGRESS = null;
-//         return data;
-//       })
-//       .catch((err) => {
-//         IN_PROGRESS = null;
-//         throw err;
-//       });
-//   }
-
-//   const data = await IN_PROGRESS;
-//   return NextResponse.json(data);
-// }
 import { NextResponse } from "next/server";
 import fs from "fs";
+import path from "path";
+import nodemailer from "nodemailer";
+import { ISP_BRANCHES } from "../../../(DashboardLayout)/availability/data/data";
+import branches from "../../../(DashboardLayout)/availability/data/data";
+
+/* ===================== CONFIG ===================== */
+
+// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+
+// Alert state persistence
+const ALERT_STATE_FILE = path.join(process.cwd(), "alert_state.json");
+
+/* ===================== HELPERS ===================== */
+
+function getBranchName(hostname: string) {
+  if (!hostname) return "NA";
+  const found = branches.find((b: any) =>
+    hostname.toLowerCase().includes(b.code?.toLowerCase())
+  );
+  return found?.name || "NA";
+}
+
+/* 🔑 Replace Private1 → TCL etc inside strings */
+function replaceISPNames(text: string) {
+  if (!text) return text;
+
+  let result = text;
+  ISP_BRANCHES.forEach((isp) => {
+    const regex = new RegExp(isp.type, "gi");
+    result = result.replace(regex, isp.name);
+  });
+
+  return result;
+}
+
+/* ===================== EMAIL ===================== */
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+transporter.verify((err) => {
+  if (err) console.error("❌ SMTP FAILED:", err);
+  else console.log("✅ SMTP READY");
+});
+
+async function sendMail(subject: string, html: string) {
+  await transporter.sendMail({
+    from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
+    to: process.env.ALERT_MAIL_TO,
+    subject,
+    html,
+  });
+}
+
+/* ===================== ALERT STATE ===================== */
+
+function loadAlertState(): Record<string, string> {
+  if (!fs.existsSync(ALERT_STATE_FILE)) return {};
+  return JSON.parse(fs.readFileSync(ALERT_STATE_FILE, "utf-8"));
+}
+
+function saveAlertState(state: Record<string, string>) {
+  fs.writeFileSync(ALERT_STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+/* ===================== API ===================== */
 
 export async function GET() {
   try {
-    const filePath = "/home/ec2-user/sdwan_tunnels.json";
-    // const filePath = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
-    const raw = fs.readFileSync(filePath, "utf-8");
+    let downCount = 0;
+    let partialCount = 0;
+
+    const raw = fs.readFileSync(DATA_FILE, "utf-8");
     const json = JSON.parse(raw);
 
-    return NextResponse.json(json);
+    const devices = json.devices || {};
+    const alertState = loadAlertState();
+
+    for (const [systemIp, tunnels] of Object.entries<any[]>(devices)) {
+      if (!Array.isArray(tunnels) || tunnels.length === 0) continue;
+
+      const hostname = tunnels[0]?.hostname || "NA";
+      const branchName = getBranchName(hostname);
+
+      const states = tunnels.map((t) =>
+        String(t.state || "").toLowerCase()
+      );
+
+      const hasDown = states.includes("down");
+      const allUp = states.every((s) => s === "up");
+
+      let currentState: "up" | "down" | "partial" = "partial";
+      if (allUp) currentState = "up";
+      else if (hasDown) currentState = "down";
+
+      const lastState = alertState[systemIp];
+
+      if (!lastState || currentState !== lastState) {
+        /* ================= DOWN / PARTIAL ================= */
+        if (currentState === "down" || currentState === "partial") {
+          currentState === "down" ? downCount++ : partialCount++;
+
+          const downRows = tunnels
+            .filter((t) => String(t.state).toLowerCase() === "down")
+            .map((t) => {
+              return `
+                <tr>
+                  <td>${branchName}</td>
+                  <td>${hostname}</td>
+                  <td>${systemIp}</td>
+                  <td>${replaceISPNames(t.tunnelName)}</td>
+                  <td style="color:red;font-weight:bold">DOWN</td>
+                  <td>${t.uptime}</td>
+                </tr>`;
+            })
+            .join("");
+
+          await sendMail(
+            currentState === "down"
+              ? `🚨 TUNNEL DOWN — ${hostname}`
+              : `⚠️ PARTIAL TUNNEL ISSUE — ${hostname}`,
+            `
+              <h3>${currentState === "down" ? "🚨 DOWN" : "⚠️ PARTIAL"} ALERT</h3>
+              <table border="1" cellpadding="6" cellspacing="0">
+                <thead>
+                  <tr>
+                    <th>Branch</th>
+                    <th>Hostname</th>
+                    <th>System IP</th>
+                    <th>Tunnel</th>
+                    <th>State</th>
+                    <th>Uptime</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${downRows}
+                </tbody>
+              </table>
+            `
+          );
+        }
+
+        /* ================= RECOVERY ================= */
+        else if (currentState === "up" && lastState) {
+          await sendMail(
+            `✅ RECOVERED — ${hostname}`,
+            `
+              <h3 style="color:green">✅ ALL TUNNELS UP</h3>
+              <p><b>Branch:</b> ${branchName}</p>
+              <p><b>Hostname:</b> ${hostname}</p>
+              <p><b>System IP:</b> ${systemIp}</p>
+            `
+          );
+        }
+
+        alertState[systemIp] = currentState;
+      }
+    }
+
+    saveAlertState(alertState);
+
+    return NextResponse.json({
+      ...json,
+      generatedAt: new Date().toISOString(),
+      alertSummary: {
+        downSent: downCount,
+        partialSent: partialCount,
+        totalSent: downCount + partialCount,
+      },
+    });
   } catch (err: any) {
+    console.error("API ERROR:", err);
     return NextResponse.json(
-      { error: "Failed to read sdwan_tunnels.json", details: err.message },
+      { error: "Failed", details: err.message },
       { status: 500 }
     );
   }
