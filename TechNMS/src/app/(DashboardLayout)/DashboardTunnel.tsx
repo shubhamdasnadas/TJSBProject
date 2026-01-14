@@ -8,7 +8,7 @@ import Certificate from "./widget/cardDashboard/certificate/page";
 import Vmanage from "./widget/cardDashboard/vmanage/page";
 
 const CACHE_KEY = "sdwan_tunnel_cache";
-const AUTO_REFRESH_MS = 60 * 1000; // 1 minute
+const AUTO_REFRESH_MS = 60 * 1000;
 
 /* ===================== TYPES ===================== */
 type IpRow = {
@@ -39,45 +39,6 @@ function resolveIspName(text: string) {
   });
   return result;
 }
-
-/* ===================== FLIP CLOCK ===================== */
-const FlipUnit = ({ value }: { value: string }) => {
-  const [prev, setPrev] = useState(value);
-  const [flip, setFlip] = useState(false);
-
-  useEffect(() => {
-    if (value !== prev) {
-      setFlip(true);
-      const t = setTimeout(() => {
-        setPrev(value);
-        setFlip(false);
-      }, 600);
-      return () => clearTimeout(t);
-    }
-  }, [value, prev]);
-
-  return (
-    <div
-      style={{
-        width: 70,
-        height: 90,
-        background: "#111",
-        borderRadius: 8,
-        color: "#d1d1d1",
-        fontSize: 48,
-        fontWeight: 700,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        perspective: 600,
-        transform: flip ? "rotateX(-180deg)" : "rotateX(0deg)",
-        transition: "transform 0.6s ease-in-out",
-      }}
-    >
-      {prev}
-    </div>
-  );
-};
 
 /* ===================== JSON → TABLE ===================== */
 function transformJsonToRows(json: any): IpRow[] {
@@ -115,15 +76,8 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
   const fetchingRef = useRef(false);
+  const [time, setTime] = useState({ hh: "00", mm: "00", ss: "00" });
 
-  /* ===== TIME STATE ===== */
-  const [time, setTime] = useState({
-    hh: "00",
-    mm: "00",
-    ss: "00",
-  });
-
-  /* ===== LOAD CACHE ===== */
   useEffect(() => {
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -136,7 +90,6 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     }
   }, []);
 
-  /* ===== LOAD API ===== */
   async function load() {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
@@ -154,12 +107,10 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
           ss: String(d.getSeconds()).padStart(2, "0"),
         });
       }
+
       const data = transformJsonToRows(json);
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
-    } catch (e) {
-      console.error("JSON LOAD ERROR:", e);
-      setRows([]);
     } finally {
       fetchingRef.current = false;
       setLoading(false);
@@ -192,33 +143,46 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     },
     { title: "Hostname", dataIndex: "hostname" },
     { title: "System IP", dataIndex: "systemIp" },
+
+    /* ✅ FINAL FIXED DROPDOWN */
     {
       title: "Tunnels (Name + Uptime)",
       render: (_: any, row: IpRow) => {
-        const sorted = [...row.tunnels].sort((a, b) => (a.state === "down" ? -1 : 1));
-        const selected = sorted[0];
-        const isDown = selected?.state === "down";
+        const downTunnels = row.tunnels.filter((t: any) => t.state === "down");
+        const upTunnels = row.tunnels.filter((t: any) => t.state === "up");
+
+        const bg = downTunnels.length > 0 ? "#ffd6d6" : "#d7ffd7";
 
         return (
           <select
-            defaultValue={selected?.tunnelName}
             style={{
               padding: 6,
               width: "100%",
-              background: isDown ? "#ffd6d6" : "#d7ffd7",
+              background: bg,
               fontWeight: 700,
               borderRadius: 4,
             }}
           >
-            {sorted.map((t: any, i: number) => (
-              <option key={i}>
-                {resolveIspName(t.tunnelName)} — {t.uptime}
-              </option>
-            ))}
+            {downTunnels.length > 0 && (
+                downTunnels.map((t: any, i: number) => (
+                  <option key={`down-${i}`} style={{backgroundColor:"#ffd6d6"}}>
+                    {resolveIspName(t.tunnelName)} — {t.uptime}
+                  </option>
+                ))
+            )}
+
+            {upTunnels.length > 0 && (
+                upTunnels.map((t: any, i: number) => (
+                  <option key={`up-${i}`} style={{backgroundColor:"#d7ffd7"}}>
+                    {resolveIspName(t.tunnelName)} — {t.uptime}
+                  </option>
+                ))
+            )}
           </select>
         );
       },
     },
+
     {
       title: "State",
       render: (_: any, row: IpRow) => {
@@ -237,20 +201,12 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     },
   ];
 
-  /* ===================== UI ===================== */
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          marginBottom: 16,
-          fontWeight: 600,
-        }}
-      >
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16, fontWeight: 600 }}>
         Updated on : {time.hh}:{time.mm}:{time.ss}
       </div>
-      {/* CARDS */}
+
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <Vmanage />
@@ -258,7 +214,6 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
         </div>
       </div>
 
-      {/* TABLE */}
       <Table
         loading={loading}
         columns={columns}
