@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Table, notification } from "antd";
+import { Col, Row, Table, notification } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 import Certificate from "./widget/cardDashboard/certificate/page";
 import Vmanage from "./widget/cardDashboard/vmanage/page";
+import ProblemsSummaryTable from "./widget/cardDashboard/problemsummarycount";
 
 const CACHE_KEY = "sdwan_tunnel_cache";
 const AUTO_REFRESH_MS = 60 * 1000;
@@ -282,10 +283,23 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <Vmanage />
-          <Certificate />
-        </div>
+        <Row
+          gutter={16}
+          align="stretch"
+          style={{ display: "flex" }}
+        >
+          <Col xs={24} md={8} style={{ display: "flex" }}>
+            <Vmanage  />
+          </Col>
+
+          <Col xs={24} md={8} style={{ display: "flex" }}>
+            <Certificate  />
+          </Col>
+
+          <Col xs={24} md={8} style={{ display: "flex" }}>
+            <ProblemsSummaryTable  />
+          </Col>
+        </Row>
       </div>
 
       <Table

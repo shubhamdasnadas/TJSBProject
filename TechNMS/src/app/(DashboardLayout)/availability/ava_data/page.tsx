@@ -8,7 +8,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // ✅ IMPORT JSON DATA (NO CHANGE)
-import tunnelJson from "/home/ec2-user/sdwan_tunnels.json";
+// import tunnelJson from "/home/ec2-user/sdwan_tunnels.json";
 
 /* ===================== TYPES ===================== */
 

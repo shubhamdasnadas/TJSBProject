@@ -2,11 +2,12 @@
 
 import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
-import { Card, Spin } from "antd";
+import { Card, Table, Progress, Spin, Tag } from "antd";
 
 /* =====================
    CONFIG
 ===================== */
+
 const HOST_ITEM_MAP: Record<"host2", string[]> = {
   host2: ["Certificate validity"],
 };
@@ -14,8 +15,20 @@ const HOST_ITEM_MAP: Record<"host2", string[]> = {
 const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
 /* =====================
+   TYPES
+===================== */
+
+interface CertificateRow {
+  key: string;
+  status: "VALID" | "INVALID";
+  count: number;
+  percent: number;
+}
+
+/* =====================
    COMPONENT
 ===================== */
+
 const Certificate = () => {
   const user_token =
     typeof window !== "undefined"
@@ -27,12 +40,12 @@ const Certificate = () => {
 
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const [valid, setValid] = useState(0);
-  const [invalid, setInvalid] = useState(0);
+  const [tableData, setTableData] = useState<CertificateRow[]>([]);
 
   /* =====================
      LOAD CERTIFICATES
   ===================== */
+
   const handleCertificate = async () => {
     if (!user_token || fetchingRef.current) return;
 
@@ -50,26 +63,41 @@ const Certificate = () => {
         )
       );
 
-      let validCount = 0;
-      let invalidCount = 0;
+      let valid = 0;
+      let invalid = 0;
 
       responses.forEach((res) => {
         const items = res.data?.result ?? [];
         items.forEach((item: any) => {
           const value = Number(item.lastvalue);
-          if (!isNaN(value) && value > 0) invalidCount++;
-          else validCount++;
+          if (!isNaN(value) && value > 0) invalid++;
+          else valid++;
         });
       });
 
-      setValid(validCount);
-      setInvalid(invalidCount);
-      setTotal(validCount + invalidCount);
+      const totalCount = valid + invalid;
+
+      const rows: CertificateRow[] = [
+        {
+          key: "valid",
+          status: "VALID",
+          count: valid,
+          percent: totalCount ? (valid / totalCount) * 100 : 0,
+        },
+        {
+          key: "invalid",
+          status: "INVALID",
+          count: invalid,
+          percent: totalCount ? (invalid / totalCount) * 100 : 0,
+        },
+      ];
+
+      setTableData(rows);
+      setTotal(totalCount);
     } catch (err) {
       console.error("Certificate fetch error:", err);
+      setTableData([]);
       setTotal(0);
-      setValid(0);
-      setInvalid(0);
     } finally {
       fetchingRef.current = false;
       setLoading(false);
@@ -79,134 +107,77 @@ const Certificate = () => {
   /* =====================
      INITIAL + AUTO REFRESH
   ===================== */
+
   useEffect(() => {
     handleCertificate();
     intervalRef.current = setInterval(handleCertificate, REFRESH_INTERVAL);
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
   /* =====================
-     HELPERS
+     TABLE COLUMNS
   ===================== */
-  const pct = (v: number) => (total ? (v / total) * 100 : 0);
+
+  const columns = [
+    {
+      title: "Status",
+      dataIndex: "status",
+      render: (status: "VALID" | "INVALID") => (
+        <Tag color={status === "VALID" ? "green" : "red"}>
+          {status}
+        </Tag>
+      ),
+    },
+    {
+      title: "Count",
+      dataIndex: "count",
+      align: "center" as const,
+    },
+    {
+      title: "Usage",
+      dataIndex: "percent",
+      render: (percent: number, record: CertificateRow) => (
+        <Progress
+          percent={Math.round(percent)}
+          size="small"
+          showInfo={false}
+          strokeColor={record.status === "VALID" ? "#52c41a" : "#ff4d4f"}
+        />
+      ),
+    },
+  ];
 
   /* =====================
-     UI (WAN EDGE IMAGE STYLE)
+     UI
   ===================== */
+
   return (
     <Card
+      title="Certificates"
+      extra={
+        <span style={{ fontSize: 14 }}>
+          <b>{total}</b>{" "}
+          <span style={{ color: "#8c8c8c" }}>Total Devices</span>
+        </span>
+      }
       style={{
-        width: 460,
+        width: "100%", // Use 100% to fill parent's width
+        height: "75%", // Fill parent's height to align cards vertically
         borderRadius: 18,
       }}
-      bodyStyle={{ padding: "20px 22px" }}
+      bodyStyle={{ padding: 20, height: "100%" }}
     >
       {loading ? (
         <Spin />
       ) : (
-        <>
-          {/* HEADER */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 18,
-            }}
-          >
-            <span style={{ fontSize: 16, fontWeight: 600 }}>
-              Certificates
-            </span>
-            <span style={{ fontSize: 14 }}>
-              <b>{total}</b>{" "}
-              <span style={{ color: "#8c8c8c" }}>Total Devices</span>
-            </span>
-          </div>
-
-          {/* TABLE HEADER */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.2fr 0.6fr 2fr",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#595959",
-              paddingBottom: 10,
-              borderBottom: "1px solid #f0f0f0",
-              marginBottom: 12,
-            }}
-          >
-            <span>Status</span>
-            <span>Count</span>
-            <span>Usage</span>
-          </div>
-
-          {/* VALID ROW */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.2fr 0.6fr 2fr",
-              alignItems: "center",
-              padding: "10px 0",
-              borderBottom: "1px solid #f0f0f0",
-            }}
-          >
-            <span style={{ fontWeight: 500 }}>VALID</span>
-            <span>{valid}</span>
-            <div
-              style={{
-                height: 8,
-                background: "#f5f5f5",
-                borderRadius: 6,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${pct(valid)}%`,
-                  height: "100%",
-                  background: "#52c41a",
-                  borderRadius: 6,
-                  transition: "width 500ms ease",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* INVALID ROW */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.2fr 0.6fr 2fr",
-              alignItems: "center",
-              padding: "10px 0",
-            }}
-          >
-            <span style={{ fontWeight: 500 }}>INVALID</span>
-            <span>{invalid}</span>
-            <div
-              style={{
-                height: 8,
-                background: "#f5f5f5",
-                borderRadius: 6,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${pct(invalid)}%`,
-                  height: "100%",
-                  background: "#ff4d4f",
-                  borderRadius: 6,
-                  transition: "width 500ms ease",
-                }}
-              />
-            </div>
-          </div>
-        </>
+        <Table
+          columns={columns}
+          dataSource={tableData}
+          pagination={false}
+          size="small"
+        />
       )}
     </Card>
   );

@@ -196,7 +196,7 @@ const Vmanage = () => {
 
       <Card
         title="WAN Edge"
-        style={{ width: 420, borderRadius: 16 }}
+        style={{ width: 300, borderRadius: 16 }}
         extra={
           <span style={{ fontWeight: 600 }}>
             <AnimatedNumber value={total} />{" "}
@@ -214,6 +214,7 @@ const Vmanage = () => {
             dataSource={rows}
             pagination={false}
             size="small"
+            // style={{width:"75%"}}
           />
         )}
       </Card>

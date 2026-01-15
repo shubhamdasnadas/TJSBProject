@@ -11,7 +11,7 @@ import { safeStorage } from "@/utils/safeStorage";
 import { io } from "socket.io-client";
 import { xAxisDefaultProps } from "recharts/types/cartesian/XAxis";
 import Vmanage from "./widget/cardDashboard/vmanage/page";
-import DashboardCard from "./widget/cardDashboard/page";
+// import DashboardCard from "./widget/cardDashboard/page";
 
 /* ===================== LAZY LOAD WIDGETS ===================== */
 const DashboardSummaryCount = lazy(() => import("./DashboardSummaryCount"));

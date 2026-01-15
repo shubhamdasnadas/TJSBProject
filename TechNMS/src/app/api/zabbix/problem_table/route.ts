@@ -37,7 +37,6 @@ export async function POST(req: Request) {
           "clock",
           "r_clock",
           "name",
-          "acknowledged",
           "severity",
         ],
         selectTags: ["tag", "value"],
