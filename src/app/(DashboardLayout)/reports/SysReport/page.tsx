@@ -1,16 +1,19 @@
+ "use client";
 
-"use client";
-
-import { useEffect, useState, useRef } from "react";
-import html2canvas from "html2canvas";
-
-import { Select, Button, Table, Space, Modal, message } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import RangePickerDemo from "../../RangePickerDemo";
+import {
+  Select,
+  Button,
+  Table,
+  Space,
+  Modal,
+  Input,
+  message,
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { Card } from "@mui/material";
+import RangePickerDemo from "../../RangePickerDemo";
 
 import {
   LineChart,
@@ -35,6 +38,7 @@ type TableRow = {
   lastValue: string;
   lastCheck: string;
   change: string;
+  value_type?: number;
 };
 
 type DateRange = {
@@ -50,119 +54,81 @@ type DateRange = {
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
-    Authorization: "Bearer f367bb14b4c8d2cc37da595aabc75950",
+    Authorization: `Bearer ${localStorage.getItem("zabbix_auth")}`,
   },
 };
-
-/* =========================
-   PDF EXPORT
-========================= */
-const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
-
-/** SVG → PNG for jsPDF */
-const loadSvgAsPng = async (url: string) => {
-  const svgText = await fetch(url).then((r) => r.text());
-  const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
-  const svgUrl = URL.createObjectURL(svgBlob);
-
-  return new Promise<string>((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width * 3;
-      canvas.height = img.height * 3;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(svgUrl);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.src = svgUrl;
-  });
-};
-
-const exportHistoryToPDF = async (
-  title: string,
-  data: any[],
-  chartEl: HTMLDivElement | null
-) => {
-  const doc = new jsPDF("l", "pt", "a4");
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  /* PAGE 1 – COVER */
-  const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
-
-  doc.addImage(logoPng, "PNG", pageWidth / 2 - 150, 80, 300, 170);
-
-
-
-  doc.setFontSize(26);
-  doc.text("Techsec NMS – History Report", pageWidth / 2, 410, { align: "center",  });
-
-  doc.text(
-    `Generated: ${new Date().toLocaleString()}`,     pageWidth / 2,      440,     { align: "center" }   );
-    
-  doc.setFontSize(16);
-  doc.text(`Metric: ${title}`, pageWidth / 2, 470, { align: "center" });
-  
-
-  doc.setFontSize(12);
-  doc.setTextColor(90);
-
-  /* PAGE 2 – CHART */
-  if (chartEl) {
-    const canvas = await html2canvas(chartEl, {
-      scale: 3,
-      backgroundColor: "#ffffff",
-    });
-
-    doc.addPage();
-    doc.setFontSize(18);
-    doc.text("Utilization Graph", 40, 40);
-    doc.addImage(canvas.toDataURL("image/png"), "PNG", 40, 60, 760, 320);
-  }
-
-  /* PAGE 3 – TABLE */
-  doc.addPage();
-  doc.setFontSize(18);
-  doc.text("History Data", 40, 40);
-
-  autoTable(doc, {
-    startY: 70,
-    head: [["Time", "Value"]],
-    body: data.map((r) => [
-      new Date(r.clock * 1000).toLocaleString(),
-      Number(r.value).toFixed(2),
-    ]),
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [30, 30, 30] },
-  });
-
-  doc.save(`techsec_history_${Date.now()}.pdf`);
-};
+// =========================
+// STATIC TIME RANGE (PYTHON EQUIVALENT)
+// =========================
+const STATIC_TIME_FROM = 1736833002; // seconds
+const STATIC_TIME_TILL = 1768369002; // seconds
 
 /* =========================
    HISTORY CHART
 ========================= */
-const HistoryLineChart = ({
-  data,
-}: {
-  data: { clock: number; value: number }[];
-}) => {
+const HistoryLineChart = ({ data }: { data: any[] }) => {
   if (!data.length) return null;
 
-  const chartData = [...data].reverse().map((d) => ({
-    time: new Date(d.clock * 1000).toLocaleTimeString(),
+  const chartData = data.map((d) => ({
+    time: Number(d.clock) * 1000,
     value: Number(d.value),
+    isTrigger: d.isTrigger,
+    triggerName: d.triggerName,
+    severity: d.severity,
   }));
 
   return (
     <div style={{ height: 260 }}>
       <ResponsiveContainer>
         <LineChart data={chartData}>
-          <XAxis dataKey="time" minTickGap={30} />
+          <XAxis
+            dataKey="time"
+            type="number"
+            domain={["auto", "auto"]}
+            tickFormatter={(v) =>
+              new Date(v).toLocaleTimeString()
+            }
+          />
           <YAxis />
-          <Tooltip />
-          <Line type="monotone" dataKey="value" strokeWidth={2} dot={false} />
+          <Tooltip
+            labelFormatter={(v) =>
+              new Date(Number(v)).toLocaleString()
+            }
+            content={({ payload }) => {
+              if (!payload?.length) return null;
+              const p = payload[0].payload;
+              return (
+                <div style={{ background: "#fff", padding: 8 }}>
+                  <div>Time: {new Date(p.time).toLocaleString()}</div>
+                  <div>Value: {p.value}</div>
+                  {p.isTrigger && (
+                    <>
+                      <div style={{ color: "red" }}>
+                        Trigger: {p.triggerName}
+                      </div>
+                      <div>Severity: {p.severity}</div>
+                    </>
+                  )}
+                </div>
+              );
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            strokeWidth={2}
+            dot={(props: any) => {
+              if (!props.payload?.isTrigger) return null;
+              return (
+                <circle
+                  cx={props.cx}
+                  cy={props.cy}
+                  r={5}
+                  fill="red"
+                />
+              );
+            }}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -172,12 +138,16 @@ const HistoryLineChart = ({
 /* =========================
    PAGE
 ========================= */
-export default function LatestDataPage() {
+export default function SysReportPage() {
   const [hostGroups, setHostGroups] = useState<HostGroup[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
+
   const [tableData, setTableData] = useState<TableRow[]>([]);
+  const [filteredData, setFilteredData] = useState<TableRow[]>([]);
+  const [searchText, setSearchText] = useState("");
+
   const [loadingTable, setLoadingTable] = useState(false);
 
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -185,14 +155,13 @@ export default function LatestDataPage() {
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyHost, setHistoryHost] = useState("");
   const [historyData, setHistoryData] = useState<any[]>([]);
-  const [historyDateRange, setHistoryDateRange] = useState<DateRange>({
-    startDate: "",
-    startTime: "",
-    endDate: "",
-    endTime: "",
-  });
-
-  const chartRef = useRef<HTMLDivElement>(null);
+  const [historyDateRange, setHistoryDateRange] =
+    useState<DateRange>({
+      startDate: "",
+      startTime: "",
+      endDate: "",
+      endTime: "",
+    });
 
   /* LOAD HOST GROUPS */
   useEffect(() => {
@@ -225,10 +194,12 @@ export default function LatestDataPage() {
     setHosts(r.data.result ?? []);
   };
 
+  /* APPLY */
   const handleApply = async () => {
-    if (!selectedHosts.length) return message.warning("Select host");
-    setLoadingTable(true);
+    if (!selectedHosts.length)
+      return message.warning("Select host");
 
+    setLoadingTable(true);
     try {
       const r = await axios.post(
         "/api/zabbix-proxy",
@@ -236,7 +207,14 @@ export default function LatestDataPage() {
           jsonrpc: "2.0",
           method: "item.get",
           params: {
-            output: ["itemid", "name", "lastvalue", "lastclock", "delta"],
+            output: [
+              "itemid",
+              "name",
+              "lastvalue",
+              "lastclock",
+              "delta",
+              "value_type"
+            ],
             selectHosts: ["name"],
             hostids: selectedHosts,
           },
@@ -245,61 +223,188 @@ export default function LatestDataPage() {
         axiosCfg
       );
 
-      setTableData(
-        r.data.result.map((i: any) => ({
-          key: i.itemid,
-          itemid: i.itemid,
-          host: i.hosts?.[0]?.name ?? "-",
-          name: i.name,
-          lastValue: i.lastvalue,
-          lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
-          change: i.delta ?? "-",
-        }))
-      );
+      const items = r.data.result.map((i: any) => ({
+        key: i.itemid,
+        itemid: i.itemid,
+        host: i.hosts?.[0]?.name ?? "-",
+        name: i.name,
+        lastValue: i.lastvalue,
+        lastCheck: new Date(
+          i.lastclock * 1000
+        ).toLocaleString(),
+        change: i.delta ?? "-",
+        value_type: i.value_type,
+      }));
+
+      setTableData(items);
+      setFilteredData(items);
     } finally {
       setLoadingTable(false);
     }
   };
 
-  const openHistory = async (itemid: string, name: string, host: string) => {
+  /* SEARCH */
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    setFilteredData(
+      tableData.filter((i) =>
+        i.name.toLowerCase().includes(value.toLowerCase())
+      )
+    );
+  };
+
+  /* =========================
+     OPEN HISTORY (CORRECT MAPPING)
+  ========================= */
+const openHistory = async (
+  itemid: string,
+  name: string,
+  host: string,
+  valueType?: number
+) => {
+  try {
     setHistoryTitle(name);
     setHistoryHost(host);
     setHistoryOpen(true);
     setHistoryLoading(true);
 
-    const r = await axios.post(
+    // =========================
+    // 1️⃣ HISTORY.GET (BLUE LINE)
+    // =========================
+    const historyRes = await axios.post(
       "/api/zabbix-proxy",
       {
         jsonrpc: "2.0",
         method: "history.get",
         params: {
           output: "extend",
-          history: 0,
+          history: valueType ?? 0,
           itemids: [itemid],
+          time_from: STATIC_TIME_FROM,
+          time_till: STATIC_TIME_TILL,
           sortfield: "clock",
-          sortorder: "DESC",
-          limit: 1000,
+          sortorder: "ASC",
         },
-        id: 10,
+        id: 1,
       },
       axiosCfg
     );
 
-    setHistoryData(r.data.result ?? []);
+    const historyPoints = (historyRes.data.result ?? []).map((h: any) => ({
+      clock: Number(h.clock),
+      value: Number(h.value),
+      isTrigger: false,
+    }));
+
+    if (!historyPoints.length) {
+      message.warning("No history data");
+      return;
+    }
+
+    // =========================
+    // 2️⃣ TRIGGER.GET
+    // =========================
+    const triggerRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "description", "priority"],
+          itemids: [itemid],
+          filter: { status: 0 },
+        },
+        id: 2,
+      },
+      axiosCfg
+    );
+
+    const triggers = triggerRes.data.result ?? [];
+    const triggerIds = triggers.map((t: any) => t.triggerid);
+
+    if (!triggerIds.length) {
+      setHistoryData(historyPoints);
+      return;
+    }
+
+    // =========================
+    // 3️⃣ EVENT.GET (RED X)
+    // =========================
+    const eventRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "event.get",
+        params: {
+          output: ["eventid", "clock", "objectid"],
+          object: 0,
+          objectids: triggerIds,
+          value: 1,
+          time_from: STATIC_TIME_FROM,
+          time_till: STATIC_TIME_TILL,
+        },
+        id: 3,
+      },
+      axiosCfg
+    );
+
+    const events = eventRes.data.result ?? [];
+
+    // =========================
+    // 4️⃣ PYTHON-STYLE MATCHING
+    // =========================
+    const MATCH_WINDOW = 120; // seconds
+
+    events.forEach((ev: any) => {
+      let closestIdx = -1;
+      let bestDiff = MATCH_WINDOW + 1;
+
+historyPoints.forEach((p: any, idx: number) => {
+        const diff = Math.abs(p.clock - Number(ev.clock));
+        if (diff <= MATCH_WINDOW && diff < bestDiff) {
+          bestDiff = diff;
+          closestIdx = idx;
+        }
+      });
+
+      if (closestIdx !== -1) {
+        const trig = triggers.find(
+          (t: any) => t.triggerid === ev.objectid
+        );
+
+        historyPoints[closestIdx] = {
+          ...historyPoints[closestIdx],
+          isTrigger: true,
+          triggerName: trig?.description,
+          severity: trig?.priority,
+        };
+      }
+    });
+
+    setHistoryData(historyPoints);
+  } catch (e) {
+    console.error(e);
+    message.error("Failed to load history");
+  } finally {
     setHistoryLoading(false);
-  };
+  }
+};
 
   const filterHistory = () => {
     if (!historyDateRange.startDate) return historyData;
 
     const start =
       new Date(
-        `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`
+        `${historyDateRange.startDate} ${
+          historyDateRange.startTime || "00:00:00"
+        }`
       ).getTime() / 1000;
 
     const end =
       new Date(
-        `${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`
+        `${historyDateRange.endDate} ${
+          historyDateRange.endTime || "23:59:59"
+        }`
       ).getTime() / 1000;
 
     return historyData.filter(
@@ -309,14 +414,19 @@ export default function LatestDataPage() {
 
   const columns: ColumnsType<TableRow> = [
     { title: "Host", dataIndex: "host", width: 180 },
-    { title: "Item", dataIndex: "name", width: 300 },
+    { title: "Item", dataIndex: "name", width: 350 },
     { title: "Last Value", dataIndex: "lastValue", width: 120 },
     { title: "Last Check", dataIndex: "lastCheck", width: 180 },
     { title: "Change", dataIndex: "change", width: 100 },
     {
       title: "History",
       render: (_, r) => (
-        <Button size="small" onClick={() => openHistory(r.itemid, r.name, r.host)}>
+        <Button
+          size="small"
+          onClick={() =>
+            openHistory(r.itemid, r.name, r.host, r.value_type)
+          }
+        >
           View
         </Button>
       ),
@@ -331,7 +441,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
-            listHeight={600}
             options={hostGroups.map((g) => ({
               label: g.name,
               value: g.groupid,
@@ -347,7 +456,6 @@ export default function LatestDataPage() {
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
-            listHeight={600}
             options={hosts.map((h) => ({
               label: h.name,
               value: h.hostid,
@@ -360,7 +468,19 @@ export default function LatestDataPage() {
           </Button>
         </Space>
 
-        <Table columns={columns} dataSource={tableData} loading={loadingTable} />
+        <Input.Search
+          placeholder="Search item name"
+          allowClear
+          value={searchText}
+          onChange={(e) => handleSearch(e.target.value)}
+          style={{ width: 400 }}
+        />
+
+        <Table
+          columns={columns}
+          dataSource={filteredData}
+          loading={loadingTable}
+        />
 
         <Modal
           title={`${historyHost} – ${historyTitle}`}
@@ -369,55 +489,10 @@ export default function LatestDataPage() {
           footer={null}
           width={900}
         >
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Space style={{ justifyContent: "space-between", width: "100%" }}>
-              <RangePickerDemo onRangeChange={setHistoryDateRange} />
-              <Button
-                type="primary"
-                onClick={() =>
-                  exportHistoryToPDF(
-                    historyTitle,
-                    filterHistory(),
-                    chartRef.current
-                  )
-                }
-              >
-                Export PDF
-              </Button>
-            </Space>
-
-            <div ref={chartRef} style={{ background: "#fff", padding: 12 }}>
-              <HistoryLineChart
-                data={filterHistory().map((r: any) => ({
-                  clock: r.clock,
-                  value: r.value,
-                }))}
-              />
-            </div>
-
-            <Table
-              size="small"
-              pagination={false}
-              loading={historyLoading}
-              columns={[
-                {
-                  title: "Time",
-                  dataIndex: "clock",
-                  render: (v) => new Date(v * 1000).toLocaleString(),
-                },
-                {
-                  title: "Value",
-                  dataIndex: "value",
-                  render: (v) => Number(v).toFixed(2),
-                },
-              ]}
-              dataSource={filterHistory().map((r: any) => ({
-                key: r.clock,
-                clock: r.clock,
-                value: r.value,
-              }))}
-            />
-          </Space>
+          <RangePickerDemo
+            onRangeChange={setHistoryDateRange}
+          />
+          <HistoryLineChart data={filterHistory()} />
         </Modal>
       </Space>
     </Card>

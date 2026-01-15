@@ -21,20 +21,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = {
-      jsonrpc: "2.0",
-      method: "history.get",
-      params: {
-        output: "extend",
-        history,
-        itemids: [itemid],
-        sortfield: "clock",
-        sortorder: "DESC",
-        limit,
-      },
-      id: 1,
-    };
-
+const historyType = 5; // Use 2 for Logs to get severity
+const body = {
+  jsonrpc: "2.0",
+  method: "history.get",
+  params: {
+    output: "extend", // 'extend' ensures you get severity, source, etc.
+    history: historyType,
+    itemids: [itemid],
+    sortfield: "clock",
+    sortorder: "DESC",
+    limit: limit,
+  },
+  id: 1,
+};
     const res = await fetch(ZABBIX_URL, {
       method: "POST",
       headers: {
