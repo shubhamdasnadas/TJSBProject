@@ -13,6 +13,32 @@ const Login2 = () => {
     password: "",
   });
 
+  // Initialize localStorage with API config on component mount
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Use environment variables with fallback to localStorage
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL ||
+        localStorage.getItem("API_URL") ||
+        "http://localhost:8080/api_jsonrpc.php";
+
+      const apiToken =
+        process.env.NEXT_PUBLIC_API_TOKEN ||
+        localStorage.getItem("API_TOKEN") ||
+        "b7b3f30c91bf343ff7ea4b169e08c7746c7e1c166f0aefb7f2930921c6a7690b";
+
+      // Save to localStorage
+      localStorage.setItem("API_URL", apiUrl);
+      localStorage.setItem("API_TOKEN", apiToken);
+
+      console.log("API Config initialized:", {
+        source: process.env.NEXT_PUBLIC_API_URL ? "env" : "localStorage",
+        url: apiUrl,
+        token: apiToken,
+      });
+    }
+  }, []);
+
   return (
     <PageContainer title="Login" description="Login page">
       <Box
