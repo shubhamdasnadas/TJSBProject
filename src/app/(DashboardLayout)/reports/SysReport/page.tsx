@@ -1,6 +1,8 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import autoTable from "jspdf-autotable";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import {
   Select,
@@ -54,8 +56,139 @@ type DateRange = {
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("zabbix_auth")}`,
+    Authorization: `Bearer ${
+      typeof window !== "undefined"
+        ? localStorage.getItem("zabbix_auth")
+        : ""
+    }`,
   },
+};
+
+/* =========================
+   PDF HELPERS
+========================= */
+const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
+
+/* 🔲 PAGE BORDER */
+const drawPageBorder = (doc: jsPDF) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const margin = 20;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1.5);
+  doc.rect(margin, margin, w - margin * 2, h - margin * 2);
+};
+
+/* 🧊 WATERMARK */
+const drawWatermark = (doc: jsPDF, png: string) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+
+  doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
+  doc.addImage(png, "PNG", w / 2 - 110, h / 2 - 130, 220, 140);
+  doc.setGState(new (doc as any).GState({ opacity: 1 }));
+};
+
+/** SVG → PNG for jsPDF */
+const loadSvgAsPng = async (url: string) => {
+  const svgText = await fetch(url).then((r) => r.text());
+  const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+  const svgUrl = URL.createObjectURL(svgBlob);
+
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * 3;
+      canvas.height = img.height * 3;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(svgUrl);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.src = svgUrl;
+  });
+};
+
+const exportHistoryToPDF = async (
+  title: string,
+  data: any[],
+  chartEl: HTMLDivElement | null
+) => {
+  const doc = new jsPDF("p", "pt", "a4"); // ✅ A4 Portrait
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const MARGIN_X = 40;
+  const CONTENT_WIDTH = pageWidth - MARGIN_X * 2;
+
+  const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
+
+  /* ===== PAGE 1: COVER ===== */
+  doc.addImage(logoPng, "PNG", pageWidth / 2 - 120, 110, 240, 150);
+
+  doc.setFontSize(24);
+  doc.text("Techsec NMS – History Report", pageWidth / 2, 360, {
+    align: "center",
+  });
+
+  doc.setFontSize(13);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 390, {
+    align: "center",
+  });
+
+  doc.setFontSize(15);
+  doc.text(`Metric: ${title}`, pageWidth / 2, 420, {
+    align: "center",
+  });
+
+  drawPageBorder(doc);
+
+  /* ===== PAGE 2: CHART ===== */
+  if (chartEl) {
+    const canvas = await html2canvas(chartEl, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+    });
+
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.text("Utilization Graph", MARGIN_X, 60);
+
+    doc.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      MARGIN_X,
+      320,
+      CONTENT_WIDTH,
+      180
+    );
+
+    drawWatermark(doc, logoPng);
+    drawPageBorder(doc);
+  }
+
+  /* ===== PAGE 3+: TABLE ===== */
+  doc.addPage();
+
+  autoTable(doc, {
+    startY: 90,
+    margin: { left: MARGIN_X, right: MARGIN_X },
+    head: [["Time", "Value"]],
+    body: data.map((r) => [
+      new Date(r.clock * 1000).toLocaleString(),
+      Number(r.value).toFixed(2),
+    ]),
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [30, 30, 30] },
+    didDrawPage: () => {
+      drawWatermark(doc, logoPng);
+      drawPageBorder(doc);
+    },
+  });
+
+  doc.save(`techsec_history_${Date.now()}.pdf`);
 };
 
 /* =========================
@@ -167,6 +300,8 @@ export default function SysReportPage() {
       endDate: "",
       endTime: "",
     });
+
+  const chartRef = useRef<HTMLDivElement>(null);
 
   /* LOAD HOST GROUPS */
   useEffect(() => {
@@ -484,8 +619,51 @@ export default function SysReportPage() {
           footer={null}
           width={900}
         >
-          <RangePickerDemo onRangeChange={setHistoryDateRange} />
-          <HistoryLineChart data={filterHistory()} />
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Space style={{ justifyContent: "space-between", width: "100%" }}>
+              <RangePickerDemo onRangeChange={setHistoryDateRange} />
+              <Button
+                type="primary"
+                loading={historyLoading}
+                onClick={() =>
+                  exportHistoryToPDF(
+                    historyTitle,
+                    filterHistory(),
+                    chartRef.current
+                  )
+                }
+              >
+                Export PDF
+              </Button>
+            </Space>
+
+            <div ref={chartRef} style={{ background: "#fff", padding: 12 }}>
+              <HistoryLineChart data={filterHistory()} />
+            </div>
+
+            <Table
+              size="small"
+              pagination={false}
+              loading={historyLoading}
+              columns={[
+                {
+                  title: "Time",
+                  dataIndex: "clock",
+                  render: (v) => new Date(v * 1000).toLocaleString(),
+                },
+                {
+                  title: "Value",
+                  dataIndex: "value",
+                  render: (v) => Number(v).toFixed(2),
+                },
+              ]}
+              dataSource={filterHistory().map((r: any) => ({
+                key: r.clock,
+                clock: r.clock,
+                value: r.value,
+              }))}
+            />
+          </Space>
         </Modal>
       </Space>
     </Card>
