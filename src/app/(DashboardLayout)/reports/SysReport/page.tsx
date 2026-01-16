@@ -109,10 +109,11 @@ const loadSvgAsPng = async (url: string) => {
 
 const exportHistoryToPDF = async (
   title: string,
+  host: string,
   data: any[],
   chartEl: HTMLDivElement | null
 ) => {
-  const doc = new jsPDF("p", "pt", "a4"); // ✅ A4 Portrait
+  const doc = new jsPDF("p", "pt", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -121,75 +122,91 @@ const exportHistoryToPDF = async (
 
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
-  /* ===== PAGE 1: COVER ===== */
-  doc.addImage(logoPng, "PNG", pageWidth / 2 - 120, 110, 240, 150);
+  // Simplified – only watermark + border
+  const finalizePage = () => {
+    drawWatermark(doc, logoPng);
+    drawPageBorder(doc);
+  };
 
-  doc.setFontSize(24);
-  doc.text("Techsec NMS – History Report", pageWidth / 2, 360, {
-    align: "center",
-  });
+  /* ===== PAGE 1: COVER ===== */
+  const centerX = pageWidth / 2;
+
+  doc.addImage(logoPng, "PNG", centerX - 120, 70, 240, 150);
+
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.text("Techsec NMS – History Report", centerX, 260, { align: "center" });
+
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Host: ${host || "Unknown"}`, centerX, 320, { align: "center" });
+
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "normal");
+  const safeTitle = title.length > 70 ? title.substring(0, 67) + "..." : title;
+  const titleLines = doc.splitTextToSize(`Item / Metric: ${safeTitle}`, CONTENT_WIDTH - 40);
+  doc.text(titleLines, centerX, 355, { align: "center" });
 
   doc.setFontSize(13);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 390, {
-    align: "center",
-  });
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, centerX, 410, { align: "center" });
 
-  doc.setFontSize(15);
-  doc.text(`Metric: ${title}`, pageWidth / 2, 420, {
-    align: "center",
-  });
-
-  drawPageBorder(doc);
+  finalizePage();
 
   /* ===== PAGE 2: CHART ===== */
   if (chartEl) {
+    doc.addPage();
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Utilization Graph", MARGIN_X, 60);
+
     const canvas = await html2canvas(chartEl, {
       scale: 3,
       backgroundColor: "#ffffff",
+      logging: false,
     });
 
-    doc.addPage();
-    doc.setFontSize(16);
-    doc.text("Utilization Graph", MARGIN_X, 60);
+    doc.addImage(canvas.toDataURL("image/png"), "PNG", MARGIN_X, 100, CONTENT_WIDTH, 220);
 
-    doc.addImage(
-      canvas.toDataURL("image/png"),
-      "PNG",
-      MARGIN_X,
-      320,
-      CONTENT_WIDTH,
-      180
-    );
-
-    drawWatermark(doc, logoPng);
-    drawPageBorder(doc);
+    finalizePage();
   }
 
-  /* ===== PAGE 3+: TABLE ===== */
+  /* ===== PAGE 3+: HISTORY TABLE ===== */
   doc.addPage();
+
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("History Data", MARGIN_X, 60);
 
   autoTable(doc, {
     startY: 90,
     margin: { left: MARGIN_X, right: MARGIN_X },
     head: [["Time", "Value"]],
-    body: data.map((r) => [
-      new Date(r.clock * 1000).toLocaleString(),
-      Number(r.value).toFixed(2),
-    ]),
-    styles: { fontSize: 9, cellPadding: 4 },
-    headStyles: { fillColor: [30, 30, 30] },
-    didDrawPage: () => {
-      drawWatermark(doc, logoPng);
-      drawPageBorder(doc);
-    },
+    body: data.map((r) => {
+      const timeStr = new Date(r.clock * 1000).toLocaleString();
+      let valueStr: string = "—";
+      if (typeof r.value === "number" && !isNaN(r.value)) {
+        valueStr = r.value.toFixed(2);
+      } else if (typeof r.value === "string" && r.value.trim()) {
+        valueStr = r.value;
+      }
+      return [timeStr, valueStr];
+    }),
+    styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak", valign: "middle" },
+    headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
+    columnStyles: { 0: { cellWidth: 180 }, 1: { cellWidth: "auto" } },
+    didDrawPage: finalizePage,
   });
 
-  doc.save(`techsec_history_${Date.now()}.pdf`);
-};
+  // Make sure the very last page also has watermark + border
+  finalizePage();
 
-/* =========================
-   SEVERITY COLOR
-========================= */
+  const safeHost = host.replace(/[^a-zA-Z0-9]/g, "_") || "unknown";
+  doc.save(`techsec_history_${safeHost}_${Date.now()}.pdf`);
+};
+  //  SEVERITY COLOR
+// ========================= */
 const severityColor = (s?: number) => {
   if (s === undefined) return "red";
   if (s >= 4) return "#d32f2f"; // High / Disaster
@@ -681,6 +698,7 @@ const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
                 onClick={() =>
                   exportHistoryToPDF(
                     historyTitle,
+                    historyHost,
                     filterHistory(),
                     chartRef.current
                   )
