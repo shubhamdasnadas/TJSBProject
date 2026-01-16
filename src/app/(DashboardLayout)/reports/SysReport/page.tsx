@@ -426,172 +426,151 @@ export default function SysReportPage() {
   /* =========================
      OPEN HISTORY WITH TRIGGERS
   ========================= */
-  const openHistory = async (
-    itemid: string,
-    name: string,
-    host: string,
-    valueType?: number
-  ) => {
-    try {
-      setHistoryTitle(name);
-      setHistoryHost(host);
-      setHistoryLoading(true);
-      setHistoryOpen(true);
+/* =========================
+    OPEN HISTORY WITH TRIGGERS
+========================= */
+const openHistory = async (
+  itemid: string,
+  name: string,
+  host: string,
+  valueType?: number // This is 0, 1, 2, 3, or 4 from item.get
+) => {
+  try {
+    setHistoryTitle(name);
+    setHistoryHost(host);
+    setHistoryLoading(true);
+    setHistoryOpen(true);
 
-      console.log("🔵 Loading history for item:", itemid);
+    // Determine the correct history table to query based on valueType
+    // 0 - float, 1 - char, 2 - log, 3 - uint, 4 - text
+    // We use a fallback to 3 (uint) or 0 (float) if undefined, 
+    // but handleApply already fetches this correctly.
+    const targetHistory = valueType !== undefined ? valueType : 3;
 
-      /* 1️⃣ GET HISTORY DATA */
-      const historyRes = await axios.post(
-        "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "history.get",
-          params: {
-            output: "extend",
-            history: valueType ?? 0,
-            itemids: [itemid],
-            sortfield: "clock",
-            sortorder: "ASC",
-            limit: 1000,
-          },
-          id: 100,
+    console.log(`🔵 Loading history for item: ${itemid} using type: ${targetHistory}`);
+
+    /* 1️⃣ GET HISTORY DATA */
+    const historyRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: targetHistory, // ✅ DYNAMICALLY MAPPED
+          itemids: [itemid],
+          sortfield: "clock",
+          sortorder: "ASC",
+          limit: 1000,
         },
-        getAxiosConfig()
-      );
+        id: 100,
+      },
+      getAxiosConfig()
+    );
 
-      console.log("✅ History data:", historyRes.data);
+    // Handle string values (for types 1, 2, 4) or numbers (0, 3)
+/* 1️⃣ GET HISTORY DATA - Updated to handle Strings and Numbers safely */
+const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
+  // Check if the value is actually a valid number
+  const isNumeric = h.value !== "" && !isNaN(Number(h.value)) && isFinite(Number(h.value));
 
-      const historyPoints = (historyRes.data.result ?? []).map(
-        (h: any) => ({
-          clock: Number(h.clock),
-          value: Number(h.value),
-          isTrigger: false,
-        })
-      );
+  return {
+    clock: Number(h.clock),
+    // If it's a valid number, convert it for the chart. 
+    // If it's a string (like "next", "Windows", etc.), keep the raw string.
+    value: isNumeric ? Number(h.value) : h.value,
+    isTrigger: false,
+  };
+});
+    if (!historyPoints.length) {
+      message.warning("No history data available for this value type");
+      setHistoryData([]);
+      setHistoryLoading(false);
+      return;
+    }
 
-      if (!historyPoints.length) {
-        message.warning("No history data available");
-        setHistoryData([]);
-        setHistoryLoading(false);
-        return;
-      }
-
-      /* 2️⃣ GET TRIGGERS FOR THIS ITEM */
-      console.log("🔵 Fetching triggers for itemid:", itemid);
-      
-      const triggerRes = await axios.post(
-        "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "trigger.get",
-          params: {
-            output: ["triggerid", "description", "priority"],
-            itemids: [itemid],  // ✅ Get triggers for this specific item
-            filter: { 
-              status: 0,  // Only enabled triggers
-            },
-          },
-          id: 101,
+    /* 2️⃣ GET TRIGGERS FOR THIS ITEM */
+    const triggerRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "description", "priority"],
+          itemids: [itemid],
+          filter: { status: 0 },
         },
-        getAxiosConfig()
-      );
+        id: 101,
+      },
+      getAxiosConfig()
+    );
 
-      console.log("✅ Triggers:", triggerRes.data);
+    const triggers = triggerRes.data.result ?? [];
+    const triggerIds = triggers.map((t: any) => t.triggerid);
 
-      const triggers = triggerRes.data.result ?? [];
-      const triggerIds = triggers.map((t: any) => t.triggerid);
+    if (!triggerIds.length) {
+      setHistoryData(historyPoints);
+      setHistoryLoading(false);
+      return;
+    }
 
-      if (!triggerIds.length) {
-        console.log("ℹ️ No triggers found for this item");
-        setHistoryData(historyPoints);
-        setHistoryLoading(false);
-        return;
-      }
-
-      console.log(`✅ Found ${triggerIds.length} triggers:`, triggerIds);
-
-      /* 3️⃣ GET EVENTS FOR THESE TRIGGERS */
-      console.log("🔵 Fetching events for triggers...");
-      
-      const eventRes = await axios.post(
-        "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "event.get",
-          params: {
-            output: ["eventid", "clock", "objectid", "value"],
-            object: 0,  // Trigger events
-            objectids: triggerIds,
-            value: 1,  // Problem events
-            sortfield: "clock",
-            sortorder: "DESC",
-            limit: 500,
-          },
-          id: 102,
+    /* 3️⃣ GET EVENTS FOR THESE TRIGGERS */
+    const eventRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "event.get",
+        params: {
+          output: ["eventid", "clock", "objectid", "value"],
+          object: 0,
+          objectids: triggerIds,
+          value: 1,
+          sortfield: "clock",
+          sortorder: "DESC",
+          limit: 500,
         },
-        getAxiosConfig()
-      );
+        id: 102,
+      },
+      getAxiosConfig()
+    );
 
-      console.log("✅ Events:", eventRes.data);
+    const events = eventRes.data.result ?? [];
 
-      const events = eventRes.data.result ?? [];
-      console.log(`✅ Found ${events.length} trigger events`);
+    /* 4️⃣ MATCH EVENTS TO HISTORY POINTS */
+    const MATCH_WINDOW = 120;
+    events.forEach((ev: any) => {
+      let closestIdx = -1;
+      let bestDiff = MATCH_WINDOW + 1;
 
-      /* 4️⃣ MATCH EVENTS TO HISTORY POINTS */
-      const MATCH_WINDOW = 120; // 2 minutes tolerance
-
-      events.forEach((ev: any) => {
-        let closestIdx = -1;
-        let bestDiff = MATCH_WINDOW + 1;
-
-        historyPoints.forEach((p: any, idx: number) => {
-          const diff = Math.abs(p.clock - Number(ev.clock));
-          if (diff <= MATCH_WINDOW && diff < bestDiff) {
-            bestDiff = diff;
-            closestIdx = idx;
-          }
-        });
-
-        if (closestIdx !== -1) {
-          const trig = triggers.find(
-            (t: any) => t.triggerid === ev.objectid
-          );
-
-          console.log(`✅ Matched event to history point:`, {
-            eventTime: new Date(Number(ev.clock) * 1000),
-            historyTime: new Date(historyPoints[closestIdx].clock * 1000),
-            trigger: trig?.description,
-            severity: trig?.priority,
-          });
-
-          historyPoints[closestIdx] = {
-            ...historyPoints[closestIdx],
-            isTrigger: true,
-            triggerName: trig?.description || "Unknown Trigger",
-            severity: trig?.priority ?? 0,
-          };
+      historyPoints.forEach((p: any, idx: number) => {
+        const diff = Math.abs(p.clock - Number(ev.clock));
+        if (diff <= MATCH_WINDOW && diff < bestDiff) {
+          bestDiff = diff;
+          closestIdx = idx;
         }
       });
 
-      const triggersCount = historyPoints.filter((p: any) => p.isTrigger).length;
-      console.log(`✅ Total triggers marked on graph: ${triggersCount}`);
-
-      setHistoryData(historyPoints);
-      
-      if (triggersCount > 0) {
-        message.success(`Loaded history with ${triggersCount} trigger events`);
-      } else {
-        message.info("History loaded (no trigger events in this period)");
+      if (closestIdx !== -1) {
+        const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
+        historyPoints[closestIdx] = {
+          ...historyPoints[closestIdx],
+          isTrigger: true,
+          triggerName: trig?.description || "Unknown Trigger",
+          severity: trig?.priority ?? 0,
+        };
       }
-      
-    } catch (e) {
-      console.error("❌ Failed to load history:", e);
-      message.error("Failed to load history");
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
+    });
 
+    setHistoryData(historyPoints);
+    message.success(`Loaded history for type ${targetHistory}`);
+    
+  } catch (e) {
+    console.error("❌ Failed to load history:", e);
+    message.error("Failed to load history");
+  } finally {
+    setHistoryLoading(false);
+  }
+};
   const filterHistory = () => {
     if (!historyDateRange.startDate) return historyData;
 
@@ -715,41 +694,39 @@ export default function SysReportPage() {
               <HistoryLineChart data={filterHistory()} />
             </div>
 
-            <Table
-              size="small"
-              pagination={{ pageSize: 10 }}
-              loading={historyLoading}
-              columns={[
-                {
-                  title: "Time",
-                  dataIndex: "clock",
-                  render: (v) => new Date(v * 1000).toLocaleString(),
-                },
-                {
-                  title: "Value",
-                  dataIndex: "value",
-                  render: (v) => Number(v).toFixed(2),
-                },
-                {
-                  title: "Status",
-                  render: (_, r: any) => 
-                    r.isTrigger ? (
-                      <span style={{ color: severityColor(r.severity), fontWeight: "bold" }}>
-                        🔔 {r.triggerName}
-                      </span>
-                    ) : null,
-                },
-              ]}
-              dataSource={filterHistory().map((r: any, idx: number) => ({
-                key: `${r.clock}-${idx}`,
-                clock: r.clock,
-                value: r.value,
-                isTrigger: r.isTrigger,
-                triggerName: r.triggerName,
-                severity: r.severity,
-              }))}
-            />
-          </Space>
+<Table
+  size="small"
+  pagination={{ pageSize: 10 }}
+  loading={historyLoading}
+  columns={[
+    {
+      title: "Time",
+      dataIndex: "clock",
+      render: (v) => new Date(v * 1000).toLocaleString(),
+    },
+    {
+      title: "Value",
+      dataIndex: "value",
+      render: (v) => {
+        // If it's a number, show 2 decimals. If it's a string, just show the string.
+        return typeof v === "number" ? v.toFixed(2) : v;
+      },
+    },
+    // {
+    //   title: "Status",
+    //   render: (_, r: any) => 
+    //     r.isTrigger ? (
+    //       <span style={{ color: severityColor(r.severity), fontWeight: "bold" }}>
+    //         🔔 {r.triggerName}
+    //       </span>
+    //     ) : null,
+    // },
+  ]}
+  dataSource={filterHistory().map((r: any, idx: number) => ({
+    key: `${r.clock}-${idx}`,
+    ...r
+  }))}
+/>          </Space>
         </Modal>
       </Space>
     </Card>
