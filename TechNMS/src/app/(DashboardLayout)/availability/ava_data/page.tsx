@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Table, Button, Modal } from "antd";
+import { Table, Button, Modal, Card } from "antd";
 import branches from "../data/data";
 import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-// ✅ IMPORT JSON DATA (NO CHANGE)
-// import tunnelJson from "/home/ec2-user/sdwan_tunnels.json";
 
 /* ===================== TYPES ===================== */
 
@@ -57,23 +54,40 @@ function resolveIspName(text: string) {
   return result;
 }
 
+function getBgForTunnel(tunnel: any) {
+  if (!tunnel) return "#ffd6d6";
+  if (tunnel.state === "down") return "#ffd6d6";
+  if (tunnel.state === "up") return "#d7ffd7";
+  return "#ffe5b4";
+}
+
+const sortTunnels = (list: any[]) =>
+  [...list].sort((a, b) => {
+    if (a.state === "down" && b.state !== "down") return -1;
+    if (a.state !== "down" && b.state === "down") return 1;
+    return 0;
+  });
+
 /* ===================== JSON → TABLE TRANSFORM ===================== */
 
 function transformJsonToRows(json: any): IpRow[] {
-  const devices = json?.devices ?? {};
+  const devices = json?.sites ?? {};
   const rows: IpRow[] = [];
 
-  Object.entries(devices).forEach(([systemIp, tunnels]) => {
-    if (!Array.isArray(tunnels) || tunnels.length === 0) return;
+  Object.entries(devices).forEach(([systemIp, site]: any) => {
+    const hostname = site?.hostname ?? "Unknown";
+    const tunnels = Array.isArray(site?.tunnels) ? site.tunnels : [];
 
-    const hostname = tunnels[0].hostname ?? "Unknown";
+    let rowState: "up" | "down" | "partial" = "down";
 
-    const upCount = tunnels.filter((t: any) => t.state === "up").length;
-    const downCount = tunnels.filter((t: any) => t.state === "down").length;
+    if (tunnels.length > 0) {
+      const upCount = tunnels.filter((t: any) => t.state === "up").length;
+      const downCount = tunnels.filter((t: any) => t.state === "down").length;
 
-    let rowState: "up" | "down" | "partial" = "partial";
-    if (upCount === tunnels.length) rowState = "up";
-    else if (downCount === tunnels.length) rowState = "down";
+      if (upCount === tunnels.length) rowState = "up";
+      else if (downCount === tunnels.length) rowState = "down";
+      else rowState = "partial";
+    }
 
     rows.push({
       hostname,
@@ -84,7 +98,6 @@ function transformJsonToRows(json: any): IpRow[] {
     });
   });
 
-  // down → partial → up
   const order = { down: 0, partial: 1, up: 2 };
   rows.sort((a, b) => order[a.rowState] - order[b.rowState]);
 
@@ -105,12 +118,9 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   async function load() {
     setLoading(true);
     try {
-      // ✅ CORRECT PATH (SERVER READS FILE)
       const res = await fetch("/api/sdwan/tunnels");
       const json = await res.json();
-
       const data = transformJsonToRows(json);
-      // sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
       setRows(data);
     } catch (e) {
       console.error("JSON LOAD ERROR:", e);
@@ -128,6 +138,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     setShowPreview(true);
   }
 
+  // ==================== 🚫 PDF LOGIC (UNCHANGED) ====================
   function downloadPdf() {
     const doc = new jsPDF();
     doc.setFontSize(14);
@@ -147,27 +158,17 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     doc.save("sdwan_report.pdf");
   }
 
-  /* ===================== TABLE ===================== */
-
-  const columns: any = [
+  /* ===================== BASE COLUMNS (USED FOR TABLE 1) ===================== */
+  const baseColumns: any = [
     {
       title: "Branch",
       render: (_: any, row: IpRow) => {
-        let bg = "#ddd";
-        let color = "#000";
-
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-        if (row.rowState === "partial") {
-          bg = "#ffe5b4";
-          color = "orange";
-        }
+        const map: any = {
+          up: ["#d7ffd7", "green"],
+          down: ["#ffd6d6", "red"],
+          partial: ["#ffe5b4", "orange"],
+        };
+        const [bg, color] = map[row.rowState];
 
         return (
           <span
@@ -189,40 +190,42 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     {
       title: "Tunnels (Name + Uptime)",
       render: (_: any, row: IpRow) => {
-        const sortedTunnels = [...row.tunnels].sort(
-          (a, b) => (a.state === "down" ? -1 : 1)
-        );
+        const sortedTunnels =
+          row.tunnels.length > 0 ? sortTunnels(row.tunnels) : [];
 
-        const selected = sortedTunnels[0];
-        const isDown = selected?.state === "down";
+        const selectedTunnel = sortedTunnels[0];
+        const isDown =
+          row.tunnels.length === 0 || selectedTunnel?.state === "down";
 
         return (
           <select
-            defaultValue={selected?.tunnelName}
             style={{
               padding: 6,
               width: "100%",
               background: isDown ? "#ffd6d6" : "#d7ffd7",
-              color: isDown ? "#000" : "#0f5132",
               fontWeight: 700,
               borderRadius: 4,
-              border: "1px solid #ccc",
             }}
           >
-            {sortedTunnels.map((t: any, i: number) => (
-              <option
-                key={i}
-                value={t.tunnelName}
-                style={{
-                  backgroundColor:
-                    t.state === "down" ? "#ffd6d6" : "#d7ffd7",
-                  color: t.state === "down" ? "#000" : "#0f5132",
-                  fontWeight: t.state === "down" ? 700 : 600,
-                }}
-              >
-                {resolveIspName(t.tunnelName)} — {t.uptime}
+            {row.tunnels.length === 0 ? (
+              <option style={{ backgroundColor: "#ffd6d6", fontWeight: 700 }}>
+                NA
               </option>
-            ))}
+            ) : (
+              sortedTunnels.map((t: any, i: number) => (
+                <option
+                  key={i}
+                  value={t.tunnelName}
+                  style={{
+                    backgroundColor:
+                      t.state === "down" ? "#ffd6d6" : "#d7ffd7",
+                    fontWeight: t.state === "down" ? 700 : 500,
+                  }}
+                >
+                  {resolveIspName(t.tunnelName)} — {t.uptime}
+                </option>
+              ))
+            )}
           </select>
         );
       },
@@ -230,21 +233,13 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     {
       title: "State",
       render: (_: any, row: IpRow) => {
-        let bg = "#ccc";
-        let color = "black";
+        const map: any = {
+          up: ["#d7ffd7", "green"],
+          down: ["#ffd6d6", "red"],
+          partial: ["#ffe5b4", "orange"],
+        };
 
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-        if (row.rowState === "partial") {
-          bg = "#ffe5b4";
-          color = "orange";
-        }
+        const [bg, color] = map[row.rowState];
 
         return (
           <span
@@ -263,6 +258,154 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     },
   ];
 
+  /* ===================== PRIMARY COLUMN (ONLY FOR TABLE 2) ===================== */
+  const primaryColumn: any = {
+    title: "Primary",
+    render: (_: any, row: IpRow) => {
+      if (row.tunnels.length === 0) {
+        return (
+          <select
+            style={{
+              width: "100%",
+              padding: 6,
+              background: "#ffd6d6",
+              fontWeight: 700,
+            }}
+          >
+            <option>NA</option>
+          </select>
+        );
+      }
+
+      const colorCounts: Record<string, number> = {};
+      row.tunnels.forEach((t: any) => {
+        colorCounts[t.localColor] =
+          (colorCounts[t.localColor] || 0) + 1;
+      });
+
+      const primaryColor = Object.entries(colorCounts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+
+      const primaryList = sortTunnels(
+        row.tunnels.filter((t: any) => t.localColor === primaryColor)
+      );
+
+      const selected = primaryList[0];
+
+      return (
+        <select
+          style={{
+            width: "100%",
+            padding: 6,
+            background: getBgForTunnel(selected),
+            fontWeight: 700,
+          }}
+        >
+          {primaryList.map((t: any, i: number) => (
+            <option key={i} style={{ background: getBgForTunnel(t) }}>
+              {resolveIspName(t.tunnelName)} — {t.uptime}
+            </option>
+          ))}
+        </select>
+      );
+    },
+  };
+
+  /* ===================== SECONDARY COLUMN (ONLY FOR TABLE 2) ===================== */
+  const secondaryColumn: any = {
+    title: "Secondary",
+    render: (_: any, row: IpRow) => {
+      if (row.tunnels.length === 0) {
+        return (
+          <select
+            style={{
+              width: "100%",
+              padding: 6,
+              background: "#ffd6d6",
+              fontWeight: 700,
+            }}
+          >
+            <option>NA</option>
+          </select>
+        );
+      }
+
+      const colorCounts: Record<string, number> = {};
+      row.tunnels.forEach((t: any) => {
+        colorCounts[t.localColor] =
+          (colorCounts[t.localColor] || 0) + 1;
+      });
+
+      const primaryColor = Object.entries(colorCounts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+
+      const secondaryList = sortTunnels(
+        row.tunnels.filter((t: any) => t.localColor !== primaryColor)
+      );
+
+      if (secondaryList.length === 0) {
+        return (
+          <select
+            style={{
+              width: "100%",
+              padding: 6,
+              background: "#ffffff",
+              fontWeight: 700,
+            }}
+          >
+            <option></option>
+          </select>
+        );
+      }
+
+      const selected = secondaryList[0];
+
+      return (
+        <select
+          style={{
+            width: "100%",
+            padding: 6,
+            background: getBgForTunnel(selected),
+            fontWeight: 700,
+          }}
+        >
+          {secondaryList.map((t: any, i: number) => (
+            <option key={i} style={{ background: getBgForTunnel(t) }}>
+              {resolveIspName(t.tunnelName)} — {t.uptime}
+            </option>
+          ))}
+        </select>
+      );
+    },
+  };
+
+  /* ============ SPLIT INTO TWO TABLES ============ */
+  const FIXED_FIRST_TABLE_IPS = [
+    "192.168.222.1",
+    "192.168.222.2",
+    "192.168.222.3",
+    "192.168.222.4",
+  ];
+
+  const table1Rows = rows.filter((r) =>
+    FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
+  );
+
+  const table2Rows = rows.filter(
+    (r) => !FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
+  );
+
+  // 👉 TABLE 1: NO PRIMARY / SECONDARY
+  const table1Columns = baseColumns;
+
+  // 👉 TABLE 2: WITH PRIMARY / SECONDARY
+  const table2Columns = [
+    ...baseColumns.slice(0, 4), // Branch, Hostname, IP, Tunnels
+    primaryColumn,
+    secondaryColumn,
+    baseColumns[4], // State column
+  ];
+
   return (
     <div>
       {mode === "page" && (
@@ -276,15 +419,31 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         </div>
       )}
 
-      <Table
-        loading={loading}
-        columns={columns}
-        dataSource={rows}
-        bordered
-        pagination={false}
-        rowKey={(r) => r.systemIp}
-        size={mode === "widget" ? "small" : "middle"}
-      />
+      <Card title="SD-WAN Tunnels — Primary 4 IPs">
+        <Table
+          loading={loading}
+          columns={table1Columns}
+          dataSource={table1Rows}
+          bordered
+          pagination={false}
+          rowKey={(r) => r.systemIp}
+          size={mode === "widget" ? "small" : "middle"}
+        />
+      </Card>
+
+      {table2Rows.length > 0 && (
+        <Card title="SD-WAN Tunnels — Other IPs" style={{ marginBottom: 20 }}>
+          <Table
+            loading={loading}
+            columns={table2Columns}
+            dataSource={table2Rows}
+            bordered
+            pagination={false}
+            rowKey={(r) => r.systemIp}
+            size={mode === "widget" ? "small" : "middle"}
+          />
+        </Card>
+      )}
 
       {mode === "page" && (
         <Modal
