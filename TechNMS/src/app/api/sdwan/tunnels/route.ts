@@ -7,8 +7,8 @@ import branches from "../../../(DashboardLayout)/availability/data/data";
 
 /* ===================== CONFIG ===================== */
 
-const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
-// const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_sites.json";
 
 // Alert state persistence
 const ALERT_STATE_FILE = path.join(process.cwd(), "alert_state.json");
@@ -83,7 +83,7 @@ export async function GET() {
     const raw = fs.readFileSync(DATA_FILE, "utf-8");
     const json = JSON.parse(raw);
 
-    const devices = json.devices || {};
+    const devices = json.sites || {};
     const alertState = loadAlertState();
 
     for (const [systemIp, tunnels] of Object.entries<any[]>(devices)) {

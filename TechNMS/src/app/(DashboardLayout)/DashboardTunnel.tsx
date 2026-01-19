@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Col, Row, Table, notification } from "antd";
+import { Col, Row, Table, notification, Card } from "antd";
 import branches from "../(DashboardLayout)/availability/data/data";
 import { ISP_BRANCHES } from "../(DashboardLayout)/availability/data/data";
 import Certificate from "./widget/cardDashboard/certificate/page";
@@ -42,21 +42,25 @@ function resolveIspName(text: string) {
   return result;
 }
 
-/* ===================== JSON → TABLE ===================== */
+/* ===================== JSON → TABLE (FIXED: KEEP EMPTY TUNNELS) ===================== */
 function transformJsonToRows(json: any): IpRow[] {
-  const devices = json?.devices ?? {};
+  const devices = json?.sites ?? {};
   const rows: IpRow[] = [];
 
-  Object.entries(devices).forEach(([systemIp, tunnels]: any) => {
-    if (!Array.isArray(tunnels) || tunnels.length === 0) return;
+  Object.entries(devices).forEach(([systemIp, site]: any) => {
+    const hostname = site?.hostname ?? "Unknown";
+    const tunnels = Array.isArray(site?.tunnels) ? site.tunnels : [];
 
-    const hostname = tunnels[0]?.hostname ?? "Unknown";
-    const upCount = tunnels.filter((t: any) => t.state === "up").length;
-    const downCount = tunnels.filter((t: any) => t.state === "down").length;
+    let rowState: "up" | "down" | "partial" = "down";
 
-    let rowState: "up" | "down" | "partial" = "partial";
-    if (upCount === tunnels.length) rowState = "up";
-    else if (downCount === tunnels.length) rowState = "down";
+    if (tunnels.length > 0) {
+      const upCount = tunnels.filter((t: any) => t.state === "up").length;
+      const downCount = tunnels.filter((t: any) => t.state === "down").length;
+
+      if (upCount === tunnels.length) rowState = "up";
+      else if (downCount === tunnels.length) rowState = "down";
+      else rowState = "partial";
+    }
 
     rows.push({
       hostname,
@@ -73,8 +77,20 @@ function transformJsonToRows(json: any): IpRow[] {
   return rows;
 }
 
+/* ===================== BACKGROUND COLOR ===================== */
+function getBgForTunnel(tunnel: any) {
+  if (!tunnel) return "#ffd6d6"; // empty → treat as DOWN
+  if (tunnel.state === "down") return "#ffd6d6";
+  if (tunnel.state === "up") return "#d7ffd7";
+  return "#ffe5b4";
+}
+
 /* ===================== COMPONENT ===================== */
-export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "widget" }) {
+export default function DashboardTunnel({
+  mode = "page",
+}: {
+  mode?: "page" | "widget";
+}) {
   const [rows, setRows] = useState<IpRow[]>([]);
   const [loading, setLoading] = useState(true);
   const fetchingRef = useRef(false);
@@ -86,7 +102,6 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
   const queueRef = useRef<any[]>([]);
   const isProcessingRef = useRef(false);
 
-  /* 🔊 FIXED AUDIO PATH (PUBLIC URL) */
   const playSound = () => {
     const audio = new Audio("/images/sound/soundalert.mp3");
     audio.volume = 1;
@@ -167,13 +182,17 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
         if (branchNotifyRef.current[key]) return;
 
         const downTunnels = row.tunnels.filter((t) => t.state === "down");
-        if (downTunnels.length > 0) {
+
+        if (row.tunnels.length === 0 || downTunnels.length > 0) {
           branchNotifyRef.current[key] = true;
 
           queueRef.current.push({
             branch: row.branchName,
             systemIp: row.systemIp,
-            downTunnels: downTunnels.map((t) => resolveIspName(t.tunnelName)),
+            downTunnels:
+              row.tunnels.length === 0
+                ? ["NA"]
+                : downTunnels.map((t) => resolveIspName(t.tunnelName)),
           });
 
           processQueue();
@@ -194,8 +213,8 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     return () => clearInterval(interval);
   }, []);
 
-  /* ===================== TABLE (UNCHANGED) ===================== */
-  const columns: any = [
+  /* ===================== BASE COLUMNS ===================== */
+  const baseColumns: any = [
     {
       title: "Branch",
       render: (_: any, row: IpRow) => {
@@ -206,7 +225,15 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
         };
         const [bg, color] = map[row.rowState];
         return (
-          <span style={{ padding: "4px 10px", borderRadius: 6, background: bg, color, fontWeight: 700 }}>
+          <span
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: bg,
+              color,
+              fontWeight: 700,
+            }}
+          >
             {getBranchNameByHostname(row.hostname)}
           </span>
         );
@@ -217,20 +244,21 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     {
       title: "Tunnels (Name + Uptime)",
       render: (_: any, row: IpRow) => {
-        // 1️⃣ Sort tunnels: DOWN first, then UP
-        const sortedTunnels = [...row.tunnels].sort((a: any, b: any) => {
-          if (a.state === "down" && b.state !== "down") return -1;
-          if (a.state !== "down" && b.state === "down") return 1;
-          return 0;
-        });
+        const sortedTunnels =
+          row.tunnels.length > 0
+            ? [...row.tunnels].sort((a: any, b: any) => {
+              if (a.state === "down" && b.state !== "down") return -1;
+              if (a.state !== "down" && b.state === "down") return 1;
+              return 0;
+            })
+            : [];
 
-        // 2️⃣ First tunnel decides what is shown in input
         const selectedTunnel = sortedTunnels[0];
-        const isDown = selectedTunnel?.state === "down";
+        const isDown =
+          row.tunnels.length === 0 || selectedTunnel?.state === "down";
 
         return (
           <select
-            defaultValue={selectedTunnel?.tunnelName}
             style={{
               padding: 6,
               width: "100%",
@@ -239,18 +267,25 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
               borderRadius: 4,
             }}
           >
-            {sortedTunnels.map((t: any, i: number) => (
-              <option
-                key={i}
-                value={t.tunnelName}
-                style={{
-                  backgroundColor: t.state === "down" ? "#ffd6d6" : "#d7ffd7",
-                  fontWeight: t.state === "down" ? 700 : 500,
-                }}
-              >
-                {resolveIspName(t.tunnelName)} — {t.uptime}
+            {row.tunnels.length === 0 ? (
+              <option style={{ backgroundColor: "#ffd6d6", fontWeight: 700 }}>
+                NA
               </option>
-            ))}
+            ) : (
+              sortedTunnels.map((t: any, i: number) => (
+                <option
+                  key={i}
+                  value={t.tunnelName}
+                  style={{
+                    backgroundColor:
+                      t.state === "down" ? "#ffd6d6" : "#d7ffd7",
+                    fontWeight: t.state === "down" ? 700 : 500,
+                  }}
+                >
+                  {resolveIspName(t.tunnelName)} — {t.uptime}
+                </option>
+              ))
+            )}
           </select>
         );
       },
@@ -265,7 +300,15 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
         };
         const [bg, color] = map[row.rowState];
         return (
-          <span style={{ padding: "2px 10px", borderRadius: 6, background: bg, color, fontWeight: 700 }}>
+          <span
+            style={{
+              padding: "2px 10px",
+              borderRadius: 6,
+              background: bg,
+              color,
+              fontWeight: 700,
+            }}
+          >
             {row.rowState}
           </span>
         );
@@ -273,44 +316,223 @@ export default function DashboardTunnel({ mode = "page" }: { mode?: "page" | "wi
     },
   ];
 
+  const FIXED_FIRST_TABLE_IPS = [
+    "192.168.222.1",
+    "192.168.222.2",
+    "192.168.222.3",
+    "192.168.222.4",
+  ];
+
+  const table1Rows = rows.filter((r) =>
+    FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
+  );
+
+  const table2Rows = rows.filter(
+    (r) => !FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
+  );
+
+  const sortTunnels = (list: any[]) =>
+    [...list].sort((a, b) => {
+      if (a.state === "down" && b.state !== "down") return -1;
+      if (a.state !== "down" && b.state === "down") return 1;
+      return 0;
+    });
+
+  const table2Columns: any = [
+    baseColumns[0],
+    baseColumns[1],
+    baseColumns[2],
+    baseColumns[3],
+
+    {
+      title: "Primary",
+      render: (_: any, row: IpRow) => {
+        if (row.tunnels.length === 0) {
+          return (
+            <select
+              style={{
+                width: "100%",
+                padding: 6,
+                background: "#ffd6d6",
+                fontWeight: 700,
+              }}
+            >
+              <option>NA</option>
+            </select>
+          );
+        }
+
+        const colorCounts: Record<string, number> = {};
+
+        row.tunnels.forEach((t: any) => {
+          colorCounts[t.localColor] =
+            (colorCounts[t.localColor] || 0) + 1;
+        });
+
+        const primaryColor = Object.entries(colorCounts)
+          .sort((a, b) => b[1] - a[1])[0][0];
+
+        const primaryList = sortTunnels(
+          row.tunnels.filter((t: any) => t.localColor === primaryColor)
+        );
+
+        const selected = primaryList[0];
+
+        return (
+          <select
+            style={{
+              width: "100%",
+              padding: 6,
+              background: getBgForTunnel(selected),
+              fontWeight: 700,
+            }}
+          >
+            {primaryList.map((t: any, i: number) => (
+              <option key={i} style={{ background: getBgForTunnel(t) }}>
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    },
+
+    {
+      title: "Secondary",
+      render: (_: any, row: IpRow) => {
+        if (row.tunnels.length === 0) {
+          return (
+            <select
+              style={{
+                width: "100%",
+                padding: 6,
+                background: "#ffd6d6", // ✅ WHITE BOX
+                fontWeight: 700,
+              }}
+            >
+              <option></option>
+            </select>
+          );
+        }
+
+        const colorCounts: Record<string, number> = {};
+
+        row.tunnels.forEach((t: any) => {
+          colorCounts[t.localColor] =
+            (colorCounts[t.localColor] || 0) + 1;
+        });
+
+        const primaryColor = Object.entries(colorCounts)
+          .sort((a, b) => b[1] - a[1])[0][0];
+
+        const secondaryList = sortTunnels(
+          row.tunnels.filter((t: any) => t.localColor !== primaryColor)
+        );
+
+        if (secondaryList.length === 0) {
+          return (
+            <select
+              style={{
+                width: "100%",
+                padding: 6,
+                background: "#ffffff", // ✅ WHITE BOX
+                fontWeight: 700,
+              }}
+            >
+              <option></option>
+            </select>
+          );
+        }
+
+        const selected = secondaryList[0];
+
+        return (
+          <select
+            style={{
+              width: "100%",
+              padding: 6,
+              background: getBgForTunnel(selected),
+              fontWeight: 700,
+            }}
+          >
+            {secondaryList.map((t: any, i: number) => (
+              <option key={i} style={{ background: getBgForTunnel(t) }}>
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    },
+
+    baseColumns[4],
+  ];
+
   return (
     <>
       {contextHolder}
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontWeight: 600 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+          fontWeight: 600,
+        }}
+      >
         <h2>SD-WAN Tunnels Status</h2>
-        <h5>Updated on : {time.hh}:{time.mm}:{time.ss}</h5>
+        <h5>
+          Updated on : {time.hh}:{time.mm}:{time.ss}
+        </h5>
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <Row
-          gutter={16}
-          align="stretch"
-          style={{ display: "flex" }}
-        >
+        <Row gutter={[16, 16]} align="stretch" style={{ width: "100%" }}>
           <Col xs={24} md={8} style={{ display: "flex" }}>
-            <Vmanage  />
+            <div style={{ width: "100%" }}>
+              <Vmanage />
+            </div>
           </Col>
 
           <Col xs={24} md={8} style={{ display: "flex" }}>
-            <Certificate  />
+            <div style={{ width: "100%" }}>
+              <Certificate />
+            </div>
           </Col>
 
           <Col xs={24} md={8} style={{ display: "flex" }}>
-            <ProblemsSummaryTable  />
+            <div style={{ width: "100%" }}>
+              <ProblemsSummaryTable />
+            </div>
           </Col>
         </Row>
       </div>
 
-      <Table
-        loading={loading}
-        columns={columns}
-        dataSource={rows}
-        bordered
-        pagination={false}
-        rowKey={(r) => r.systemIp}
-        size={mode === "widget" ? "small" : "middle"}
-      />
+
+      {table2Rows.length > 0 && (
+        <Card title="SD-WAN Tunnels — Other IPs">
+          <Table
+            loading={loading}
+            columns={table2Columns}
+            dataSource={table2Rows}
+            bordered
+            pagination={false}
+            rowKey={(r) => r.systemIp}
+            size={mode === "widget" ? "small" : "middle"}
+          />
+        </Card>
+      )}
+      <Card title="SD-WAN Tunnels — Primary 4 IPs" style={{ marginBottom: 20 }}>
+        <Table
+          loading={loading}
+          columns={baseColumns}
+          dataSource={table1Rows}
+          bordered
+          pagination={false}
+          rowKey={(r) => r.systemIp}
+          size={mode === "widget" ? "small" : "middle"}
+        />
+      </Card>
     </>
   );
 }

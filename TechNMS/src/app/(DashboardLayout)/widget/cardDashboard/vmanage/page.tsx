@@ -11,6 +11,14 @@ const REFRESH_INTERVAL = 2 * 60 * 1000;
 const BAR_ANIM_DELAY = 250;
 const COUNT_ANIM_DURATION = 800;
 
+/* ======= HUB IPs (TABLE-1) ======= */
+const TABLE1_IPS = new Set([
+  "192.168.222.1",
+  "192.168.222.2",
+  "192.168.222.3",
+  "192.168.222.4",
+]);
+
 /* =====================
    COUNT-UP COMPONENT
 ===================== */
@@ -47,13 +55,16 @@ const Vmanage = () => {
   const [loading, setLoading] = useState(false);
   const [animatedIndex, setAnimatedIndex] = useState(-1);
 
-  const [total, setTotal] = useState(0);
+  const [totalSites, setTotalSites] = useState(0);
+  const [table1Count, setTable1Count] = useState(0);
+  const [table2Count, setTable2Count] = useState(0);
+
   const [up, setUp] = useState(0);
   const [down, setDown] = useState(0);
   const [partial, setPartial] = useState(0);
 
   /* =====================
-     LOAD FUNCTION (UNCHANGED LOGIC)
+     LOAD FUNCTION (FIXED FOR EMPTY TUNNELS)
   ===================== */
   async function load() {
     if (fetchingRef.current) return;
@@ -64,36 +75,70 @@ const Vmanage = () => {
     try {
       const res = await fetch("/api/sdwan/tunnels");
       const json = await res.json();
+      console.log("Vmanage json:", json);
 
-      const devices = json?.devices ?? {};
-      const systemIps = Object.keys(devices);
+      const sites = json?.sites ?? {};
+      const systemIps = Object.keys(sites);
 
       let upCount = 0;
       let downCount = 0;
       let partialCount = 0;
 
-      systemIps.forEach((systemIp) => {
-        const tunnels = devices[systemIp];
-        if (!Array.isArray(tunnels) || tunnels.length === 0) return;
+      let t1 = 0;
+      let t2 = 0;
 
-        const upTunnels = tunnels.filter((t: any) => t.state === "up").length;
-        const downTunnels = tunnels.filter((t: any) => t.state === "down").length;
+      systemIps.forEach((systemIp) => {
+        const site = sites[systemIp];
+        const tunnels = Array.isArray(site?.tunnels)
+          ? site.tunnels
+          : [];
+
+        // Count table membership FIRST (even if tunnels empty)
+        if (TABLE1_IPS.has(systemIp)) {
+          t1++;
+        } else {
+          t2++;
+        }
+
+        // 🔥 NEW LOGIC: EMPTY TUNNELS = DOWN
+        if (tunnels.length === 0) {
+          downCount++;
+          return;
+        }
+
+        const upTunnels = tunnels.filter(
+          (t: any) => t.state === "up"
+        ).length;
+
+        const downTunnels = tunnels.filter(
+          (t: any) => t.state === "down"
+        ).length;
 
         if (upTunnels === tunnels.length) upCount++;
         else if (downTunnels === tunnels.length) downCount++;
         else partialCount++;
       });
 
-      const totalCount = upCount + downCount + partialCount;
+      const realTotal = t1 + t2; // 182
 
-      setTotal(totalCount);
+      setTotalSites(realTotal);
+      setTable1Count(t1);
+      setTable2Count(t2);
+
       setDown(downCount);
       setPartial(partialCount);
       setUp(upCount);
 
       sessionStorage.setItem(
         CACHE_KEY,
-        JSON.stringify({ totalCount, upCount, downCount, partialCount })
+        JSON.stringify({
+          totalSites: realTotal,
+          table1Count: t1,
+          table2Count: t2,
+          upCount,
+          downCount,
+          partialCount,
+        })
       );
 
       // stagger animation
@@ -119,21 +164,16 @@ const Vmanage = () => {
     };
   }, []);
 
-  /* =====================
-     HELPERS
-  ===================== */
+  // Percentages based on TOTAL 182 (both tables)
   const getPct = (value: number) =>
-    total ? Math.round((value / total) * 100) : 0;
+    totalSites ? Math.round((value / totalSites) * 100) : 0;
 
   const rows = [
-      { key: "up", label: "UP", value: up, color: "#52c41a" },
-      { key: "partial", label: "PARTIAL", value: partial, color: "#faad14" },
-      { key: "down", label: "DOWN", value: down, color: "#ff4d4f" },
+    { key: "up", label: "UP", value: up, color: "#52c41a" },
+    { key: "partial", label: "PARTIAL", value: partial, color: "#faad14" },
+    { key: "down", label: "DOWN", value: down, color: "#ff4d4f" },
   ];
 
-  /* =====================
-     TABLE COLUMNS
-  ===================== */
   const columns = [
     {
       title: "Status",
@@ -181,9 +221,6 @@ const Vmanage = () => {
     },
   ];
 
-  /* =====================
-     UI
-  ===================== */
   return (
     <>
       <style>{`
@@ -196,14 +233,17 @@ const Vmanage = () => {
 
       <Card
         title="WAN Edge"
-        style={{ width: 300, borderRadius: 16 }}
+        style={{ width: 350, borderRadius: 16 }}
         extra={
-          <span style={{ fontWeight: 600 }}>
-            <AnimatedNumber value={total} />{" "}
-            <span style={{ fontSize: 12, color: "#888" }}>
-              Total Devices
-            </span>
-          </span>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontWeight: 700 }}>
+              <AnimatedNumber value={totalSites} />{" "}
+              <span style={{ fontSize: 12, color: "#888" }}>
+                Total Sites
+              </span>
+            </div>
+
+          </div>
         }
       >
         {loading ? (
@@ -214,7 +254,6 @@ const Vmanage = () => {
             dataSource={rows}
             pagination={false}
             size="small"
-            // style={{width:"75%"}}
           />
         )}
       </Card>
