@@ -158,11 +158,11 @@ export default function Dashboard() {
       );
 
       // existing API
-      await axios.post("/api/dashboard_action_log/data_save", {
-        layout: normalized,
-        dynamicWidgets,
-        removedStatic: removedStaticIds,
-      });
+      // await axios.post("/api/dashboard_action_log/data_save", {
+      //   layout: normalized,
+      //   dynamicWidgets,
+      //   removedStatic: removedStaticIds,
+      // });
 
       // local
       safeStorage.set(STORAGE_KEY, JSON.stringify(normalized));
@@ -186,19 +186,26 @@ export default function Dashboard() {
       const storedRemovedStatic =
         JSON.parse(safeStorage.get(REMOVED_STATIC_KEY) || "[]") || [];
 
-      const res = await axios.get("/api/dashboard_action_log/data_save");
+      // ⛔ COMMENTED OUT: data_save API CALL (NOT REMOVED)
+      // const res = await axios.get("/api/dashboard_action_log/data_save");
 
-      const {
-        layout = [],
-        dynamicWidgets = [],
-        removedStatic = [],
-      } = res.data || {};
+      // const {
+      //   layout = [],
+      //   dynamicWidgets = [],
+      //   removedStatic = [],
+      // } = res.data || {};
 
-      const finalLayout = layout.length ? layout : storedLayout;
-      const finalDynamicWidgets =
-        dynamicWidgets.length ? dynamicWidgets : storedDynamicWidgets;
-      const finalRemovedStatic =
-        removedStatic.length ? removedStatic : storedRemovedStatic;
+      // ⛔ COMMENTED OUT: server fallback logic
+      // const finalLayout = layout.length ? layout : storedLayout;
+      // const finalDynamicWidgets =
+      //   dynamicWidgets.length ? dynamicWidgets : storedDynamicWidgets;
+      // const finalRemovedStatic =
+      //   removedStatic.length ? removedStatic : storedRemovedStatic;
+
+      // ✅ NEW: DIRECTLY USE LOCAL STORAGE (NO SERVER INVOLVEMENT)
+      const finalLayout = storedLayout;
+      const finalDynamicWidgets = storedDynamicWidgets;
+      const finalRemovedStatic = storedRemovedStatic;
 
       safeStorage.set(STORAGE_KEY, JSON.stringify(finalLayout));
       safeStorage.set(
@@ -215,15 +222,16 @@ export default function Dashboard() {
       setRemovedStaticIds(finalRemovedStatic);
 
       // notify sockets
-      socketRef.current?.emit("dashboard:save", {
-        layout: finalLayout,
-        dynamicWidgets: finalDynamicWidgets,
-        removedStatic: finalRemovedStatic,
-      });
+      // socketRef.current?.emit("dashboard:save", {
+      //   layout: finalLayout,
+      //   dynamicWidgets: finalDynamicWidgets,
+      //   removedStatic: finalRemovedStatic,
+      // });
     } catch (e) {
       console.warn("Load failed:", e);
     }
   };
+
 
   const removeWidgetFromLocalStorage = (widgetId: string) => {
     const dynRaw = safeStorage.get(DYNAMIC_WIDGETS_KEY);
@@ -272,16 +280,16 @@ export default function Dashboard() {
   }, [removedStaticIds]);
 
   /* ================= FETCH HOST GROUPS ================= */
-  useEffect(() => {
-    if (!user_token) return;
+  // useEffect(() => {
+  //   if (!user_token) return;
 
-    axios
-      .post("/api/api_host/api_host_group", { auth: user_token })
-      .then((res) =>
-        setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
-      )
-      .catch(() => { });
-  }, [user_token]);
+  //   axios
+  //     .post("/api/api_host/api_host_group", { auth: user_token })
+  //     .then((res) =>
+  //       setGroupID(res.data.result.map((g: any) => Number(g.groupid)))
+  //     )
+  //     .catch(() => { });
+  // }, [user_token]);
 
   /* ================= GRID INIT ================= */
   useEffect(() => {

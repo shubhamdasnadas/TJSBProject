@@ -33,25 +33,24 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
     "Certificate validity",
   ],
 };
+
 /* ===================== COLUMN HEADER MAP ===================== */
 
 const COLUMN_HEADER_MAP: Record<string, string> = {
-  // HOST1
   'Interface ["GigabitEthernet0/0/0"]: Operational status': "Primary Link",
   'Interface ["GigabitEthernet0/0/1"]: Operational status': "Secondary Link",
 
-  // HOST2
   'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Bits Received",
   'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Bits Sent",
   'Interface ["GigabitEthernet0/0/0"]: Speed': "Speed",
 };
+
 /* HOST2 TRAFFIC COLUMNS */
 const HOST2_TRAFFIC_ITEMS = [
   'Interface ["GigabitEthernet0/0/0"]: Bits sent',
   'Interface ["GigabitEthernet0/0/0"]: Bits received',
   'Interface ["GigabitEthernet0/0/0"]: Speed',
 ];
-
 
 const TopHost: React.FC<TopHostProps> = ({
   mode = "widget",
@@ -74,10 +73,20 @@ const TopHost: React.FC<TopHostProps> = ({
     mode === "preview" ? true : false
   );
 
-  /* ===================== INITIAL FETCH ===================== */
+  // 🔹 STRICT MODE SAFE SINGLE-CALL GUARD
+  const fetchOnceRef = useRef<{
+    started: boolean;
+    finished: boolean;
+  }>({ started: false, finished: false });
+
+  /* ===================== INITIAL FETCH (TRUE SINGLE CALL) ===================== */
 
   useEffect(() => {
     if (mode !== "preview" || !showPreviewData || !topHostName?.length) return;
+
+    if (fetchOnceRef.current.started) return;
+
+    fetchOnceRef.current.started = true;
 
     const fetchDashboardData = async () => {
       try {
@@ -127,13 +136,16 @@ const TopHost: React.FC<TopHostProps> = ({
 
           return updated;
         });
+
+        fetchOnceRef.current.finished = true;
       } catch (err) {
         console.error("Dashboard fetch failed:", err);
+        fetchOnceRef.current.started = false;
       }
     };
 
     fetchDashboardData();
-  }, [mode, showPreviewData, topHostName, user_token, hosts]);
+  }, [user_token]);
 
   useEffect(() => {
     columnsRef.current = columnsConfig;
@@ -234,7 +246,6 @@ const TopHost: React.FC<TopHostProps> = ({
       };
     }
 
-    /* HOST2 TRAFFIC → store value + units */
     if (HOST2_TRAFFIC_ITEMS.includes(c.name!)) {
       hostsMap[c.hostName!][c.name!] = {
         value: api?.lastvalue ?? 0,
@@ -243,7 +254,6 @@ const TopHost: React.FC<TopHostProps> = ({
       return;
     }
 
-    /* CPU / MEMORY */
     if (c.name === "CPU utilization" || c.name === "Memory utilization") {
       hostsMap[c.hostName!][c.name!] = {
         value: api?.lastvalue ?? 0,
@@ -252,7 +262,6 @@ const TopHost: React.FC<TopHostProps> = ({
       return;
     }
 
-    /* DEFAULT */
     hostsMap[c.hostName!][c.name!] = api?.lastvalue ?? 0;
   });
 
@@ -261,8 +270,6 @@ const TopHost: React.FC<TopHostProps> = ({
   const uniqueColumns = columnsConfig.filter(
     (c, i, arr) => arr.findIndex((x) => x.name === c.name) === i
   );
-
-  /* ===================== HOST1 SORTING (UNCHANGED) ===================== */
 
   const COL_A = 'Interface ["GigabitEthernet0/0/0"]: Operational status';
   const COL_B = 'Interface ["GigabitEthernet0/0/1"]: Operational status';
@@ -286,20 +293,17 @@ const TopHost: React.FC<TopHostProps> = ({
     return 0;
   });
 
-  /* ===================== TABLE COLUMNS ===================== */
-
   const dynamicColumns = uniqueColumns.map((c) => ({
     title: COLUMN_HEADER_MAP[c.name!] ?? c.name,
     dataIndex: c.name!,
     render: (cell: any) => {
-      /* HOST2 TRAFFIC: KBPS / MBPS */
       if (cell && typeof cell === "object" && "units" in cell) {
         const unit =
           cell.units === "M"
             ? "Mbps"
             : cell.units === "K"
-              ? "kbps"
-              : "";
+            ? "kbps"
+            : "";
 
         return (
           <span style={{ fontWeight: 600 }}>
@@ -307,7 +311,7 @@ const TopHost: React.FC<TopHostProps> = ({
           </span>
         );
       }
-      // 🔹 HOST2 CPU / MEMORY COLORING
+
       if (
         c.name === "CPU utilization" ||
         c.name === "Memory utilization"
@@ -321,10 +325,10 @@ const TopHost: React.FC<TopHostProps> = ({
           color === "green"
             ? "#00b050"
             : color === "orange"
-              ? "#ffa500"
-              : color === "red"
-                ? "#ff0000"
-                : undefined;
+            ? "#ffa500"
+            : color === "red"
+            ? "#ff0000"
+            : undefined;
 
         return (
           <span
@@ -342,7 +346,6 @@ const TopHost: React.FC<TopHostProps> = ({
         );
       }
 
-      // 🔹 HOST1 OPERATIONAL STATUS (UNCHANGED)
       const num = Number(cell);
       if (num === 0) {
         return (
@@ -373,7 +376,7 @@ const TopHost: React.FC<TopHostProps> = ({
               fontWeight: 600,
             }}
           >
-            down 
+            down
           </span>
         );
       }
@@ -381,8 +384,6 @@ const TopHost: React.FC<TopHostProps> = ({
       return cell ?? "-";
     },
   }));
-
-  /* ===================== UI ===================== */
 
   return (
     <>
@@ -413,7 +414,7 @@ const TopHost: React.FC<TopHostProps> = ({
         existingColumns={columnsConfig}
         onHostChange={(h) => fetchZabbixData("item", [h])}
         onCancel={() => setOpen(false)}
-        onSubmit={() => { }}
+        onSubmit={() => {}}
         selectedHostGroups={selectedGroups}
       />
     </>

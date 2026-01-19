@@ -63,15 +63,15 @@ export default function ProblemsTablePage() {
   /* ===================== LOAD CACHE ===================== */
 
   useEffect(() => {
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
-      try {
-        setData(JSON.parse(cached));
-        firstLoadRef.current = false;
-      } catch {
-        sessionStorage.removeItem(CACHE_KEY);
-      }
-    }
+    // // const cached = sessionStorage.getItem(CACHE_KEY);
+    // if (cached) {
+    //   try {
+    //     // setData(JSON.parse(cached));
+    //     firstLoadRef.current = false;
+    //   } catch {
+    //     // sessionStorage.removeItem(CACHE_KEY);
+    //   }
+    // }
   }, []);
 
   /* ===================== TAG HELPERS ===================== */
@@ -155,7 +155,7 @@ export default function ProblemsTablePage() {
 
       if (mapped.length) {
         setData(mapped);
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
+        // sessionStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
       }
 
       firstLoadRef.current = false;

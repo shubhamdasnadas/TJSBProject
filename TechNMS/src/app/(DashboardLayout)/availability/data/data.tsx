@@ -230,7 +230,7 @@ export const ISP_BRANCHES = [
     "type": "Private5",
   },
   {
-    "name": "Passcom",
+    "name": "Biz-Internet",
     "type": "Biz-Internet",
   },
   {
