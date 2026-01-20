@@ -13,7 +13,7 @@ import {
 import axios from "axios";
 import RangePickerDemo from "../../RangePickerDemo"; // adjust path as needed
 
-// Assume this is exported from ./utils.ts
+// Assume exported from ./utils.ts or define here
 const getAxiosConfig = () => ({
   headers: {
     "Content-Type": "application/json",
@@ -21,7 +21,6 @@ const getAxiosConfig = () => ({
   },
 });
 
-// Downsampling function (can also be in utils.ts)
 const downsampleData = (data: HistoryPoint[], maxPoints: number): HistoryPoint[] => {
   if (data.length <= maxPoints) return [...data];
 
@@ -32,7 +31,6 @@ const downsampleData = (data: HistoryPoint[], maxPoints: number): HistoryPoint[]
     result.push(data[i]);
   }
 
-  // Ensure last point is included
   if (result[result.length - 1]?.clock !== data[data.length - 1]?.clock) {
     result.push(data[data.length - 1]);
   }
@@ -116,7 +114,6 @@ const HistoryModal = ({
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
-      // Load recent data
       const recentRes = await axios.post(
         "/api/zabbix-proxy",
         {
@@ -162,7 +159,6 @@ const HistoryModal = ({
 
       setHistoryLoading(false);
 
-      // Start loading older chunks in background
       const loadOlderChunks = async () => {
         if (loadPhase !== "recent" && loadPhase !== "older") return;
         if (signal.aborted) return;
@@ -238,7 +234,6 @@ const HistoryModal = ({
       };
 
       setTimeout(loadOlderChunks, 2200);
-
     } catch (err: any) {
       if (err.name !== "CanceledError") {
         console.error("Recent history failed:", err);
@@ -312,66 +307,106 @@ const HistoryModal = ({
             width: "100%",
             marginBottom: 16,
             flexWrap: "wrap",
+            alignItems: "flex-start",
           }}
         >
-          <RangePickerDemo
-            itemId={item?.itemid}
-            onRangeChange={(newRange) => {
-              setDateRange(newRange);
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 300 }}>
+            <RangePickerDemo
+              itemId={item?.itemid}
+              onRangeChange={(newRange) => {
+                setDateRange(newRange);
 
-              if (!newRange?.startDate || !newRange?.endDate || !allHistoryData?.length) {
-                setHistoryData([]);
-                setChartData([]);
-                return;
-              }
+                if (!newRange?.startDate || !newRange?.endDate || !allHistoryData?.length) {
+                  setHistoryData([]);
+                  setChartData([]);
+                  return;
+                }
 
-              const startTime = newRange.startTime || "00:00:00";
-              const endTime = newRange.endTime || "23:59:59";
+                const startTime = newRange.startTime || "00:00:00";
+                const endTime = newRange.endTime || "23:59:59";
 
-              const startDateObj = new Date(`${newRange.startDate} ${startTime}`);
-              const endDateObj = new Date(`${newRange.endDate} ${endTime}`);
+                const startDateObj = new Date(`${newRange.startDate} ${startTime}`);
+                const endDateObj = new Date(`${newRange.endDate} ${endTime}`);
 
-              if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
-                message.warning("Invalid date/time format");
-                setHistoryData([]);
-                setChartData([]);
-                return;
-              }
+                if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+                  message.warning("Invalid date/time format");
+                  setHistoryData([]);
+                  setChartData([]);
+                  return;
+                }
 
-              let startSec = Math.floor(startDateObj.getTime() / 1000);
-              const endSec = Math.floor(endDateObj.getTime() / 1000);
+                let startSec = Math.floor(startDateObj.getTime() / 1000);
+                const endSec = Math.floor(endDateObj.getTime() / 1000);
 
-              // Adjust if user selected older than available data
-              if (startSec < oldestLoadedClock && oldestLoadedClock !== Infinity) {
-                message.warning(
-                  `Oldest available data is from ${new Date(
-                    oldestLoadedClock * 1000
-                  ).toLocaleDateString()}. Adjusting range start.`
+                if (startSec < oldestLoadedClock && oldestLoadedClock !== Infinity) {
+                  message.warning(
+                    `Oldest available data is from ${new Date(
+                      oldestLoadedClock * 1000
+                    ).toLocaleDateString()}. Adjusting range start.`
+                  );
+
+                  const adjustedStartDate = new Date(oldestLoadedClock * 1000)
+                    .toISOString()
+                    .split("T")[0];
+
+                  setDateRange({
+                    ...newRange,
+                    startDate: adjustedStartDate,
+                  });
+
+                  const adjustedStartObj = new Date(`${adjustedStartDate} ${startTime}`);
+                  startSec = Math.floor(adjustedStartObj.getTime() / 1000);
+                }
+
+                const filtered = allHistoryData.filter(
+                  (p) => p.clock >= startSec && p.clock <= endSec
                 );
 
-                const adjustedStartDate = new Date(oldestLoadedClock * 1000)
-                  .toISOString()
-                  .split("T")[0];
+                setHistoryData(filtered);
 
-                setDateRange({
-                  ...newRange,
-                  startDate: adjustedStartDate,
-                });
+                const sorted = [...filtered].sort((a, b) => a.clock - b.clock);
+                setChartData(downsampleData(sorted, MAX_CHART_POINTS));
+              }}
+            />
 
-                const adjustedStartObj = new Date(`${adjustedStartDate} ${startTime}`);
-                startSec = Math.floor(adjustedStartObj.getTime() / 1000);
-              }
+            {/* Oldest & Newest values display */}
+            {historyData.length > 0 && (
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  color: "#888",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 16,
+                  marginTop: 4,
+                }}
+              >
+                {(() => {
+                  const oldest = historyData[historyData.length - 1];
+                  const newest = historyData[0];
 
-              const filtered = allHistoryData.filter(
-                (p) => p.clock >= startSec && p.clock <= endSec
-              );
-
-              setHistoryData(filtered);
-
-              const sorted = [...filtered].sort((a, b) => a.clock - b.clock);
-              setChartData(downsampleData(sorted, MAX_CHART_POINTS));
-            }}
-          />
+                  return (
+                    <>
+                      <div>
+                        <span style={{ color: "#52c41a", fontWeight: 500 }}>Oldest:</span>{" "}
+                        <strong>
+                          {typeof oldest.value === "number" ? oldest.value.toFixed(2) : oldest.value ?? "—"}
+                        </strong>{" "}
+                        <small>{new Date(oldest.clock * 1000).toLocaleString()}</small>
+                      </div>
+                      <div>
+                        <span style={{ color: "#1890ff", fontWeight: 500 }}>Newest:</span>{" "}
+                        <strong>
+                          {typeof newest.value === "number" ? newest.value.toFixed(2) : newest.value ?? "—"}
+                        </strong>{" "}
+                        <small>{new Date(newest.clock * 1000).toLocaleString()}</small>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
 
           <Space>
             <Button
@@ -401,7 +436,7 @@ const HistoryModal = ({
 
         {/* Loading status */}
         {loadPhase === "recent" && (
-          <div style={{ color: "#1890ff", margin: "12px 0" }}>
+          <div style={{ color: "#1890ff", margin: "12px 0", fontWeight: 500 }}>
             Loading recent data (last {INITIAL_DAYS} days)...
           </div>
         )}
@@ -411,7 +446,7 @@ const HistoryModal = ({
           </div>
         )}
         {loadPhase === "complete" && (
-          <div style={{ color: "#52c41a", margin: "12px 0" }}>
+          <div style={{ color: "#52c41a", margin: "12px 0", fontWeight: 500 }}>
             All available history loaded
           </div>
         )}
@@ -421,6 +456,7 @@ const HistoryModal = ({
           </div>
         )}
 
+        {/* Chart with oldest marker */}
         <div
           ref={chartRef}
           style={{
@@ -450,13 +486,30 @@ const HistoryModal = ({
                 dataKey="value"
                 stroke="#1890ff"
                 strokeWidth={2}
-                dot={false}
+                dot={(props: any) => {
+                  const { cx, cy, payload } = props;
+                  const dataSet = chartData.length ? chartData : historyData;
+                  const isOldest = payload.clock === Math.min(...dataSet.map((d) => d.clock));
+
+                  if (isOldest) {
+                    return (
+                      <g>
+                        <circle cx={cx} cy={cy} r={6} fill="#52c41a" stroke="#fff" strokeWidth={2} />
+                        <text x={cx + 10} y={cy - 15} fontSize={11} fill="#52c41a" fontWeight="bold">
+                          Oldest
+                        </text>
+                      </g>
+                    );
+                  }
+                  return null;
+                }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
+        {/* Table with oldest row label */}
         <Table
           size="small"
           loading={historyLoading}
@@ -469,7 +522,14 @@ const HistoryModal = ({
               title: "Time",
               dataIndex: "clock",
               width: 180,
-              render: (clock: number) => new Date(clock * 1000).toLocaleString(),
+              render: (clock: number, record: any, index: number) => (
+                <span>
+                  {new Date(clock * 1000).toLocaleString()}
+                  {index === historyData.length - 1 && historyData.length > 0 && (
+                    <span style={{ color: "#52c41a", marginLeft: 8, fontWeight: 500 }}>← Oldest</span>
+                  )}
+                </span>
+              ),
             },
             {
               title: "Value",

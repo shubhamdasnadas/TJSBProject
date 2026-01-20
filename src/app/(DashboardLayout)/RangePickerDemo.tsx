@@ -141,9 +141,7 @@ export default function RangePickerDemo({
             endTime: endDate.format("HH:mm:ss"),
           });
 
-          message.success(
-            `Range set to oldest available: ${oldestDate.format("YYYY-MM-DD")}`
-          );
+          
 
           setPickerOpen(false);
           return;
