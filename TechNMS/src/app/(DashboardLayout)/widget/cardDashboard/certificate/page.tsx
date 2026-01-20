@@ -164,7 +164,7 @@ const Certificate = () => {
       }
       style={{
         width: "100%", // Use 100% to fill parent's width
-        height: "75%", // Fill parent's height to align cards vertically
+        height: "100%", // Fill parent's height to align cards vertically
         borderRadius: 18,
       }}
       bodyStyle={{ padding: 20, height: "100%" }}
@@ -176,7 +176,7 @@ const Certificate = () => {
           columns={columns}
           dataSource={tableData}
           pagination={false}
-          size="small"
+          size="large"
         />
       )}
     </Card>

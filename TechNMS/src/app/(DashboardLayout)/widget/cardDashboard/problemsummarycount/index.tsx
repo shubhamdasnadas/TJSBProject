@@ -197,8 +197,8 @@ export default function ProblemsSummaryTable() {
 
     return (
         <Card
-            // title="Problem Summary by Severity"
-            style={{ width: 350 }}
+            title="Problem Summary by Severity"
+            style={{ width: "100%", height:"100%" }}
             loading={loading && data.length === 0}
         >
             <Table

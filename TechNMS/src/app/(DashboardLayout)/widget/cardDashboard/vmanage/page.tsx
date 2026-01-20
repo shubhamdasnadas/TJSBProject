@@ -233,7 +233,7 @@ const Vmanage = () => {
 
       <Card
         title="WAN Edge"
-        style={{ width: 350, borderRadius: 16 }}
+        style={{ width: "100%",height:"100%", borderRadius: 16 }}
         extra={
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: 700 }}>
@@ -250,10 +250,11 @@ const Vmanage = () => {
           <Spin />
         ) : (
           <Table
+            
             columns={columns}
             dataSource={rows}
             pagination={false}
-            size="small"
+            size="large"
           />
         )}
       </Card>

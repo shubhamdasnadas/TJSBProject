@@ -42,15 +42,7 @@ const WIDGETS = [
     w: 12,
     h: 12,
   },
-  {
-    id: "problems-table",
-    title: "Active Problems",
-    component: ProblemsTablePage,
-    x: 0,
-    y: 0,
-    w: 12,
-    h: 9,
-  },
+
   {
     id: "top_host1",
     title: "Top Host",
@@ -58,13 +50,13 @@ const WIDGETS = [
       <TopHost
         mode="preview"
         topHostName={["host1"]}
-        showPreviewData={true}
+        // showPreviewData={true}
       />
     ),
     x: 0,
     y: 0,
     w: 12,
-    h: 8,
+    h: 6,
   },
   {
     id: "top_host2",
@@ -73,13 +65,22 @@ const WIDGETS = [
       <TopHost
         mode="preview"
         topHostName={["host2"]}
-        showPreviewData={true}
+        // showPreviewData={true}
       />
     ),
     x: 0,
     y: 0,
     w: 12,
-    h: 8,
+    h: 6,
+  },
+  {
+    id: "problems-table",
+    title: "Active Problems",
+    component: ProblemsTablePage,
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 9,
   },
 ];
 
