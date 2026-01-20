@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { DatePicker, Dropdown, Space, message } from "antd";
-import { DownOutlined } from "@ant-design/icons";
+import React, { useState } from "react";
+import { DatePicker, Dropdown, Space, message, Tooltip } from "antd";
+import { DownOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -20,30 +20,33 @@ const presetOptions = [
   { key: "3d", label: "Last 3 days", minutes: 4320 },
   { key: "7d", label: "Last 7 days", minutes: 10080 },
   { key: "30d", label: "Last 30 days", minutes: 43200 },
-  { key: "90d", label: "Last 90 days (common max)", minutes: 129600 },
+  { key: "90d", label: "Last 90 days", minutes: 129600 },
   { key: "180d", label: "Last 6 months", minutes: 259200 },
   { key: "365d", label: "Last 1 year", minutes: 525600 },
   {
     key: "maxhist",
     label: "Oldest available (~90–365d)",
-    minutes: 525600 * 2, // fallback only, not trusted
+    minutes: 525600 * 2, // fallback only
   },
 ];
 
 /* =======================
-   Zabbix helper
+   Zabbix helper – get oldest timestamp
 ======================= */
 async function getOldestHistoryTime(itemid: string): Promise<Dayjs | null> {
   try {
     const res = await fetch("/api/zabbix-proxy", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("zabbix_auth") || ""}`,
+      },
       body: JSON.stringify({
         jsonrpc: "2.0",
         method: "history.get",
         params: {
           output: ["clock"],
-          history: 0,
+          history: 0, // numeric float/int
           itemids: [itemid],
           sortfield: "clock",
           sortorder: "ASC",
@@ -54,12 +57,12 @@ async function getOldestHistoryTime(itemid: string): Promise<Dayjs | null> {
     });
 
     const json = await res.json();
-    const row = json?.result?.[0];
-    if (!row) return null;
+    if (!json.result?.length) return null;
 
-    return dayjs.unix(Number(row.clock));
+    const clock = Number(json.result[0].clock);
+    return dayjs.unix(clock);
   } catch (err) {
-    console.error(err);
+    console.error("Failed to fetch oldest timestamp:", err);
     return null;
   }
 }
@@ -82,44 +85,82 @@ export default function RangePickerDemo({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const [dates, setDates] = useState<[Dayjs, Dayjs] | null>(null);
+  const [oldestDate, setOldestDate] = useState<Dayjs | null>(null);
+  const [loadingOldest, setLoadingOldest] = useState(false);
 
-  /* Notify parent AFTER dates settle */
-  useEffect(() => {
-    if (!dates) return;
+  // Fetch oldest timestamp when itemId changes
+  React.useEffect(() => {
+    if (!itemId) {
+      setOldestDate(null);
+      return;
+    }
 
-    onRangeChange({
-      startDate: dates[0].format("YYYY-MM-DD"),
-      startTime: dates[0].format("HH:mm:ss"),
-      endDate: dates[1].format("YYYY-MM-DD"),
-      endTime: dates[1].format("HH:mm:ss"),
+    let mounted = true;
+    setLoadingOldest(true);
+
+    getOldestHistoryTime(itemId).then((oldest) => {
+      if (mounted) {
+        setOldestDate(oldest);
+        setLoadingOldest(false);
+      }
     });
-  }, [dates, onRangeChange]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [itemId]);
 
   const menuItems = [
     ...presetOptions.map((opt) => ({
       key: opt.key,
       label: opt.label,
       onClick: async () => {
-        // REAL oldest logic
         if (opt.key === "maxhist") {
           if (!itemId) {
-            message.warning("Select an item first");
+            message.warning("No item selected");
             return;
           }
 
-          const oldest = await getOldestHistoryTime(itemId);
-          if (!oldest) {
-            message.info("No historical data found");
+          if (loadingOldest) {
+            message.loading("Fetching oldest timestamp...", 1.5);
             return;
           }
 
-          setDates([oldest, dayjs()]);
+          if (!oldestDate) {
+            message.info("No historical data available for this item");
+            return;
+          }
+
+          const endDate = dayjs();
+          setDates([oldestDate, endDate]);
+
+          onRangeChange({
+            startDate: oldestDate.format("YYYY-MM-DD"),
+            startTime: oldestDate.format("HH:mm:ss"),
+            endDate: endDate.format("YYYY-MM-DD"),
+            endTime: endDate.format("HH:mm:ss"),
+          });
+
+          message.success(
+            `Range set to oldest available: ${oldestDate.format("YYYY-MM-DD")}`
+          );
+
           setPickerOpen(false);
           return;
         }
 
         // Normal presets
-        setDates([dayjs().subtract(opt.minutes, "minute"), dayjs()]);
+        const startDate = dayjs().subtract(opt.minutes, "minute");
+        const endDate = dayjs();
+        setDates([startDate, endDate]);
+
+        onRangeChange({
+          startDate: startDate.format("YYYY-MM-DD"),
+          startTime: startDate.format("HH:mm:ss"),
+          endDate: endDate.format("YYYY-MM-DD"),
+          endTime: endDate.format("HH:mm:ss"),
+        });
+
         setPickerOpen(false);
       },
     })),
@@ -142,6 +183,12 @@ export default function RangePickerDemo({
               if (!range || !range[0] || !range[1]) return;
 
               setDates([range[0], range[1]]);
+              onRangeChange({
+                startDate: range[0].format("YYYY-MM-DD"),
+                startTime: range[0].format("HH:mm:ss"),
+                endDate: range[1].format("YYYY-MM-DD"),
+                endTime: range[1].format("HH:mm:ss"),
+              });
               setPanelVisible(false);
               setPickerOpen(false);
             }}
@@ -157,29 +204,41 @@ export default function RangePickerDemo({
     },
   ];
 
+  const displayText = dates
+    ? `${dates[0].format("YYYY-MM-DD HH:mm")} → ${dates[1].format("YYYY-MM-DD HH:mm")}`
+    : "Select date range";
+
   return (
-    <Dropdown
-      open={pickerOpen}
-      trigger={["click"]}
-      onOpenChange={(open) => {
-        setPickerOpen(open);
-        if (!open) setPanelVisible(false);
-      }}
-      menu={{ items: menuItems }}
+    <Tooltip
+      title={
+        loadingOldest
+          ? "Fetching oldest available date..."
+          : oldestDate
+          ? `Oldest available: ${oldestDate.format("YYYY-MM-DD")}`
+          : "No oldest date fetched yet"
+      }
     >
-      <Space
-        className="border rounded px-3 py-1 cursor-pointer bg-[#1f1f1f] text-gray-300"
-        style={{ width: 260, justifyContent: "space-between" }}
+      <Dropdown
+        open={pickerOpen}
+        trigger={["click"]}
+        onOpenChange={(open) => {
+          setPickerOpen(open);
+          if (!open) setPanelVisible(false);
+        }}
+        menu={{ items: menuItems }}
       >
-        <span>
-          {dates
-            ? `${dates[0].format("YYYY-MM-DD HH:mm")} → ${dates[1].format(
-                "YYYY-MM-DD HH:mm"
-              )}`
-            : "Start date → End date"}
-        </span>
-        <DownOutlined />
-      </Space>
-    </Dropdown>
+        <Space
+          className="border rounded px-3 py-1 cursor-pointer bg-[#1f1f1f] text-gray-300 hover:bg-[#2a2a2a]"
+          style={{ width: 260, justifyContent: "space-between" }}
+        >
+          <span>{displayText}</span>
+          <Space size={4}>
+            {loadingOldest && <span style={{ color: "#faad14" }}>Loading...</span>}
+            <InfoCircleOutlined style={{ color: "#888" }} />
+            <DownOutlined />
+          </Space>
+        </Space>
+      </Dropdown>
+    </Tooltip>
   );
 }
