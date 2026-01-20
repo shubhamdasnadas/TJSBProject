@@ -49,9 +49,9 @@ type DateRange = {
   endDate: string;
   endTime: string;
 };
- 
+
 /* =========================
-   AXIOS CONFIG - FIXED TO GET FRESH TOKEN
+   AXIOS CONFIG
 ========================= */
 const getAxiosConfig = () => ({
   headers: {
@@ -65,28 +65,23 @@ const getAxiosConfig = () => ({
 ========================= */
 const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";
 
-/* 🔲 PAGE BORDER */
 const drawPageBorder = (doc: jsPDF) => {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   const margin = 20;
-
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(1.5);
   doc.rect(margin, margin, w - margin * 2, h - margin * 2);
 };
 
-/* 🧊 WATERMARK */
 const drawWatermark = (doc: jsPDF, png: string) => {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
-
   doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
   doc.addImage(png, "PNG", w / 2 - 110, h / 2 - 130, 220, 140);
   doc.setGState(new (doc as any).GState({ opacity: 1 }));
 };
 
-/** SVG → PNG for jsPDF */
 const loadSvgAsPng = async (url: string) => {
   const svgText = await fetch(url).then((r) => r.text());
   const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
@@ -116,65 +111,46 @@ const exportHistoryToPDF = async (
   const doc = new jsPDF("p", "pt", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-
   const MARGIN_X = 40;
   const CONTENT_WIDTH = pageWidth - MARGIN_X * 2;
 
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
-  // Simplified – only watermark + border
   const finalizePage = () => {
     drawWatermark(doc, logoPng);
     drawPageBorder(doc);
   };
 
-  /* ===== PAGE 1: COVER ===== */
+  // Cover page
   const centerX = pageWidth / 2;
-
   doc.addImage(logoPng, "PNG", centerX - 120, 70, 240, 150);
-
   doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
   doc.text("Techsec NMS – History Report", centerX, 260, { align: "center" });
-
   doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
   doc.text(`Host: ${host || "Unknown"}`, centerX, 320, { align: "center" });
-
   doc.setFontSize(16);
-  doc.setFont("helvetica", "normal");
   const safeTitle = title.length > 70 ? title.substring(0, 67) + "..." : title;
   const titleLines = doc.splitTextToSize(`Item / Metric: ${safeTitle}`, CONTENT_WIDTH - 40);
   doc.text(titleLines, centerX, 355, { align: "center" });
-
   doc.setFontSize(13);
   doc.setTextColor(80, 80, 80);
   doc.text(`Generated: ${new Date().toLocaleString()}`, centerX, 410, { align: "center" });
-
   finalizePage();
 
-  /* ===== PAGE 2: CHART ===== */
+  // Chart page
   if (chartEl) {
     doc.addPage();
-
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("Utilization Graph", MARGIN_X, 60);
-
-    const canvas = await html2canvas(chartEl, {
-      scale: 3,
-      backgroundColor: "#ffffff",
-      logging: false,
-    });
-
+    const canvas = await html2canvas(chartEl, { scale: 3, backgroundColor: "#ffffff", logging: false });
     doc.addImage(canvas.toDataURL("image/png"), "PNG", MARGIN_X, 100, CONTENT_WIDTH, 220);
-
     finalizePage();
   }
 
-  /* ===== PAGE 3+: HISTORY TABLE ===== */
+  // History table page
   doc.addPage();
-
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
   doc.text("History Data", MARGIN_X, 60);
@@ -199,14 +175,15 @@ const exportHistoryToPDF = async (
     didDrawPage: finalizePage,
   });
 
-  // Make sure the very last page also has watermark + border
   finalizePage();
 
   const safeHost = host.replace(/[^a-zA-Z0-9]/g, "_") || "unknown";
   doc.save(`techsec_history_${safeHost}_${Date.now()}.pdf`);
 };
-  //  SEVERITY COLOR
-// ========================= */
+
+/* =========================
+   SEVERITY COLOR
+========================= */
 const severityColor = (s?: number) => {
   if (s === undefined) return "red";
   if (s >= 4) return "#d32f2f"; // High / Disaster
@@ -215,7 +192,7 @@ const severityColor = (s?: number) => {
 };
 
 /* =========================
-   HISTORY CHART
+   HISTORY CHART COMPONENT
 ========================= */
 const HistoryLineChart = ({ data }: { data: any[] }) => {
   if (!data.length) return null;
@@ -236,15 +213,11 @@ const HistoryLineChart = ({ data }: { data: any[] }) => {
             dataKey="time"
             type="number"
             domain={["auto", "auto"]}
-            tickFormatter={(v) =>
-              new Date(v).toLocaleTimeString()
-            }
+            tickFormatter={(v) => new Date(v).toLocaleTimeString()}
           />
           <YAxis />
           <Tooltip
-            labelFormatter={(v) =>
-              new Date(Number(v)).toLocaleString()
-            }
+            labelFormatter={(v) => new Date(Number(v)).toLocaleString()}
             content={({ payload }) => {
               if (!payload?.length) return null;
               const p = payload[0].payload;
@@ -290,7 +263,7 @@ const HistoryLineChart = ({ data }: { data: any[] }) => {
 };
 
 /* =========================
-   PAGE
+   MAIN PAGE COMPONENT
 ========================= */
 export default function SysReportPage() {
   const [hostGroups, setHostGroups] = useState<HostGroup[]>([]);
@@ -309,27 +282,29 @@ export default function SysReportPage() {
   const [historyTitle, setHistoryTitle] = useState("");
   const [historyHost, setHistoryHost] = useState("");
   const [historyData, setHistoryData] = useState<any[]>([]);
-  const [historyDateRange, setHistoryDateRange] =
-    useState<DateRange>({
-      startDate: "",
-      startTime: "",
-      endDate: "",
-      endTime: "",
-    });
+  const [historyDateRange, setHistoryDateRange] = useState<DateRange>({
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+  });
+
+  const [currentHistoryItem, setCurrentHistoryItem] = useState<{
+    itemid: string;
+    name: string;
+    host: string;
+    valueType?: number;
+  } | null>(null);
 
   const chartRef = useRef<HTMLDivElement>(null);
 
-  /* LOAD HOST GROUPS */
+  const DEFAULT_HISTORY_DAYS = 7;
+
   useEffect(() => {
     axios
       .post(
         "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "hostgroup.get",
-          params: { output: ["groupid", "name"] },
-          id: 1,
-        },
+        { jsonrpc: "2.0", method: "hostgroup.get", params: { output: ["groupid", "name"] }, id: 1 },
         getAxiosConfig()
       )
       .then((r) => setHostGroups(r.data.result ?? []))
@@ -344,12 +319,7 @@ export default function SysReportPage() {
     try {
       const r = await axios.post(
         "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "host.get",
-          params: { output: ["hostid", "name"], groupids: groups },
-          id: 2,
-        },
+        { jsonrpc: "2.0", method: "host.get", params: { output: ["hostid", "name"], groupids: groups }, id: 2 },
         getAxiosConfig()
       );
       setHosts(r.data.result ?? []);
@@ -359,38 +329,18 @@ export default function SysReportPage() {
     }
   };
 
-  /* APPLY - FETCH ITEMS */
   const handleApply = async () => {
-    console.log("🔵 handleApply called with hosts:", selectedHosts);
-    
-    if (!selectedHosts.length) {
-      return message.warning("Please select at least one host");
-    }
-
-    const token = localStorage.getItem("zabbix_auth");
-    if (!token) {
-      message.error("Not authenticated. Please log in.");
-      return;
-    }
+    if (!selectedHosts.length) return message.warning("Please select at least one host");
 
     setLoadingTable(true);
     try {
-      console.log("🔵 Calling item.get API...");
-      
       const r = await axios.post(
         "/api/zabbix-proxy",
         {
           jsonrpc: "2.0",
           method: "item.get",
           params: {
-            output: [
-              "itemid",
-              "name",
-              "lastvalue",
-              "lastclock",
-              "delta",
-              "value_type",
-            ],
+            output: ["itemid", "name", "lastvalue", "lastclock", "delta", "value_type"],
             selectHosts: ["name"],
             hostids: selectedHosts,
           },
@@ -399,215 +349,198 @@ export default function SysReportPage() {
         getAxiosConfig()
       );
 
-      console.log("✅ item.get API Response:", r.data);
-
-      if (r.data.error) {
-        message.error(`Zabbix API Error: ${r.data.error.message}`);
-        console.error("Zabbix API Error:", r.data.error);
-        return;
-      }
-
       const items = (r.data.result || []).map((i: any) => ({
         key: i.itemid,
         itemid: i.itemid,
         host: i.hosts?.[0]?.name ?? "-",
         name: i.name,
-        lastValue: i.lastvalue,
-        lastCheck: new Date(i.lastclock * 1000).toLocaleString(),
-        change: i.delta ?? "-",
+        lastValue: i.lastvalue ?? "—",
+        lastCheck: i.lastclock ? new Date(i.lastclock * 1000).toLocaleString() : "—",
+        change: i.delta ?? "—",
         value_type: i.value_type,
       }));
 
-      console.log(`✅ Loaded ${items.length} items`);
       setTableData(items);
       setFilteredData(items);
       message.success(`Loaded ${items.length} items`);
     } catch (error) {
-      console.error("❌ Error fetching items:", error);
-      message.error("Failed to fetch items. Check console for details.");
+      console.error("Error fetching items:", error);
+      message.error("Failed to fetch items");
     } finally {
       setLoadingTable(false);
     }
   };
 
-  /* SEARCH */
   const handleSearch = (value: string) => {
     setSearchText(value);
-    setFilteredData(
-      tableData.filter((i) =>
-        i.name.toLowerCase().includes(value.toLowerCase())
-      )
-    );
+    setFilteredData(tableData.filter((i) => i.name.toLowerCase().includes(value.toLowerCase())));
   };
 
-  /* =========================
-     OPEN HISTORY WITH TRIGGERS
-  ========================= */
-/* =========================
-    OPEN HISTORY WITH TRIGGERS
-========================= */
-const openHistory = async (
-  itemid: string,
-  name: string,
-  host: string,
-  valueType?: number // This is 0, 1, 2, 3, or 4 from item.get
-) => {
-  try {
+  const openHistory = async (
+    itemid: string,
+    name: string,
+    host: string,
+    valueType?: number
+  ) => {
+    setCurrentHistoryItem({ itemid, name, host, valueType });
     setHistoryTitle(name);
     setHistoryHost(host);
-    setHistoryLoading(true);
     setHistoryOpen(true);
+    setHistoryLoading(true);
 
-    // Determine the correct history table to query based on valueType
-    // 0 - float, 1 - char, 2 - log, 3 - uint, 4 - text
-    // We use a fallback to 3 (uint) or 0 (float) if undefined, 
-    // but handleApply already fetches this correctly.
     const targetHistory = valueType !== undefined ? valueType : 3;
 
-    console.log(`🔵 Loading history for item: ${itemid} using type: ${targetHistory}`);
+    let startSec: number;
+    let endSec: number;
+    const nowSec = Math.floor(Date.now() / 1000);
 
-    /* 1️⃣ GET HISTORY DATA */
-    const historyRes = await axios.post(
-      "/api/zabbix-proxy",
-      {
-        jsonrpc: "2.0",
-        method: "history.get",
-        params: {
-          output: "extend",
-          history: targetHistory, // ✅ DYNAMICALLY MAPPED
-          itemids: [itemid],
-          sortfield: "clock",
-          sortorder: "ASC",
-          limit: 1000,
-        },
-        id: 100,
-      },
-      getAxiosConfig()
-    );
+    if (historyDateRange.startDate && historyDateRange.endDate) {
+      startSec = Math.floor(
+        new Date(`${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`).getTime() / 1000
+      );
+      endSec = Math.floor(
+        new Date(`${historyDateRange.endDate} ${historyDateRange.endTime || "23:59:59"}`).getTime() / 1000
+      );
+      if (endSec > nowSec) endSec = nowSec;
+      if (startSec >= endSec || startSec < 0) {
+        startSec = nowSec - DEFAULT_HISTORY_DAYS * 86400;
+        endSec = nowSec;
+      }
+    } else {
+      startSec = nowSec - DEFAULT_HISTORY_DAYS * 86400;
+      endSec = nowSec;
 
-    // Handle string values (for types 1, 2, 4) or numbers (0, 3)
-/* 1️⃣ GET HISTORY DATA - Updated to handle Strings and Numbers safely */
-const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
-  // Check if the value is actually a valid number
-  const isNumeric = h.value !== "" && !isNaN(Number(h.value)) && isFinite(Number(h.value));
-
-  return {
-    clock: Number(h.clock),
-    // If it's a valid number, convert it for the chart. 
-    // If it's a string (like "next", "Windows", etc.), keep the raw string.
-    value: isNumeric ? Number(h.value) : h.value,
-    isTrigger: false,
-  };
-});
-    if (!historyPoints.length) {
-      message.warning("No history data available for this value type");
-      setHistoryData([]);
-      setHistoryLoading(false);
-      return;
+      const startObj = new Date(startSec * 1000);
+      const endObj = new Date(endSec * 1000);
+      setHistoryDateRange({
+        startDate: startObj.toISOString().slice(0, 10),
+        startTime: startObj.toTimeString().slice(0, 8),
+        endDate: endObj.toISOString().slice(0, 10),
+        endTime: endObj.toTimeString().slice(0, 8),
+      });
     }
 
-    /* 2️⃣ GET TRIGGERS FOR THIS ITEM */
-    const triggerRes = await axios.post(
-      "/api/zabbix-proxy",
-      {
-        jsonrpc: "2.0",
-        method: "trigger.get",
-        params: {
-          output: ["triggerid", "description", "priority"],
-          itemids: [itemid],
-          filter: { status: 0 },
+    try {
+      const historyRes = await axios.post(
+        "/api/zabbix-proxy",
+        {
+          jsonrpc: "2.0",
+          method: "history.get",
+          params: {
+            output: "extend",
+            history: targetHistory,
+            itemids: [itemid],
+            time_from: startSec,
+            time_till: endSec,
+            sortfield: "clock",
+            sortorder: "ASC",
+            limit: 5000,
+          },
+          id: 100,
         },
-        id: 101,
-      },
-      getAxiosConfig()
-    );
+        getAxiosConfig()
+      );
 
-    const triggers = triggerRes.data.result ?? [];
-    const triggerIds = triggers.map((t: any) => t.triggerid);
-
-    if (!triggerIds.length) {
-      setHistoryData(historyPoints);
-      setHistoryLoading(false);
-      return;
-    }
-
-    /* 3️⃣ GET EVENTS FOR THESE TRIGGERS */
-    const eventRes = await axios.post(
-      "/api/zabbix-proxy",
-      {
-        jsonrpc: "2.0",
-        method: "event.get",
-        params: {
-          output: ["eventid", "clock", "objectid", "value"],
-          object: 0,
-          objectids: triggerIds,
-          value: 1,
-          sortfield: "clock",
-          sortorder: "DESC",
-          limit: 500,
-        },
-        id: 102,
-      },
-      getAxiosConfig()
-    );
-
-    const events = eventRes.data.result ?? [];
-
-    /* 4️⃣ MATCH EVENTS TO HISTORY POINTS */
-    const MATCH_WINDOW = 120;
-    events.forEach((ev: any) => {
-      let closestIdx = -1;
-      let bestDiff = MATCH_WINDOW + 1;
-
-      historyPoints.forEach((p: any, idx: number) => {
-        const diff = Math.abs(p.clock - Number(ev.clock));
-        if (diff <= MATCH_WINDOW && diff < bestDiff) {
-          bestDiff = diff;
-          closestIdx = idx;
-        }
+      const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
+        const isNumeric = h.value !== "" && !isNaN(Number(h.value)) && isFinite(Number(h.value));
+        return {
+          clock: Number(h.clock),
+          value: isNumeric ? Number(h.value) : h.value,
+          isTrigger: false,
+        };
       });
 
-      if (closestIdx !== -1) {
-        const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
-        historyPoints[closestIdx] = {
-          ...historyPoints[closestIdx],
-          isTrigger: true,
-          triggerName: trig?.description || "Unknown Trigger",
-          severity: trig?.priority ?? 0,
-        };
+      if (!historyPoints.length) {
+        message.warning("No history data found in the selected time range");
       }
-    });
 
-    setHistoryData(historyPoints);
-    message.success(`Loaded history for type ${targetHistory}`);
-    
-  } catch (e) {
-    console.error("❌ Failed to load history:", e);
-    message.error("Failed to load history");
-  } finally {
-    setHistoryLoading(false);
-  }
-};
-  const filterHistory = () => {
-    if (!historyDateRange.startDate) return historyData;
+      // Load triggers
+      const triggerRes = await axios.post(
+        "/api/zabbix-proxy",
+        {
+          jsonrpc: "2.0",
+          method: "trigger.get",
+          params: {
+            output: ["triggerid", "description", "priority"],
+            itemids: [itemid],
+            filter: { status: 0 },
+          },
+          id: 101,
+        },
+        getAxiosConfig()
+      );
 
-    const start =
-      new Date(
-        `${historyDateRange.startDate} ${
-          historyDateRange.startTime || "00:00:00"
-        }`
-      ).getTime() / 1000;
+      const triggers = triggerRes.data.result ?? [];
+      const triggerIds = triggers.map((t: any) => t.triggerid);
 
-    const end =
-      new Date(
-        `${historyDateRange.endDate} ${
-          historyDateRange.endTime || "23:59:59"
-        }`
-      ).getTime() / 1000;
+      // Load events (problems) if triggers exist
+      if (triggerIds.length) {
+        const eventRes = await axios.post(
+          "/api/zabbix-proxy",
+          {
+            jsonrpc: "2.0",
+            method: "event.get",
+            params: {
+              output: ["eventid", "clock", "objectid"],
+              object: 0,
+              objectids: triggerIds,
+              value: 1,
+              time_from: startSec,
+              time_till: endSec,
+              sortfield: "clock",
+              sortorder: "ASC",
+              limit: 500,
+            },
+            id: 102,
+          },
+          getAxiosConfig()
+        );
 
-    return historyData.filter(
-      (r: any) => r.clock >= start && r.clock <= end
-    );
+        const events = eventRes.data.result ?? [];
+        const MATCH_WINDOW = 120;
+
+        events.forEach((ev: any) => {
+          let closest = -1;
+          let bestDiff = MATCH_WINDOW + 1;
+
+          historyPoints.forEach((p: any, i: number) => {
+            const diff = Math.abs(p.clock - Number(ev.clock));
+            if (diff <= MATCH_WINDOW && diff < bestDiff) {
+              bestDiff = diff;
+              closest = i;
+            }
+          });
+
+          if (closest !== -1) {
+            const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
+            historyPoints[closest] = {
+              ...historyPoints[closest],
+              isTrigger: true,
+              triggerName: trig?.description || "Unnamed trigger",
+              severity: trig?.priority ?? 0,
+            };
+          }
+        });
+      }
+
+      // Sort: newest first for table display
+      const sortedHistory = [...historyPoints].sort((a, b) => b.clock - a.clock);
+      setHistoryData(sortedHistory);
+
+      // Optional: show oldest timestamp feedback
+      if (sortedHistory.length > 0) {
+        const oldest = sortedHistory[sortedHistory.length - 1];
+        const oldestDate = new Date(oldest.clock * 1000).toLocaleDateString();
+        message.info(`Showing data from ${oldestDate} (${sortedHistory.length} points)`);
+      } else {
+        message.info("No data points in selected range");
+      }
+    } catch (err) {
+      console.error("History load failed:", err);
+      message.error("Failed to load history data");
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const columns: ColumnsType<TableRow> = [
@@ -618,12 +551,10 @@ const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
     { title: "Change", dataIndex: "change", width: 100 },
     {
       title: "History",
-      render: (_, r) => (
+      render: (_, record) => (
         <Button
           size="small"
-          onClick={() =>
-            openHistory(r.itemid, r.name, r.host, r.value_type)
-          }
+          onClick={() => openHistory(record.itemid, record.name, record.host, record.value_type)}
         >
           View
         </Button>
@@ -634,34 +565,27 @@ const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
   return (
     <Card style={{ padding: 35 }}>
       <Space direction="vertical" style={{ width: "100%" }}>
-        <Space>
+        <Space wrap>
           <Select
             mode="multiple"
             placeholder="Host Groups"
             style={{ width: 260 }}
-            options={hostGroups.map((g) => ({
-              label: g.name,
-              value: g.groupid,
-            }))}
+            options={hostGroups.map((g) => ({ label: g.name, value: g.groupid }))}
             onChange={(g) => {
               setSelectedGroups(g);
               setSelectedHosts([]);
               loadHosts(g);
             }}
+            value={selectedGroups}
           />
-
           <Select
             mode="multiple"
             placeholder="Hosts"
             style={{ width: 260 }}
-            options={hosts.map((h) => ({
-              label: h.name,
-              value: h.hostid,
-            }))}
+            options={hosts.map((h) => ({ label: h.name, value: h.hostid }))}
             onChange={setSelectedHosts}
             value={selectedHosts}
           />
-
           <Button type="primary" onClick={handleApply} loading={loadingTable}>
             Apply
           </Button>
@@ -680,6 +604,7 @@ const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
           dataSource={filteredData}
           loading={loadingTable}
           pagination={{ pageSize: 20 }}
+          scroll={{ x: "max-content" }}
         />
 
         <Modal
@@ -687,64 +612,93 @@ const historyPoints = (historyRes.data.result ?? []).map((h: any) => {
           open={historyOpen}
           onCancel={() => setHistoryOpen(false)}
           footer={null}
-          width={900}
+          width={960}
         >
           <Space direction="vertical" style={{ width: "100%" }}>
-            <Space style={{ justifyContent: "space-between", width: "100%" }}>
-              <RangePickerDemo onRangeChange={setHistoryDateRange} />
-              <Button
-                type="primary"
-                loading={historyLoading}
-                onClick={() =>
-                  exportHistoryToPDF(
-                    historyTitle,
-                    historyHost,
-                    filterHistory(),
-                    chartRef.current
-                  )
-                }
-              >
-                Export PDF
-              </Button>
+            <Space style={{ justifyContent: "space-between", width: "100%", marginBottom: 12 }}>
+              <RangePickerDemo 
+                itemId={currentHistoryItem?.itemid} 
+                onRangeChange={(newRange) => {
+                  setHistoryDateRange(newRange);
+                  // Auto-refresh history when date range changes
+                  if (currentHistoryItem) {
+                    openHistory(
+                      currentHistoryItem.itemid,
+                      currentHistoryItem.name,
+                      currentHistoryItem.host,
+                      currentHistoryItem.valueType
+                    );
+                  }
+                }} 
+              />
+
+              <Space>
+                <Button
+                  onClick={() =>
+                    currentHistoryItem &&
+                    openHistory(
+                      currentHistoryItem.itemid,
+                      currentHistoryItem.name,
+                      currentHistoryItem.host,
+                      currentHistoryItem.valueType
+                    )
+                  }
+                >
+                  Refresh
+                </Button>
+                <Button
+                  type="primary"
+                  loading={historyLoading}
+                  onClick={() =>
+                    exportHistoryToPDF(historyTitle, historyHost, historyData, chartRef.current)
+                  }
+                >
+                  Export PDF
+                </Button>
+              </Space>
             </Space>
 
-            <div ref={chartRef} style={{ background: "#fff", padding: 12 }}>
-              <HistoryLineChart data={filterHistory()} />
+            {historyDateRange.startDate && (
+              <div style={{ color: "#faad14", fontSize: "0.9em", marginBottom: 12 }}>
+                {(() => {
+                  const start = new Date(
+                    `${historyDateRange.startDate} ${historyDateRange.startTime || "00:00:00"}`
+                  );
+                  const daysBack = Math.floor((Date.now() - start.getTime()) / 86400000);
+                  if (daysBack > 365) return "→ Note: Raw history older than 1 year is rarely kept.";
+                  if (daysBack > 90) return "→ Most items keep raw history only 14–90 days.";
+                  return null;
+                })()}
+              </div>
+            )}
+
+            <div ref={chartRef} style={{ background: "#fff", padding: 12, borderRadius: 8 }}>
+              <HistoryLineChart data={historyData} />
             </div>
 
-<Table
-  size="small"
-  pagination={{ pageSize: 10 }}
-  loading={historyLoading}
-  columns={[
-    {
-      title: "Time",
-      dataIndex: "clock",
-      render: (v) => new Date(v * 1000).toLocaleString(),
-    },
-    {
-      title: "Value",
-      dataIndex: "value",
-      render: (v) => {
-        // If it's a number, show 2 decimals. If it's a string, just show the string.
-        return typeof v === "number" ? v.toFixed(2) : v;
-      },
-    },
-    // {
-    //   title: "Status",
-    //   render: (_, r: any) => 
-    //     r.isTrigger ? (
-    //       <span style={{ color: severityColor(r.severity), fontWeight: "bold" }}>
-    //         🔔 {r.triggerName}
-    //       </span>
-    //     ) : null,
-    // },
-  ]}
-  dataSource={filterHistory().map((r: any, idx: number) => ({
-    key: `${r.clock}-${idx}`,
-    ...r
-  }))}
-/>          </Space>
+            <Table
+              size="small"
+              pagination={{ pageSize: 10 }}
+              loading={historyLoading}
+              columns={[
+                {
+                  title: "Time",
+                  dataIndex: "clock",
+                  width: 180,
+                  render: (v: number) => new Date(v * 1000).toLocaleString(),
+                },
+                {
+                  title: "Value",
+                  dataIndex: "value",
+                  render: (v: any) => (typeof v === "number" ? v.toFixed(2) : v || "—"),
+                },
+              ]}
+              dataSource={historyData.map((r, idx) => ({
+                key: `${r.clock}-${idx}`,
+                ...r,
+              }))}
+            />
+          </Space>
         </Modal>
       </Space>
     </Card>
