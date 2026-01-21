@@ -9,17 +9,17 @@ import branches from "../../availability/data/data";
 /* ===================== CONSTANTS ===================== */
 
 const ITEMS = [
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent',
-  'Interface ["GigabitEthernet0/0/0"]: Bits received',
-  'Interface ["GigabitEthernet0/0/0"]: Speed',
+  // 'Interface ["GigabitEthernet0/0/0"]: Bits sent',
+  // 'Interface ["GigabitEthernet0/0/0"]: Bits received',
+  // 'Interface ["GigabitEthernet0/0/0"]: Speed',
   "Memory utilization",
   "CPU utilization",
 ];
 
 const COLUMN_HEADER_MAP: Record<string, string> = {
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Bits Sent (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Bits Received (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Speed': "Speed (Avg)",
+  // 'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Bits Sent (Avg)",
+  // 'Interface ["GigabitEthernet0/0/0"]: Bits received': "Bits Received (Avg)",
+  // 'Interface ["GigabitEthernet0/0/0"]: Speed': "Speed (Avg)",
   "Memory utilization": "Memory Usage (Avg)",
   "CPU utilization": "CPU Usage (Avg)",
 };

@@ -135,7 +135,7 @@ export default function DashboardTunnel({
     isProcessingRef.current = true;
     const item = queueRef.current.shift();
 
-    playSound();
+    // playSound();
 
     api.open({
       type: "error",
