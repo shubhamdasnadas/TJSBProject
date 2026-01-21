@@ -20,7 +20,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import RangePickerDemo from "../../RangePickerDemo"; // adjust path if needed
+import RangePickerDemo from "../../RangePickerDemo";
 import autoTable from "jspdf-autotable";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -50,7 +50,7 @@ type DateRange = {
 };
 
 /* ────────────────────────────────────────────────
-   AXIOS CONFIG
+   UTILS & FORMATTERS
 ───────────────────────────────────────────────── */
 const getAxiosConfig = () => ({
   headers: {
@@ -58,13 +58,17 @@ const getAxiosConfig = () => ({
     Authorization: `Bearer ${localStorage.getItem("zabbix_auth") || ""}`,
   },
 });
+
 const formatForDisplay = (bitsPerSec: number) => {
   if (!Number.isFinite(bitsPerSec)) return "—";
-
-  if (bitsPerSec >= 1_000_000) {
-    return `${(bitsPerSec / 1_000_000).toFixed(2)} Mbps`;
-  }
+  if (bitsPerSec >= 1_000_000) return `${(bitsPerSec / 1_000_000).toFixed(2)} Mbps`;
   return `${(bitsPerSec / 1_000).toFixed(2)} Kbps`;
+};
+
+const formatSafePercent = (value: any): string => {
+  const num = Number(value);
+  if (isNaN(num) || !Number.isFinite(num)) return "—";
+  return `${num.toFixed(2)} %`;
 };
 
 /* ────────────────────────────────────────────────
@@ -159,7 +163,7 @@ const exportHistoryToPDF = async (
     finalizePage();
   }
 
-  // Data table page(s)
+  // Data table
   doc.addPage();
   pageNumber++;
   doc.setFontSize(18);
@@ -172,7 +176,7 @@ const exportHistoryToPDF = async (
     head: [["Time", "Value"]],
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
-      isPercentage ? Number(r.rawValue).toFixed(2) + " %" : formatForDisplay(r.bitsPerSec),
+      isPercentage ? formatSafePercent(r.rawValue) : formatForDisplay(r.bitsPerSec),
     ]),
     styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
@@ -188,25 +192,25 @@ const exportHistoryToPDF = async (
 };
 
 /* ────────────────────────────────────────────────
-   SEVERITY → COLOR
+   SEVERITY COLOR
 ───────────────────────────────────────────────── */
 const severityColor = (s?: number) => {
   if (s === undefined) return "#d32f2f";
-  if (s >= 4) return "#d32f2f";     // High / Disaster – red
-  if (s === 3) return "#f57c00";    // Average – orange
-  if (s === 2) return "#fbc02d";    // Warning – yellow
-  return "#1976d2";                 // Info / default – blue
+  if (s >= 4) return "#d32f2f";
+  if (s === 3) return "#f57c00";
+  if (s === 2) return "#fbc02d";
+  return "#1976d2";
 };
 
 /* ────────────────────────────────────────────────
-   LINE CHART WITH TRIGGER DOTS
+   HISTORY CHART
 ───────────────────────────────────────────────── */
 const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: boolean }) => {
   if (!data.length) return null;
 
   const chartData = data.map((d) => ({
     time: Number(d.clock) * 1000,
-    value: Number(d.value),
+    value: Number(d.value) || 0,
     rawValue: d.rawValue,
     bitsPerSec: d.bitsPerSec,
     isTrigger: !!d.isTrigger,
@@ -214,13 +218,8 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
     severity: d.severity ?? 0,
   }));
 
-  const maxValue = Math.max(
-    ...chartData.map((d) => (Number.isFinite(d.value) ? d.value : 0)),
-    0
-  );
-
-  // Add 20% headroom so peaks are visible
-  const yMax = maxValue > 0 ? maxValue * 1.2 : 1;
+  const maxValue = Math.max(...chartData.map((d) => (Number.isFinite(d.value) ? d.value : 0)), 0);
+  const yMax = maxValue > 0 ? maxValue * 1.2 : (isPercentage ? 100 : 10);
 
   return (
     <div style={{ height: 280, background: "#fff", padding: "12px 8px" }}>
@@ -235,11 +234,9 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
           />
           <YAxis
             domain={[0, yMax]}
-            tickFormatter={(v) =>
-              isPercentage ? `${v.toFixed(0)} %` : `${v.toFixed(0)} Mbps`
-            }
+            tickFormatter={(v) => (isPercentage ? `${v.toFixed(0)} %` : `${v.toFixed(0)} Mbps`)}
             label={{
-              value: isPercentage ? "CPU Utilization (%)" : "Bandwidth (Mbps)",
+              value: isPercentage ? "Utilization (%)" : "Bandwidth (Mbps)",
               angle: -90,
               position: "insideLeft",
             }}
@@ -249,17 +246,12 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
             content={({ payload }) => {
               if (!payload?.length) return null;
               const p = payload[0].payload;
-
               return (
                 <div style={{ background: "#fff", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}>
-                  <div>
-                    <strong>Time:</strong> {new Date(p.time).toLocaleString()}
-                  </div>
+                  <div><strong>Time:</strong> {new Date(p.time).toLocaleString()}</div>
                   <div>
                     <strong>Value:</strong>{" "}
-                    {isPercentage
-                      ? p.rawValue.toFixed(2) + " %"
-                      : formatForDisplay(p.bitsPerSec)}
+                    {isPercentage ? formatSafePercent(p.rawValue) : formatForDisplay(p.bitsPerSec)}
                   </div>
                   {p.isTrigger && (
                     <>
@@ -282,14 +274,7 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
               const { cx, cy, payload } = props;
               if (!payload?.isTrigger) return null;
               return (
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={6}
-                  fill={severityColor(payload.severity)}
-                  stroke="#fff"
-                  strokeWidth={2}
-                />
+                <circle cx={cx} cy={cy} r={6} fill={severityColor(payload.severity)} stroke="#fff" strokeWidth={2} />
               );
             }}
             activeDot={{ r: 8 }}
@@ -301,7 +286,7 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
 };
 
 /* ────────────────────────────────────────────────
-   MAIN PAGE COMPONENT
+   MAIN COMPONENT
 ───────────────────────────────────────────────── */
 export default function SysReportPage() {
   const [hostGroups, setHostGroups] = useState<HostGroup[]>([]);
@@ -329,13 +314,11 @@ export default function SysReportPage() {
     endTime: "",
   });
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Load host groups once
   useEffect(() => {
     axios
       .post("/api/zabbix-proxy", { jsonrpc: "2.0", method: "hostgroup.get", params: { output: ["groupid", "name"] }, id: 1 }, getAxiosConfig())
@@ -343,32 +326,20 @@ export default function SysReportPage() {
       .catch(() => message.error("Failed to load host groups"));
   }, []);
 
-  // Keyboard navigation for pagination (Alt+N and Alt+P)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Alt+N: Next page
-      if (e.altKey && e.key.toLowerCase() === 'n') {
+      if (e.altKey && e.key.toLowerCase() === "n") {
         e.preventDefault();
-        const totalPages = Math.ceil(filteredData.length / pageSize);
-        if (currentPage < totalPages) {
-          setCurrentPage(prev => prev + 1);
-          message.info(`Page ${currentPage + 1} of ${totalPages}`);
-        }
+        const total = Math.ceil(filteredData.length / pageSize);
+        if (currentPage < total) setCurrentPage((p) => p + 1);
       }
-      
-      // Alt+P: Previous page
-      if (e.altKey && e.key.toLowerCase() === 'p') {
+      if (e.altKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
-        if (currentPage > 1) {
-          setCurrentPage(prev => prev - 1);
-          const totalPages = Math.ceil(filteredData.length / pageSize);
-          message.info(`Page ${currentPage - 1} of ${totalPages}`);
-        }
+        if (currentPage > 1) setCurrentPage((p) => p - 1);
       }
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentPage, pageSize, filteredData.length]);
 
   const loadHosts = async (groups: string[]) => {
@@ -384,7 +355,7 @@ export default function SysReportPage() {
       message.error("Failed to load hosts");
     }
   };
- 
+
   const handleApply = async () => {
     if (!selectedHosts.length) return message.warning("Select at least one host");
     setLoadingTable(true);
@@ -417,7 +388,7 @@ export default function SysReportPage() {
 
       setTableData(items);
       setFilteredData(items);
-      setCurrentPage(1); // Reset to first page when new data loads
+      setCurrentPage(1);
       message.success(`Loaded ${items.length} items`);
     } catch {
       message.error("Failed to fetch items");
@@ -429,19 +400,30 @@ export default function SysReportPage() {
   const handleSearch = (value: string) => {
     setSearchText(value);
     setFilteredData(tableData.filter((i) => i.name.toLowerCase().includes(value.toLowerCase())));
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const openHistory = (itemid: string, name: string, host: string, valueType?: number) => {
     setHistoryTitle(name);
     setHistoryHost(host);
     setCurrentItemId(itemid);
+
     const vType = valueType ?? 3;
+    const nameLower = name.toLowerCase();
+
+    const isLikelyPercent =
+      vType === 0 ||
+      nameLower.includes("cpu") ||
+      nameLower.includes("util") ||
+      nameLower.includes("usage") ||
+      nameLower.includes("memory") ||
+      nameLower.includes("percent") ||
+      nameLower.includes("%");
+
     setCurrentValueType(vType);
-    setIsPercentage(vType === 0);
+    setIsPercentage(isLikelyPercent);
     setHistoryData([]);
 
-    // Default: last 24 hours
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     setHistoryDateRange({
@@ -462,7 +444,6 @@ export default function SysReportPage() {
       const start = new Date(`${range.startDate} ${range.startTime || "00:00:00"}`).getTime() / 1000;
       const end = new Date(`${range.endDate} ${range.endTime || "23:59:59"}`).getTime() / 1000;
 
-      // 1. History
       const histRes = await axios.post(
         "/api/zabbix-proxy",
         {
@@ -483,28 +464,15 @@ export default function SysReportPage() {
         getAxiosConfig()
       );
 
-      let points = (histRes.data.result ?? []).map((h: any) => {
+      const points = (histRes.data.result ?? []).map((h: any) => {
         const rawValue = Number(h.value);
+        const clock = Number(h.clock);
 
         if (isPercentage) {
-          // For history:0 (e.g., CPU utilization), use raw value with 2 decimals
-          return {
-            clock: Number(h.clock),
-            value: rawValue, // for chart
-            rawValue,
-            bitsPerSec: null,
-            isTrigger: false,
-          };
+          return { clock, value: rawValue, rawValue, bitsPerSec: null, isTrigger: false };
         } else {
-          // For history:3 (e.g., speed/bits), assume value is in bps, no *8
           const bitsPerSec = rawValue;
-          return {
-            clock: Number(h.clock),
-            value: bitsPerSec / 1_000_000, // Mbps for chart
-            rawValue,
-            bitsPerSec,
-            isTrigger: false,
-          };
+          return { clock, value: bitsPerSec / 1_000_000, rawValue, bitsPerSec, isTrigger: false };
         }
       });
 
@@ -514,7 +482,6 @@ export default function SysReportPage() {
         return;
       }
 
-      // 2. Triggers
       const trigRes = await axios.post(
         "/api/zabbix-proxy",
         {
@@ -534,7 +501,6 @@ export default function SysReportPage() {
       const triggerIds = triggers.map((t: any) => t.triggerid);
 
       if (triggerIds.length > 0) {
-        // 3. Events (problems = value:1)
         const eventRes = await axios.post(
           "/api/zabbix-proxy",
           {
@@ -558,7 +524,6 @@ export default function SysReportPage() {
 
         const events = eventRes.data.result ?? [];
 
-        // 4. Match events to closest history point (±2 min)
         const MATCH_SEC = 120;
         events.forEach((ev: any) => {
           let bestIdx = -1;
@@ -608,10 +573,7 @@ export default function SysReportPage() {
     {
       title: "History",
       render: (_, record) => (
-        <Button
-          size="small"
-          onClick={() => openHistory(record.itemid, record.name, record.host, record.value_type)}
-        >
+        <Button size="small" onClick={() => openHistory(record.itemid, record.name, record.host, record.value_type)}>
           View
         </Button>
       ),
@@ -657,7 +619,7 @@ export default function SysReportPage() {
             style={{ maxWidth: 420 }}
           />
           <div style={{ fontSize: 12, color: "#888" }}>
-            Tip: Use Alt+N (next) / Alt+P (previous) to navigate pages
+            Tip: Alt+N / Alt+P to change pages
           </div>
         </Space>
 
@@ -667,21 +629,18 @@ export default function SysReportPage() {
           loading={loadingTable}
           pagination={{
             current: currentPage,
-            pageSize: pageSize,
-            onChange: (page, newPageSize) => {
+            pageSize,
+            onChange: (page, newSize) => {
               setCurrentPage(page);
-              if (newPageSize !== pageSize) {
-                setPageSize(newPageSize);
-              }
+              if (newSize !== pageSize) setPageSize(newSize);
             },
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
           }}
           scroll={{ x: "max-content" }}
         />
       </Space>
 
-      {/* ─── History Modal ──────────────────────────────────────── */}
       <Modal
         title={`${historyHost} – ${historyTitle}`}
         open={historyOpen}
@@ -722,12 +681,9 @@ export default function SysReportPage() {
               },
               {
                 title: "Value",
-                dataIndex: "value",
                 align: "center",
                 render: (_: any, r: any) =>
-                  isPercentage
-                    ? r.rawValue.toFixed(2) + " %"
-                    : formatForDisplay(r.bitsPerSec),
+                  isPercentage ? formatSafePercent(r.rawValue) : formatForDisplay(r.bitsPerSec),
               },
             ]}
             dataSource={historyData.map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
