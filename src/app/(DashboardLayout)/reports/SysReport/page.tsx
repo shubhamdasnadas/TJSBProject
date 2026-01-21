@@ -58,6 +58,14 @@ const getAxiosConfig = () => ({
     Authorization: `Bearer ${localStorage.getItem("zabbix_auth") || ""}`,
   },
 });
+const formatForDisplay = (bitsPerSec: number) => {
+  if (!Number.isFinite(bitsPerSec)) return "—";
+
+  if (bitsPerSec >= 1_000_000) {
+    return `${(bitsPerSec / 1_000_000).toFixed(2)} Mbps`;
+  }
+  return `${(bitsPerSec / 1_000).toFixed(2)} Kbps`;
+};
 
 /* ────────────────────────────────────────────────
    PDF EXPORT HELPERS
@@ -161,10 +169,10 @@ const exportHistoryToPDF = async (
     startY: 90,
     margin: { left: MARGIN_X, right: MARGIN_X },
     head: [["Time", "Value"]],
-    body: data.map((r) => [
-      new Date(r.clock * 1000).toLocaleString(),
-      typeof r.value === "number" ? r.value.toFixed(2) : r.value || "—",
-    ]),
+body: data.map((r) => [
+  new Date(r.clock * 1000).toLocaleString(),
+  formatForDisplay(r.bitsPerSec),
+]),
     styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: 180 }, 1: { cellWidth: "auto" } },
@@ -197,11 +205,20 @@ const HistoryLineChart = ({ data }: { data: any[] }) => {
 
   const chartData = data.map((d) => ({
     time: Number(d.clock) * 1000,
-    value: Number(d.value),
+value: Number(d.valueMbps),
+bitsPerSec: d.bitsPerSec,
+
     isTrigger: !!d.isTrigger,
     triggerName: d.triggerName || "",
     severity: d.severity ?? 0,
   }));
+const maxValue = Math.max(
+  ...chartData.map((d) => (Number.isFinite(d.value) ? d.value : 0)),
+  0
+);
+
+// Add 20% headroom so peaks are visible
+const yMax = maxValue > 0 ? maxValue * 1.2 : 1;
 
   return (
     <div style={{ height: 280, background: "#fff", padding: "12px 8px" }}>
@@ -214,28 +231,39 @@ const HistoryLineChart = ({ data }: { data: any[] }) => {
             tickFormatter={(v) => new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             label={{ value: "Time", position: "insideBottom", offset: -5 }}
           />
-          <YAxis label={{ value: "Value", angle: -90, position: "insideLeft" }} />
-          <Tooltip
-            labelFormatter={(v) => new Date(Number(v)).toLocaleString()}
-            content={({ payload }) => {
-              if (!payload?.length) return null;
-              const p = payload[0].payload;
-              return (
-                <div style={{ background: "#fff", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}>
-                  <div><strong>Time:</strong> {new Date(p.time).toLocaleString()}</div>
-                  <div><strong>Value:</strong> {p.value.toFixed(2)}</div>
-                  {p.isTrigger && (
-                    <>
-                      <div style={{ color: severityColor(p.severity), fontWeight: "bold", marginTop: 6 }}>
-                        🔔 Trigger: {p.triggerName}
-                      </div>
-                      <div>Severity: {p.severity}</div>
-                    </>
-                  )}
-                </div>
-              );
-            }}
-          />
+<YAxis
+  domain={[0, yMax]}
+  tickFormatter={(v) => `${v.toFixed(0)} Mbps`}
+  label={{ value: "Bandwidth (Mbps)", angle: -90, position: "insideLeft" }}
+/>
+
+<Tooltip
+  labelFormatter={(v) => new Date(Number(v)).toLocaleString()}
+  content={({ payload }) => {
+    if (!payload?.length) return null;
+    const p = payload[0].payload;
+
+    return (
+      <div style={{ background: "#fff", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}>
+        <div>
+          <strong>Time:</strong> {new Date(p.time).toLocaleString()}
+        </div>
+        <div>
+          <strong>Value:</strong> {formatForDisplay(p.bitsPerSec)}
+        </div>
+
+        {p.isTrigger && (
+          <>
+            <div style={{ color: severityColor(p.severity), fontWeight: "bold", marginTop: 6 }}>
+              🔔 Trigger: {p.triggerName}
+            </div>
+            <div>Severity: {p.severity}</div>
+          </>
+        )}
+      </div>
+    );
+  }}
+/>
           <Line
             type="monotone"
             dataKey="value"
@@ -314,7 +342,15 @@ export default function SysReportPage() {
       message.error("Failed to load hosts");
     }
   };
+ // ===== SIMPLE BANDWIDTH CONVERTER =====
+// Assumption: history.get value = BYTES per second
+ 
+// BANDWIDTH CONVERSION
+// =====================
 
+// Zabbix network items are usually BYTES per second
+// If your item is already bits/sec, set inputIsBytes = false
+ 
   const handleApply = async () => {
     if (!selectedHosts.length) return message.warning("Select at least one host");
     setLoadingTable(true);
@@ -409,11 +445,22 @@ export default function SysReportPage() {
         getAxiosConfig()
       );
 
-      let points = (histRes.data.result ?? []).map((h: any) => ({
-        clock: Number(h.clock),
-        value: Number(h.value) || h.value,
-        isTrigger: false,
-      }));
+let points = (histRes.data.result ?? []).map((h: any) => {
+  const rawBytesPerSec = Number(h.value);
+  const bitsPerSec = rawBytesPerSec * 8;
+
+  return {
+    clock: Number(h.clock),
+
+    // ✅ SINGLE BASE UNIT FOR CHART
+    valueMbps: bitsPerSec / 1_000_000,
+
+    // ✅ RAW VALUE FOR DISPLAY
+    bitsPerSec,
+
+    isTrigger: false,
+  };
+});
 
       if (!points.length) {
         message.warning("No history data in selected range");
@@ -614,7 +661,9 @@ export default function SysReportPage() {
               {
                 title: "Value",
                 dataIndex: "value",
-                render: (v: any) => (typeof v === "number" ? v.toFixed(2) : v || "—"),
+                align: "center",
+render: (_: any, r: any) =>
+  formatForDisplay(r.bitsPerSec),
               },
             ]}
             dataSource={historyData.map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
