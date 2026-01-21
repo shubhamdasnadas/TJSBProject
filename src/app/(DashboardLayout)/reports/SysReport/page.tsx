@@ -436,127 +436,128 @@ export default function SysReportPage() {
     setHistoryOpen(true);
   };
 
-  const reloadHistoryWithDateRange = async (range: DateRange) => {
-    if (!currentItemId || !range.startDate || !range.endDate) return;
-    setHistoryLoading(true);
+const reloadHistoryWithDateRange = async (range: DateRange) => {
+  if (!currentItemId || !range.startDate || !range.endDate) return;
+  setHistoryLoading(true);
 
-    try {
-      const start = new Date(`${range.startDate} ${range.startTime || "00:00:00"}`).getTime() / 1000;
-      const end = new Date(`${range.endDate} ${range.endTime || "23:59:59"}`).getTime() / 1000;
+  try {
+    const start = new Date(`${range.startDate} ${range.startTime || "00:00:00"}`).getTime() / 1000;
+    const end = new Date(`${range.endDate} ${range.endTime || "23:59:59"}`).getTime() / 1000;
 
-      const histRes = await axios.post(
+    const histRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "history.get",
+        params: {
+          output: "extend",
+          history: currentValueType,
+          itemids: [currentItemId],
+          time_from: Math.floor(start),
+          time_till: Math.floor(end),
+          sortfield: "clock",
+          sortorder: "ASC",
+          limit: 1200,
+        },
+        id: 100,
+      },
+      getAxiosConfig()
+    );
+
+    let points = (histRes.data.result ?? []).map((h: any) => {
+      const rawValue = Number(h.value);
+      const clock = Number(h.clock);
+
+      if (isPercentage) {
+        return { clock, value: rawValue, rawValue, bitsPerSec: null, isTrigger: false };
+      } else {
+        const bitsPerSec = rawValue;
+        return { clock, value: bitsPerSec / 1_000_000, rawValue, bitsPerSec, isTrigger: false };
+      }
+    });
+
+    points = points.sort((a: any, b: any) => b.clock - a.clock);
+
+    if (!points.length) {
+      message.warning("No history data in selected range");
+      setHistoryData([]);
+      return;
+    }
+
+    const trigRes = await axios.post(
+      "/api/zabbix-proxy",
+      {
+        jsonrpc: "2.0",
+        method: "trigger.get",
+        params: {
+          output: ["triggerid", "description", "priority"],
+          itemids: [currentItemId],
+          filter: { status: 0 },
+        },
+        id: 101,
+      },
+      getAxiosConfig()
+    );
+
+    const triggers = trigRes.data.result ?? [];
+    const triggerIds = triggers.map((t: any) => t.triggerid);
+
+    if (triggerIds.length > 0) {
+      const eventRes = await axios.post(
         "/api/zabbix-proxy",
         {
           jsonrpc: "2.0",
-          method: "history.get",
+          method: "event.get",
           params: {
-            output: "extend",
-            history: currentValueType,
-            itemids: [currentItemId],
+            output: ["eventid", "clock", "objectid", "value"],
+            object: 0,
+            objectids: triggerIds,
+            value: 1,
             time_from: Math.floor(start),
             time_till: Math.floor(end),
             sortfield: "clock",
-            sortorder: "ASC",
-            limit: 1200,
+            sortorder: "DESC",
+            limit: 300,
           },
-          id: 100,
+          id: 102,
         },
         getAxiosConfig()
       );
 
-      const points = (histRes.data.result ?? []).map((h: any) => {
-        const rawValue = Number(h.value);
-        const clock = Number(h.clock);
+      const events = eventRes.data.result ?? [];
 
-        if (isPercentage) {
-          return { clock, value: rawValue, rawValue, bitsPerSec: null, isTrigger: false };
-        } else {
-          const bitsPerSec = rawValue;
-          return { clock, value: bitsPerSec / 1_000_000, rawValue, bitsPerSec, isTrigger: false };
-        }
-      });
-
-      if (!points.length) {
-        message.warning("No history data in selected range");
-        setHistoryData([]);
-        return;
-      }
-
-      const trigRes = await axios.post(
-        "/api/zabbix-proxy",
-        {
-          jsonrpc: "2.0",
-          method: "trigger.get",
-          params: {
-            output: ["triggerid", "description", "priority"],
-            itemids: [currentItemId],
-            filter: { status: 0 },
-          },
-          id: 101,
-        },
-        getAxiosConfig()
-      );
-
-      const triggers = trigRes.data.result ?? [];
-      const triggerIds = triggers.map((t: any) => t.triggerid);
-
-      if (triggerIds.length > 0) {
-        const eventRes = await axios.post(
-          "/api/zabbix-proxy",
-          {
-            jsonrpc: "2.0",
-            method: "event.get",
-            params: {
-              output: ["eventid", "clock", "objectid", "value"],
-              object: 0,
-              objectids: triggerIds,
-              value: 1,
-              time_from: Math.floor(start),
-              time_till: Math.floor(end),
-              sortfield: "clock",
-              sortorder: "DESC",
-              limit: 300,
-            },
-            id: 102,
-          },
-          getAxiosConfig()
-        );
-
-        const events = eventRes.data.result ?? [];
-
-        const MATCH_SEC = 120;
-        events.forEach((ev: any) => {
-          let bestIdx = -1;
-          let bestDiff = MATCH_SEC + 1;
-          points.forEach((p: any, i: number) => {
-            const diff = Math.abs(p.clock - Number(ev.clock));
-            if (diff <= MATCH_SEC && diff < bestDiff) {
-              bestDiff = diff;
-              bestIdx = i;
-            }
-          });
-          if (bestIdx !== -1) {
-            const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
-            points[bestIdx] = {
-              ...points[bestIdx],
-              isTrigger: true,
-              triggerName: trig?.description || "Unnamed Trigger",
-              severity: trig?.priority ?? 0,
-            };
+      const MATCH_SEC = 120;
+      events.forEach((ev: any) => {
+        let bestIdx = -1;
+        let bestDiff = MATCH_SEC + 1;
+        points.forEach((p: any, i: number) => {
+          const diff = Math.abs(p.clock - Number(ev.clock));
+          if (diff <= MATCH_SEC && diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = i;
           }
         });
-      }
-
-      setHistoryData(points);
-      message.success(`Loaded ${points.length} points`);
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load history / triggers");
-    } finally {
-      setHistoryLoading(false);
+        if (bestIdx !== -1) {
+          const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
+          points[bestIdx] = {
+            ...points[bestIdx],
+            isTrigger: true,
+            triggerName: trig?.description || "Unnamed Trigger",
+            severity: trig?.priority ?? 0,
+          };
+        }
+      });
     }
-  };
 
+    setHistoryData(points);
+    message.success(`Loaded ${points.length} points`);
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load history / triggers");
+  } finally {
+    setHistoryLoading(false);
+  }
+};
   useEffect(() => {
     if (historyOpen && currentItemId && historyDateRange.startDate && historyDateRange.endDate) {
       const timer = setTimeout(() => reloadHistoryWithDateRange(historyDateRange), 300);
