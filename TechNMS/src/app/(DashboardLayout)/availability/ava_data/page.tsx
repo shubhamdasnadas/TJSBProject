@@ -178,7 +178,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const baseColumns: any = [
     {
       title: "Branch",
-      width: 160,
+      width: 130,
       render: (_: any, row: IpRow) => {
         const map: any = {
           up: ["#d7ffd7", "green"],
@@ -186,7 +186,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
           partial: ["#ffe5b4", "orange"],
         };
         const [bg, color] = map[row.rowState];
-
         return (
           <span
             style={{
@@ -202,64 +201,90 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         );
       },
     },
-    { title: "Hostname", dataIndex: "hostname", width: 180 },
-    { title: "System IP", dataIndex: "systemIp", width: 150 },
+    {
+      title: "Hostname",
+      dataIndex: "hostname",
+      width: 150,
+
+      ellipsis: true,   // prevents overflow
+      render: (text: string) => (
+        <span style={{ fontWeight: 700 }}>
+          {text}
+        </span>
+      ),
+    },
+    {
+      title: "System IP",
+      dataIndex: "systemIp",
+      width: 135,
+      render: (text: string) => (
+        <span style={{ fontWeight: 700 }}>{text}</span>
+      ),
+    },
     {
       title: "Tunnels (Name + Uptime)",
-      width: TUNNEL_DROPDOWN_WIDTH, // ✅ BASE REFERENCE
+      width: TUNNEL_DROPDOWN_WIDTH,
+      ellipsis: true,
       render: (_: any, row: IpRow) => {
         const sortedTunnels =
           row.tunnels.length > 0 ? sortTunnels(row.tunnels) : [];
 
         const selectedTunnel = sortedTunnels[0];
-        const isDown =
-          row.tunnels.length === 0 || selectedTunnel?.state === "down";
+        const bg =
+          row.tunnels.length === 0 || selectedTunnel?.state === "down"
+            ? "#ffd6d6"
+            : "#d7ffd7";
+
+        if (row.tunnels.length === 0) {
+          return (
+            <Select
+              style={{
+                width: "100%",
+                backgroundColor: "#ffd6d6",
+                border: "1px solid #000",
+                fontWeight: 700,
+              }}
+              value="NA"
+            >
+              <Select.Option value="NA">NA</Select.Option>
+            </Select>
+          );
+        }
 
         return (
-          <select
+          <Select
             style={{
-              padding: 6,
               width: "100%",
-              background: isDown ? "#ffd6d6" : "#d7ffd7",
+              backgroundColor: bg,
+              border: "1px solid #000",
               fontWeight: 700,
-              borderRadius: 4,
             }}
+            value={sortedTunnels[0].tunnelName}
           >
-            {row.tunnels.length === 0 ? (
-              <option style={{ backgroundColor: "#ffd6d6", fontWeight: 700 }}>
-                NA
-              </option>
-            ) : (
-              sortedTunnels.map((t: any, i: number) => (
-                <option
-                  key={i}
-                  value={t.tunnelName}
-                  style={{
-                    backgroundColor:
-                      t.state === "down" ? "#ffd6d6" : "#d7ffd7",
-                    fontWeight: t.state === "down" ? 700 : 500,
-                  }}
-                >
-                  {resolveIspName(t.tunnelName)} — {t.uptime}
-                </option>
-              ))
-            )}
-          </select>
+            {sortedTunnels.map((t: any, i: number) => (
+              <Select.Option
+                key={i}
+                value={t.tunnelName}
+                style={{ backgroundColor: getBgForTunnel(t) }}
+              >
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </Select.Option>
+            ))}
+          </Select>
         );
       },
     },
     {
       title: "State",
-      width: 100,
+      width: 90,
+      ellipsis: true,
       render: (_: any, row: IpRow) => {
         const map: any = {
           up: ["#d7ffd7", "green"],
           down: ["#ffd6d6", "red"],
           partial: ["#ffe5b4", "orange"],
         };
-
         const [bg, color] = map[row.rowState];
-
         return (
           <span
             style={{
@@ -277,15 +302,21 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     },
   ];
 
-  /* ===================== PRIMARY COLUMN ===================== */
   const primaryColumn: any = {
     title: "Primary",
-    width: TUNNEL_DROPDOWN_WIDTH, // ✅ SAME AS TUNNEL DROPDOWN
+    width: TUNNEL_DROPDOWN_WIDTH,
+    ellipsis: true, // ✅ ENABLED
+
     render: (_: any, row: IpRow) => {
       if (row.tunnels.length === 0) {
         return (
           <Select
-            style={{ width: "100%", backgroundColor: "#ffd6d6" }}
+            style={{
+              width: "100%",
+              backgroundColor: "#ffd6d6",
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
             value="NA"
           >
             <Select.Option value="NA">NA</Select.Option>
@@ -313,32 +344,57 @@ export default function TunnelsTable({ mode = "page" }: Props) {
           style={{
             width: "100%",
             backgroundColor: getBgForTunnel(first),
+            border: "1px solid #000",
+            fontWeight: 700,
           }}
           value={getIspNameOnly(first)}
+          optionLabelProp="label" // ✅ important for tooltip + ellipsis behavior
         >
-          {primaryList.map((t: any, i: number) => (
-            <Select.Option
-              key={i}
-              value={t.tunnelName}
-              style={{ backgroundColor: getBgForTunnel(t), width:"200%" }}
-            >
-              {resolveIspName(t.tunnelName)} — {t.uptime}
-            </Select.Option>
-          ))}
+          {primaryList.map((t: any, i: number) => {
+            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+
+            return (
+              <Select.Option
+                key={i}
+                value={t.tunnelName}
+                label={text} // used when collapsed
+                style={{
+                  backgroundColor: getBgForTunnel(t),
+                }}
+              >
+                <span
+                  title={text} // ✅ Native browser tooltip on hover
+                  style={{
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {text}
+                </span>
+              </Select.Option>
+            );
+          })}
         </Select>
       );
     },
   };
-
-  /* ===================== SECONDARY COLUMN ===================== */
   const secondaryColumn: any = {
     title: "Secondary",
-    width: TUNNEL_DROPDOWN_WIDTH, // ✅ SAME AS TUNNEL DROPDOWN
+    width: TUNNEL_DROPDOWN_WIDTH,
+    ellipsis: true, // ✅ SAME AS PRIMARY
+
     render: (_: any, row: IpRow) => {
       if (row.tunnels.length === 0) {
         return (
           <Select
-            style={{ width: "100%", backgroundColor: "#ffd6d6" }}
+            style={{
+              width: "100%",
+              backgroundColor: "#ffd6d6",
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
             value="NA"
           >
             <Select.Option value="NA">NA</Select.Option>
@@ -361,7 +417,14 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
       if (secondaryList.length === 0) {
         return (
-          <Select style={{ width: "100%", backgroundColor: "#ffffff" }} />
+          <Select
+            style={{
+              width: "100%",
+              backgroundColor: "#ffffff",
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
+          />
         );
       }
 
@@ -372,18 +435,38 @@ export default function TunnelsTable({ mode = "page" }: Props) {
           style={{
             width: "100%",
             backgroundColor: getBgForTunnel(first),
+            border: "1px solid #000",
+            fontWeight: 700,
           }}
           value={getIspNameOnly(first)}
+          optionLabelProp="label" // ✅ IMPORTANT (same as primary)
         >
-          {secondaryList.map((t: any, i: number) => (
-            <Select.Option
-              key={i}
-              value={t.tunnelName}
-              style={{ backgroundColor: getBgForTunnel(t), width:"200%" }}
-            >
-              {resolveIspName(t.tunnelName)} — {t.uptime}
-            </Select.Option>
-          ))}
+          {secondaryList.map((t: any, i: number) => {
+            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+
+            return (
+              <Select.Option
+                key={i}
+                value={t.tunnelName}
+                label={text} // used when collapsed
+                style={{
+                  backgroundColor: getBgForTunnel(t),
+                }}
+              >
+                <span
+                  title={text} // ✅ Tooltip on hover
+                  style={{
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {text}
+                </span>
+              </Select.Option>
+            );
+          })}
         </Select>
       );
     },
@@ -408,16 +491,25 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const table1Columns = baseColumns;
 
   const table2Columns = [
-    ...baseColumns.slice(0, 4),
+    // First three base columns (Branch, Hostname, System IP)
+    ...baseColumns.filter(
+      (col: any) =>
+        col.title !== "Tunnels (Name + Uptime)" &&
+        col.title !== "State"
+    ),
+
+    // Then Primary & Secondary
     primaryColumn,
     secondaryColumn,
-    baseColumns[4],
+
+    // Finally add State at the very last position
+    baseColumns.find((col: any) => col.title === "State"),
   ];
 
   return (
-    <div>
+    <div >
       {mode === "page" && (
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4" style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
           <h1 className="text-xl font-bold">
             SD-WAN — Tunnel Status by IP
           </h1>
@@ -427,7 +519,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         </div>
       )}
 
-      <Card title="SD-WAN Tunnels — Primary 4 IPs">
+      <Card title="SD-WAN IPsec Tunnels" style={{marginBottom:"2%"}}>
         <Table
           loading={loading}
           columns={table1Columns}
@@ -440,7 +532,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
       </Card>
 
       {table2Rows.length > 0 && (
-        <Card title="SD-WAN Tunnels — Other IPs" style={{ marginBottom: 20 }}>
+        <Card title="SD-WAN IPsec Tunnels" style={{ marginBottom: 20 }}>
           <Table
             loading={loading}
             columns={table2Columns}

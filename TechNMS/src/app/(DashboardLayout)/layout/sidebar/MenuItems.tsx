@@ -83,6 +83,7 @@ const Menuitems = [
     children: [
       // { title: "System Information", href: "/reports/SysInfo", icon: <AuditOutlined /> },
       { title: "System Reports", href: "/reports/SysReport", icon: <FileTextOutlined /> },
+      { title: "System Report Data", href: "/reports/systemReportData", icon: <FileTextOutlined /> },
       // { title: "Monthly Report", href: "/reports/report_data", icon: <FileTextOutlined /> },
       // { title: "Availability Reports", href: "/reports/Availability_Reports", icon: <ClockCircleOutlined /> },
       { title: "Top 100 Triggers", href: "/reports/Top100_triggers", icon: <AlertOutlined /> },

@@ -23,6 +23,8 @@ interface Host {
 interface Inventory {
   os?: string;
   serialno_a?: string;
+  model?: string;           // ✅ ADDED
+  software_full?: string;   // ✅ ADDED
 }
 
 interface HostItem {
@@ -44,8 +46,8 @@ Component
 ========================= */
 
 const HostTable = () => {
-  const [data, setData] = useState<HostItem[]>([]);        // full inventory
-  const [tableData, setTableData] = useState<HostItem[]>([]); // shown in table
+  const [data, setData] = useState<HostItem[]>([]);
+  const [tableData, setTableData] = useState<HostItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const { hostGroups, fetchZabbixData } = useZabbixData();
@@ -74,7 +76,7 @@ const HostTable = () => {
   }
 
   /* =========================
-  LOAD FROM CACHE (INSTANT)
+  LOAD FROM CACHE
   ========================= */
 
   useEffect(() => {
@@ -83,7 +85,7 @@ const HostTable = () => {
       try {
         const parsed = JSON.parse(cached);
         setData(parsed);
-        setTableData(parsed); // ✅ SHOW DEFAULT TABLE
+        setTableData(parsed);
       } catch {
         sessionStorage.removeItem(CACHE_KEY);
       }
@@ -106,7 +108,7 @@ const HostTable = () => {
 
       if (result.length) {
         setData(result);
-        setTableData(result); // ✅ SHOW DEFAULT TABLE
+        setTableData(result);
         sessionStorage.setItem(CACHE_KEY, JSON.stringify(result));
       }
     } catch {
@@ -122,7 +124,7 @@ const HostTable = () => {
   }, []);
 
   /* =========================
-  DROPDOWN HANDLERS
+  DROPDOWNS
   ========================= */
 
   const onGroupChange = async (groupId?: string) => {
@@ -131,20 +133,20 @@ const HostTable = () => {
 
     if (!groupId) {
       setHosts([]);
-      setTableData(data); // ✅ reset table
+      setTableData(data);
       return;
     }
 
     const hostList = await fetchZabbixData("host", [groupId]);
     setHosts(hostList || []);
-    setTableData([]); // wait for host selection
+    setTableData([]);
   };
 
   const onHostChange = (hostId?: string) => {
     setSelectedHost(hostId);
 
     if (!hostId || hostId === "__ALL__") {
-      setTableData(data); // ✅ show all
+      setTableData(data);
       return;
     }
 
@@ -155,7 +157,7 @@ const HostTable = () => {
   };
 
   /* =========================
-  TABLE COLUMNS (UNCHANGED)
+  TABLE COLUMNS
   ========================= */
 
   const columns = [
@@ -190,6 +192,18 @@ const HostTable = () => {
       render: (_: any, record: HostItem) =>
         record.inventory?.serialno_a || "-",
     },
+    {
+      title: "Model",
+      key: "model",
+      render: (_: any, record: HostItem) =>
+        record.inventory?.model || "-", // ✅ FIXED
+    },
+    {
+      title: "Software Full",
+      key: "software_full",
+      render: (_: any, record: HostItem) =>
+        record.inventory?.software_full || "-", // ✅ FIXED
+    },
   ];
 
   /* =========================
@@ -202,7 +216,6 @@ const HostTable = () => {
         Inventory Hosts
       </h2>
 
-      {/* DROPDOWNS */}
       <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
         <Select
           placeholder="Select Host Group"
@@ -233,7 +246,6 @@ const HostTable = () => {
         />
       </div>
 
-      {/* TABLE */}
       <Table
         rowKey="hostid"
         loading={loading}

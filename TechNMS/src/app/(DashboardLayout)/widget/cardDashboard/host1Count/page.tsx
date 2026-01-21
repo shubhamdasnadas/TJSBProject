@@ -23,7 +23,7 @@ const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
 interface VerticalRow {
   key: string;
-  metric: "VALID" | "INVALID";
+  metric: "UP" | "DOWN";
   primaryCount: number;
   primaryPercent: number;
   secondaryCount: number;
@@ -94,8 +94,8 @@ const Host1Count = () => {
 
       const rows: VerticalRow[] = [
         {
-          key: "valid",
-          metric: "VALID",
+          key: "up",
+          metric: "UP",
           primaryCount: primaryValid,
           primaryPercent: primaryTotal
             ? (primaryValid / primaryTotal) * 100
@@ -106,8 +106,8 @@ const Host1Count = () => {
             : 0,
         },
         {
-          key: "invalid",
-          metric: "INVALID",
+          key: "down",
+          metric: "DOWN",
           primaryCount: primaryInvalid,
           primaryPercent: primaryTotal
             ? (primaryInvalid / primaryTotal) * 100
@@ -149,9 +149,9 @@ const Host1Count = () => {
     {
       title: "Status",
       dataIndex: "metric",
-      render: (status: "VALID" | "INVALID") => (
+      render: (status: "UP" | "DOWN") => (
         <Tag
-          color={status === "VALID" ? "green" : "red"}
+          color={status === "UP" ? "green" : "red"}
           style={{ fontWeight: 700 }}
         >
           {status}
@@ -159,7 +159,7 @@ const Host1Count = () => {
       ),
     },
     {
-      title: "Primary Link",
+      title: "Primary Port",
       render: (_: any, record: VerticalRow) => (
         <div>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
@@ -170,14 +170,14 @@ const Host1Count = () => {
             size="small"
             showInfo={false}
             strokeColor={
-              record.metric === "VALID" ? "#52c41a" : "#ff4d4f"
+              record.metric === "UP" ? "#52c41a" : "#ff4d4f"
             }
           />
         </div>
       ),
     },
     {
-      title: "Secondary Link",
+      title: "Secondary Port",
       render: (_: any, record: VerticalRow) => (
         <div>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
@@ -188,7 +188,7 @@ const Host1Count = () => {
             size="small"
             showInfo={false}
             strokeColor={
-              record.metric === "VALID" ? "#52c41a" : "#ff4d4f"
+              record.metric === "UP" ? "#52c41a" : "#ff4d4f"
             }
           />
         </div>
