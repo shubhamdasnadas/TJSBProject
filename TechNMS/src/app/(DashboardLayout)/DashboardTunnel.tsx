@@ -614,6 +614,7 @@ export default function DashboardTunnel({
 
       {table2Rows.length > 0 && (
         <Card>
+          <h2>SD-WAN IPsec Tunnels Status - Branches</h2>
           <Table
             loading={loading}
             columns={table2Columns}
@@ -628,6 +629,7 @@ export default function DashboardTunnel({
       )}
 
       <Card style={{ marginBottom: 20 }}>
+        <h2>SD-WAN IPsec Tunnels Status - Data Center</h2>
         <Table
           loading={loading}
           columns={baseColumns}

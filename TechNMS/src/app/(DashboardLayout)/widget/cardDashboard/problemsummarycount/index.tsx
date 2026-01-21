@@ -1,26 +1,32 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Card, Progress, Table, Tag } from "antd";
+import { Card, Progress, Table, Tag, Tooltip } from "antd";
 import axios from "axios";
 
 /* ===================== TYPES ===================== */
 
 interface ApiTriggerItem {
     severity?: string;
+    name?: string;
+    trigger?: {
+        hosts?: {
+            host?: string; // ✅ real hostname
+            name?: string;
+        }[];
+    };
 }
 
 interface SeverityRow {
     key: string;
     severity: string;
     count: number;
-    color: string;    // Ant Design tag color keyword
-    rowColor: string; // background hex color
+    color: string;
+    rowColor: string;
 }
 
 /* ===================== SEVERITY CONFIG ===================== */
 
-// Ant Design tag colors mapped to hex codes for Progress bar strokeColor
 const COLOR_HEX_MAP: Record<string, string> = {
     red: "#ff4d4f",
     volcano: "#fa541c",
@@ -33,31 +39,11 @@ const SEVERITY_CONFIG: Record<
     string,
     { label: string; color: string; rowColor: string }
 > = {
-    "5": {
-        label: "Disaster",
-        color: "red",
-        rowColor: "#fff1f0",
-    },
-    "4": {
-        label: "High",
-        color: "volcano",
-        rowColor: "#fff2e8",
-    },
-    "3": {
-        label: "Average",
-        color: "orange",
-        rowColor: "#fff7e6",
-    },
-    "2": {
-        label: "Warning",
-        color: "gold",
-        rowColor: "#fffbe6",
-    },
-    "1": {
-        label: "Information",
-        color: "blue",
-        rowColor: "#e6f4ff",
-    },
+    "5": { label: "Disaster", color: "red", rowColor: "#fff1f0" },
+    "4": { label: "High", color: "volcano", rowColor: "#fff2e8" },
+    "3": { label: "Average", color: "orange", rowColor: "#fff7e6" },
+    "2": { label: "Warning", color: "gold", rowColor: "#fffbe6" },
+    "1": { label: "Information", color: "blue", rowColor: "#e6f4ff" },
 };
 
 /* ===================== COMPONENT ===================== */
@@ -70,7 +56,13 @@ export default function ProblemsSummaryTable() {
 
     const [data, setData] = useState<SeverityRow[]>([]);
     const [loading, setLoading] = useState(false);
-    const [maxCount, setMaxCount] = useState(0); // Store max count separately
+    const [maxCount, setMaxCount] = useState(0);
+
+    // 🔥 hostnames grouped by severity
+    const [hostDetails, setHostDetails] = useState<Record<string, string[]>>(
+        {}
+    );
+
     const fetchingRef = useRef(false);
 
     /* ===================== FETCH & COUNT ===================== */
@@ -89,7 +81,6 @@ export default function ProblemsSummaryTable() {
                 ? res.data.result
                 : [];
 
-            // Initialize counts
             const severityCount: Record<string, number> = {
                 "5": 0,
                 "4": 0,
@@ -98,96 +89,172 @@ export default function ProblemsSummaryTable() {
                 "1": 0,
             };
 
-            // Count by severity
+            const severityHosts: Record<string, Set<string>> = {
+                "5": new Set(),
+                "4": new Set(),
+                "3": new Set(),
+                "2": new Set(),
+                "1": new Set(),
+            };
+
             problems.forEach((problem) => {
                 const sev = problem.severity;
-                if (sev && severityCount[sev] !== undefined) {
-                    severityCount[sev]++;
-                }
+                if (!sev || severityCount[sev] === undefined) return;
+
+                severityCount[sev]++;
+
+                // ✅ CORRECT HOSTNAME PATH
+                const hostName =
+                    problem.trigger?.hosts?.[0]?.host ||
+                    problem.trigger?.hosts?.[0]?.name ||
+                    "Unknown Host";
+                const pro = problem.name
+                severityHosts[sev].add(
+                    `${hostName} — ${pro}`
+                );
             });
 
-            // Find max count to normalize progress bars
             const max = Math.max(...Object.values(severityCount));
 
-            // Build table data
             const tableData: SeverityRow[] = Object.entries(SEVERITY_CONFIG).map(
-                ([sev, config]) => ({
+                ([sev, cfg]) => ({
                     key: sev,
-                    severity: config.label,
-                    color: config.color,
-                    rowColor: config.rowColor,
+                    severity: cfg.label,
+                    color: cfg.color,
+                    rowColor: cfg.rowColor,
                     count: severityCount[sev],
                 })
             );
 
+            const hostData: Record<string, string[]> = {};
+            Object.keys(severityHosts).forEach((sev) => {
+                hostData[sev] = Array.from(severityHosts[sev]);
+            });
+
             setMaxCount(max);
             setData(tableData);
+            setHostDetails(hostData);
         } catch (error) {
             console.error("❌ Failed to fetch problems:", error);
             setData([]);
             setMaxCount(0);
+            setHostDetails({});
         } finally {
             fetchingRef.current = false;
             setLoading(false);
         }
     };
 
-    /* ===================== EFFECTS ===================== */
+    /* ===================== EFFECT ===================== */
 
     useEffect(() => {
         fetchProblems();
-        const interval = setInterval(fetchProblems, 120000); // 2 minutes
+        const interval = setInterval(fetchProblems, 120000);
         return () => clearInterval(interval);
     }, []);
 
-    /* ===================== TABLE COLUMNS ===================== */
+    /* ===================== TOOLTIP ===================== */
+
+    const renderTooltip = (sev: string, color: string) => (
+        <div
+            style={{
+                background: COLOR_HEX_MAP[color],
+                padding: 12,
+                borderRadius: 8,
+                maxHeight: 260,
+                overflowY: "auto",
+                minWidth: 260,
+            }}
+        >
+            {hostDetails[sev]?.map((item, i) => {
+                // Split "HOST — PROBLEM"
+                const [hostName, problemName] = item.split(" — ");
+
+                return (
+                    <div
+                        key={i}
+                        style={{
+                            marginBottom: 10,
+                            lineHeight: 1.4,
+                        }}
+                    >
+                        {/* ✅ HOSTNAME IN BOLD */}
+                        <div
+                            style={{
+                                fontWeight: 700,
+                                fontSize: 13,
+                            }}
+                        >
+                            {hostName}
+                        </div>
+
+                        {/* ✅ PROBLEM NAME ON NEW LINE */}
+                        <div
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 400,
+                                opacity: 0.95,
+                            }}
+                        >
+                            {problemName}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+
+    /* ===================== TABLE ===================== */
 
     const columns = [
         {
             title: "Severity",
             dataIndex: "severity",
-            render: (_: string, record: SeverityRow) => (
-                <Tag color={record.color} style={{ fontWeight: 600 }}>
-                    {record.severity}
+            render: (_: string, r: SeverityRow) => (
+                <Tag color={r.color} style={{ fontWeight: 600 }}>
+                    {r.severity}
                 </Tag>
             ),
         },
         {
             title: "Counts",
             dataIndex: "count",
-            render: (count: number) => (
-                <span style={{ minWidth: 30, textAlign: "right", fontWeight: 600 }}>
-                    {count}
-                </span>
-            )
+            render: (c: number) => (
+                <span style={{ fontWeight: 600 }}>{c}</span>
+            ),
         },
         {
             title: "Problem Count",
-            dataIndex: "count",
             align: "center" as const,
-            render: (count: number, record: SeverityRow) => {
-                // Normalize progress bar percent based on maxCount state, avoid 0% for non-zero counts
+            render: (_: any, r: SeverityRow) => {
                 const percent =
                     maxCount > 0
-                        ? Math.max(5, Math.round((count / maxCount) * 100))
+                        ? Math.max(5, Math.round((r.count / maxCount) * 100))
                         : 0;
 
-                // Use hex color for strokeColor from map, fallback to record.color string
-                const strokeColor = COLOR_HEX_MAP[record.color] || record.color;
+                const strokeColor = COLOR_HEX_MAP[r.color] || r.color;
+
+                const bar = (
+                    <Progress
+                        percent={r.count === 0 ? 0 : percent}
+                        size="small"
+                        showInfo={false}
+                        strokeColor={strokeColor}
+                        status={r.count === 0 ? "normal" : "active"}
+                    />
+                );
+
+                if (r.count === 0) return bar;
 
                 return (
-                    <>
-                        <div style={{ display: "flex", gap: "10px" }}>
-
-                            <Progress
-                                percent={count === 0 ? 0 : percent}
-                                size="small"
-                                showInfo={false}
-                                strokeColor={strokeColor}
-                                status={count === 0 ? "normal" : "active"}
-                            />
-                        </div>
-                    </>
+                    <Tooltip
+                        placement="right"
+                        color={strokeColor}
+                        title={renderTooltip(r.key, r.color)}
+                    >
+                        {bar}
+                    </Tooltip>
                 );
             },
         },
@@ -198,7 +265,7 @@ export default function ProblemsSummaryTable() {
     return (
         <Card
             title="Problem Summary by Severity"
-            style={{ width: "100%", height:"100%" }}
+            style={{ width: "100%", height: "100%" }}
             loading={loading && data.length === 0}
         >
             <Table
@@ -207,11 +274,8 @@ export default function ProblemsSummaryTable() {
                 dataSource={data}
                 pagination={false}
                 size="small"
-                rowClassName={() => "severity-row"}
-                onRow={(record) => ({
-                    style: {
-                        backgroundColor: record.rowColor,
-                    },
+                onRow={(r) => ({
+                    style: { backgroundColor: r.rowColor },
                 })}
             />
         </Card>
