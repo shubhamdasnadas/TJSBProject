@@ -369,43 +369,6 @@ const HistoryModal = ({
               }}
             />
 
-            {/* Oldest & Newest values display */}
-            {historyData.length > 0 && (
-              <div
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#888",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 16,
-                  marginTop: 4,
-                }}
-              >
-                {(() => {
-                  const oldest = historyData[historyData.length - 1];
-                  const newest = historyData[0];
-
-                  return (
-                    <>
-                      <div>
-                        <span style={{ color: "#52c41a", fontWeight: 500 }}>Oldest:</span>{" "}
-                        <strong>
-                          {typeof oldest.value === "number" ? oldest.value.toFixed(2) : oldest.value ?? "—"}
-                        </strong>{" "}
-                        <small>{new Date(oldest.clock * 1000).toLocaleString()}</small>
-                      </div>
-                      <div>
-                        <span style={{ color: "#1890ff", fontWeight: 500 }}>Newest:</span>{" "}
-                        <strong>
-                          {typeof newest.value === "number" ? newest.value.toFixed(2) : newest.value ?? "—"}
-                        </strong>{" "}
-                        <small>{new Date(newest.clock * 1000).toLocaleString()}</small>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
           </div>
 
           <Space>
@@ -496,7 +459,7 @@ const HistoryModal = ({
                       <g>
                         <circle cx={cx} cy={cy} r={6} fill="#52c41a" stroke="#fff" strokeWidth={2} />
                         <text x={cx + 10} y={cy - 15} fontSize={11} fill="#52c41a" fontWeight="bold">
-                          Oldest
+                         
                         </text>
                       </g>
                     );
