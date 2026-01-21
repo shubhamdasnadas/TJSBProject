@@ -1,4 +1,5 @@
 "use client";
+import { exportHistoryPdf } from "./utils"; 
 
 import { useState, useEffect } from "react";
 import { Card, Select, Button, Table, Space, Input, message } from "antd";

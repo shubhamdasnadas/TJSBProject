@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Modal, Button, Space, Table, message } from "antd";
+import { exportHistoryPdf } from "./utils";
+
 import {
   LineChart,
   Line,
@@ -382,18 +384,19 @@ const HistoryModal = ({
               Refresh
             </Button>
 
-            <Button
-              type="primary"
-              onClick={() => {
-                if (chartRef.current) {
-                  exportHistoryToPDF(title, host, historyData, chartRef.current);
-                } else {
-                  message.warning("Chart not ready yet");
-                }
-              }}
-            >
-              Export PDF
-            </Button>
+        <Button
+          type="primary"
+          onClick={() =>
+            exportHistoryPdf({
+              title,
+              host,
+              rows: historyData,
+              chartEl: chartRef.current,
+            })
+          }
+        >
+          Export PDF
+        </Button>
           </Space>
         </Space>
 
