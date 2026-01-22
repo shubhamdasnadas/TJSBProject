@@ -35,6 +35,15 @@
   --card-grey: #d5ddde;
 }
 
+/* SysReport table header */
+.sysreport-table .ant-table-thead > tr > th {
+  background-color:  #bbc1c4 !important;   /* light yellow */
+  color: #000 !important;
+  font-weight: 700;
+  text-align: center;
+  border-bottom: 1px solid #000000 ;
+}
+
 /* ========================================================= */
 /*                    DARK MODE VARIABLES                    */
 /* ========================================================= */
