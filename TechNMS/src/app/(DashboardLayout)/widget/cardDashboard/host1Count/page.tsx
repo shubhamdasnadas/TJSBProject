@@ -2,7 +2,14 @@
 
 import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
-import { Card, Table, Progress, Spin, Tag } from "antd";
+import {
+  Card,
+  Table,
+  Progress,
+  Spin,
+  Tag,
+  Tooltip,
+} from "antd";
 
 /* =====================
    CONFIG
@@ -10,16 +17,22 @@ import { Card, Table, Progress, Spin, Tag } from "antd";
 
 const HOST_ITEM_MAP: Record<"host1", string[]> = {
   host1: [
-    'Interface ["GigabitEthernet0/0/0"]: Operational status', // PRIMARY
-    'Interface ["GigabitEthernet0/0/1"]: Operational status', // SECONDARY
+    'Interface ["GigabitEthernet0/0/0"]: Operational status',
+    'Interface ["GigabitEthernet0/0/1"]: Operational status',
   ],
 };
 
-const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
+const REFRESH_INTERVAL = 2 * 60 * 1000;
 
 /* =====================
-   TYPES (VERTICAL TABLE)
+   TYPES
 ===================== */
+
+interface DownInfo {
+  branch: string;
+  hostname: string;
+  metricText: string;
+}
 
 interface VerticalRow {
   key: string;
@@ -28,6 +41,8 @@ interface VerticalRow {
   primaryPercent: number;
   secondaryCount: number;
   secondaryPercent: number;
+  primaryDownList?: DownInfo[];
+  secondaryDownList?: DownInfo[];
 }
 
 /* =====================
@@ -47,7 +62,7 @@ const Host1Count = () => {
   const [tableData, setTableData] = useState<VerticalRow[]>([]);
 
   /* =====================
-     LOAD & TRANSFORM DATA
+     LOAD DATA
   ===================== */
 
   const handleCertificate = async () => {
@@ -58,7 +73,7 @@ const Host1Count = () => {
 
     try {
       const responses = await Promise.all(
-        HOST_ITEM_MAP["host1"].map((itemName) =>
+        HOST_ITEM_MAP.host1.map((itemName) =>
           axios.post("/api/tjsb/get_item", {
             auth: user_token,
             name: itemName,
@@ -67,61 +82,79 @@ const Host1Count = () => {
         )
       );
 
-      let primaryValid = 0,
-        primaryInvalid = 0;
-      let secondaryValid = 0,
-        secondaryInvalid = 0;
+      let primaryUp = 0,
+        primaryDown = 0;
+      let secondaryUp = 0,
+        secondaryDown = 0;
 
-      // INDEX 0 = PRIMARY, INDEX 1 = SECONDARY
+      const primaryDownList: DownInfo[] = [];
+      const secondaryDownList: DownInfo[] = [];
+
       responses.forEach((res, index) => {
         const items = res.data?.result ?? [];
-
+        console.log("res", res);
         items.forEach((item: any) => {
           const value = Number(item.lastvalue);
+          const host = item.hostname;
+
+          // ✅ PROPER downInfo
+          const downInfo: DownInfo = {
+            branch:  "UNKNOWN-BRANCH",
+            hostname:host || "UNKNOWN-HOST",
+            metricText: `Cisco SD-WAN: ${item.name}`,
+          };
 
           if (index === 0) {
-            if (!isNaN(value) && value > 0) primaryInvalid++;
-            else primaryValid++;
+            if (!isNaN(value) && value > 0) {
+              primaryDown++;
+              primaryDownList.push(downInfo);
+            } else {
+              primaryUp++;
+            }
           } else {
-            if (!isNaN(value) && value > 0) secondaryInvalid++;
-            else secondaryValid++;
+            if (!isNaN(value) && value > 0) {
+              secondaryDown++;
+              secondaryDownList.push(downInfo);
+            } else {
+              secondaryUp++;
+            }
           }
         });
       });
 
-      const primaryTotal = primaryValid + primaryInvalid;
-      const secondaryTotal = secondaryValid + secondaryInvalid;
+      const primaryTotal = primaryUp + primaryDown;
+      const secondaryTotal = secondaryUp + secondaryDown;
 
-      const rows: VerticalRow[] = [
+      setTableData([
         {
           key: "up",
           metric: "UP",
-          primaryCount: primaryValid,
+          primaryCount: primaryUp,
           primaryPercent: primaryTotal
-            ? (primaryValid / primaryTotal) * 100
+            ? (primaryUp / primaryTotal) * 100
             : 0,
-          secondaryCount: secondaryValid,
+          secondaryCount: secondaryUp,
           secondaryPercent: secondaryTotal
-            ? (secondaryValid / secondaryTotal) * 100
+            ? (secondaryUp / secondaryTotal) * 100
             : 0,
         },
         {
           key: "down",
           metric: "DOWN",
-          primaryCount: primaryInvalid,
+          primaryCount: primaryDown,
           primaryPercent: primaryTotal
-            ? (primaryInvalid / primaryTotal) * 100
+            ? (primaryDown / primaryTotal) * 100
             : 0,
-          secondaryCount: secondaryInvalid,
+          secondaryCount: secondaryDown,
           secondaryPercent: secondaryTotal
-            ? (secondaryInvalid / secondaryTotal) * 100
+            ? (secondaryDown / secondaryTotal) * 100
             : 0,
+          primaryDownList,
+          secondaryDownList,
         },
-      ];
-
-      setTableData(rows);
+      ]);
     } catch (err) {
-      console.error("Certificate fetch error:", err);
+      console.error("Host1Count fetch error:", err);
       setTableData([]);
     } finally {
       fetchingRef.current = false;
@@ -136,62 +169,116 @@ const Host1Count = () => {
   useEffect(() => {
     handleCertificate();
     intervalRef.current = setInterval(handleCertificate, REFRESH_INTERVAL);
+
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, []);
 
   /* =====================
-     VERTICAL TABLE COLUMNS
+     TOOLTIP UI
+  ===================== */
+
+  const renderDownTooltip = (list?: DownInfo[]) => (
+    <div
+      style={{
+        backgroundColor: "#ff4d4f",
+        color: "#fff",
+        padding: "12px 14px",
+        borderRadius: 8,
+        width: 420,
+        maxHeight: 260,
+        overflowY: "auto",
+        boxSizing: "border-box",
+      }}
+    >
+      {list?.length ? (
+        list.map((d, i) => (
+          <div
+            key={i}
+            style={{
+              marginBottom: 12,
+              paddingBottom: 10,
+              borderBottom: "1px solid rgba(255,255,255,0.35)",
+            }}
+          >
+            {/* <div style={{ fontWeight: 700 }}>{d.branch}</div> */}
+            <div style={{ fontSize: 12, opacity: 0.9 }}>
+              {d.hostname}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div style={{ fontSize: 12 }}>No DOWN interfaces</div>
+      )}
+    </div>
+  );
+
+  /* =====================
+     TABLE COLUMNS
   ===================== */
 
   const columns = [
     {
       title: "Status",
       dataIndex: "metric",
-      render: (status: "UP" | "DOWN") => (
-        <Tag
-          color={status === "UP" ? "green" : "red"}
-          style={{ fontWeight: 700 }}
-        >
-          {status}
-        </Tag>
+      render: (s: "UP" | "DOWN") => (
+        <Tag color={s === "UP" ? "green" : "red"}>{s}</Tag>
       ),
     },
     {
       title: "Primary Port",
-      render: (_: any, record: VerticalRow) => (
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            Count: {record.primaryCount}
+      render: (_: any, r: VerticalRow) => (
+        <Tooltip
+          title={r.metric === "DOWN" ? renderDownTooltip(r.primaryDownList) : null}
+          placement="right"
+          autoAdjustOverflow
+          overlayInnerStyle={{ padding: 0, background: "transparent" }}
+          overlayStyle={{ maxWidth: 420 }}
+          getPopupContainer={(t) => t.parentElement!}
+        >
+          <div>
+            <div style={{ fontWeight: 600 }}>
+              Count: {r.primaryCount}
+            </div>
+            <Progress
+              percent={Math.round(r.primaryPercent)}
+              showInfo={false}
+              strokeColor={r.metric === "DOWN" ? "#ff4d4f" : "#52c41a"}
+            />
           </div>
-          <Progress
-            percent={Math.round(record.primaryPercent)}
-            size="small"
-            showInfo={false}
-            strokeColor={
-              record.metric === "UP" ? "#52c41a" : "#ff4d4f"
-            }
-          />
-        </div>
+        </Tooltip>
       ),
     },
     {
       title: "Secondary Port",
-      render: (_: any, record: VerticalRow) => (
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            Count: {record.secondaryCount}
+      render: (_: any, r: VerticalRow) => (
+        <Tooltip
+          title={
+            r.metric === "DOWN"
+              ? renderDownTooltip(r.secondaryDownList)
+              : null
+          }
+          placement="right"
+          autoAdjustOverflow
+          overlayInnerStyle={{ padding: 0, background: "transparent" }}
+          overlayStyle={{ maxWidth: 420 }}
+          getPopupContainer={(t) => t.parentElement!}
+        >
+          <div>
+            <div style={{ fontWeight: 600 }}>
+              Count: {r.secondaryCount}
+            </div>
+            <Progress
+              percent={Math.round(r.secondaryPercent)}
+              showInfo={false}
+              strokeColor={r.metric === "DOWN" ? "#ff4d4f" : "#52c41a"}
+            />
           </div>
-          <Progress
-            percent={Math.round(record.secondaryPercent)}
-            size="small"
-            showInfo={false}
-            strokeColor={
-              record.metric === "UP" ? "#52c41a" : "#ff4d4f"
-            }
-          />
-        </div>
+        </Tooltip>
       ),
     },
   ];
@@ -203,23 +290,15 @@ const Host1Count = () => {
   return (
     <Card
       title="Host-1 — Primary vs Secondary Interface Status"
-      style={{
-        width: "100%",
-        height: "100%",
-        borderRadius: 18,
-      }}
-      bodyStyle={{ padding: 16 }}
+      style={{ width: "100%", borderRadius: 18 }}
     >
       {loading ? (
-        <div style={{ textAlign: "center", padding: 20 }}>
-          <Spin />
-        </div>
+        <Spin />
       ) : (
         <Table
           columns={columns}
           dataSource={tableData}
           pagination={false}
-          size="large"
           bordered
           rowKey="key"
         />
