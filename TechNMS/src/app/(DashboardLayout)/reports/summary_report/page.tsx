@@ -239,6 +239,22 @@ const SummaryReport: React.FC = () => {
     if (user_token) fetchData();
   }, [user_token, hosts]);
 
+  <style jsx global>{`
+  @keyframes pulseGlowOrange {
+    0% {
+      box-shadow: 0 0 0 0 rgba(255, 122, 69, 0.6);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(255, 122, 69, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 122, 69, 0);
+    }
+  }
+`}</style>
+
+
+
   /* ===================== MODAL TABLE COLUMNS ===================== */
 
   const historyColumns = [
@@ -293,13 +309,34 @@ const SummaryReport: React.FC = () => {
             align: "center",
             render: (_: any, row: RowData) => (
               <Button
-                type="primary"
-                ghost
-                size="small"
+                size="middle"
                 onClick={() => handleGenerateClick("primary", row)}
+                style={{
+                  background: "linear-gradient(135deg, #ffa940, #ff7a45)",
+                  border: "none",
+                  color: "#000",
+                  fontWeight: 600,
+                  padding: "6px 18px",
+                  borderRadius: "6px",
+                  boxShadow: "0 0 0 rgba(255,122,69,0.6)",
+                  animation: "pulseGlowOrange 1.8s infinite",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 14px rgba(255,122,69,0.9)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 0 rgba(255,122,69,0.6)";
+                }}
               >
                 Generate
               </Button>
+
+
             ),
           },
           {
@@ -307,11 +344,33 @@ const SummaryReport: React.FC = () => {
             align: "center",
             render: (_: any, row: RowData) => (
               <Button
-                size="small"
+                size="middle"
                 onClick={() => handleGenerateClick("secondary", row)}
+                style={{
+                  background: "linear-gradient(135deg, #ffa940, #ff7a45)",
+                  border: "none",
+                  color: "#000",
+                  fontWeight: 600,
+                  padding: "6px 18px",
+                  borderRadius: "6px",
+                  boxShadow: "0 0 0 rgba(255,122,69,0.6)",
+                  animation: "pulseGlowOrange 1.8s infinite",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 14px rgba(255,122,69,0.9)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 0 rgba(255,122,69,0.6)";
+                }}
               >
                 Generate
               </Button>
+
             ),
           },
         ]}
