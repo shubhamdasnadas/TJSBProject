@@ -24,6 +24,7 @@ import RangePickerDemo from "../../RangePickerDemo";
 import autoTable from "jspdf-autotable";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { IconNumber0 } from "@tabler/icons-react";
 
 /* ────────────────────────────────────────────────
    TYPES
@@ -69,6 +70,12 @@ const formatSafePercent = (value: any): string => {
   const num = Number(value);
   if (isNaN(num) || !Number.isFinite(num)) return "—";
   return `${num.toFixed(2)} %`;
+};
+
+const formatPlain = (value: any): string => {
+  const num = Number(value);
+  if (isNaN(num) || !Number.isFinite(num)) return "—";
+  return num.toFixed(2);
 };
 
 /* ────────────────────────────────────────────────
@@ -119,7 +126,7 @@ const exportHistoryToPDF = async (
   host: string,
   data: any[],
   chartEl: HTMLDivElement | null,
-  isPercentage: boolean
+  itemType: string
 ) => {
   const doc = new jsPDF("p", "pt", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -176,7 +183,7 @@ const exportHistoryToPDF = async (
     head: [["Time", "Value"]],
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
-      isPercentage ? formatSafePercent(r.rawValue) : formatForDisplay(r.bitsPerSec),
+      itemType === 'percent' ? formatSafePercent(r.rawValue) : itemType === 'bandwidth' ? formatForDisplay(r.bitsPerSec) : formatPlain(r.rawValue),
     ]),
     styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
@@ -205,7 +212,7 @@ const severityColor = (s?: number) => {
 /* ────────────────────────────────────────────────
    HISTORY CHART
 ───────────────────────────────────────────────── */
-const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: boolean }) => {
+const HistoryLineChart = ({ data, itemType }: { data: any[]; itemType: string }) => {
   if (!data.length) return null;
 
   const chartData = data.map((d) => ({
@@ -219,7 +226,7 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
   }));
 
   const maxValue = Math.max(...chartData.map((d) => (Number.isFinite(d.value) ? d.value : 0)), 0);
-  const yMax = maxValue > 0 ? maxValue * 1.2 : (isPercentage ? 100 : 10);
+  const yMax = maxValue > 0 ? maxValue * 1.2 : (itemType === 'percent' ? 100 : itemType === 'bandwidth' ? 10 : 1);
 
   return (
     <div style={{ height: 280, background: "#fff", padding: "12px 8px" }}>
@@ -234,9 +241,13 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
           />
           <YAxis
             domain={[0, yMax]}
-            tickFormatter={(v) => (isPercentage ? `${v.toFixed(0)} %` : `${v.toFixed(0)} Mbps`)}
+            tickFormatter={(v) => 
+              itemType === 'percent' ? `${v.toFixed(0)} %` : 
+              itemType === 'bandwidth' ? `${v.toFixed(0)} Mbps` : 
+              v.toFixed(2)
+            }
             label={{
-              value: isPercentage ? "Utilization (%)" : "Bandwidth (Mbps)",
+              value: itemType === 'percent' ? "Utilization (%)" : itemType === 'bandwidth' ? "Bandwidth (Mbps)" : "Value",
               angle: -90,
               position: "insideLeft",
             }}
@@ -251,7 +262,7 @@ const HistoryLineChart = ({ data, isPercentage }: { data: any[]; isPercentage: b
                   <div><strong>Time:</strong> {new Date(p.time).toLocaleString()}</div>
                   <div>
                     <strong>Value:</strong>{" "}
-                    {isPercentage ? formatSafePercent(p.rawValue) : formatForDisplay(p.bitsPerSec)}
+                    {itemType === 'percent' ? formatSafePercent(p.rawValue) : itemType === 'bandwidth' ? formatForDisplay(p.bitsPerSec) : p.rawValue.toFixed(2)}
                   </div>
                   {p.isTrigger && (
                     <>
@@ -305,7 +316,7 @@ export default function SysReportPage() {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [currentItemId, setCurrentItemId] = useState("");
   const [currentValueType, setCurrentValueType] = useState<number>(3);
-  const [isPercentage, setIsPercentage] = useState(false);
+  const [itemType, setItemType] = useState<string>("bandwidth");
 
   const [historyDateRange, setHistoryDateRange] = useState<DateRange>({
     startDate: "",
@@ -411,17 +422,14 @@ export default function SysReportPage() {
     const vType = valueType ?? 3;
     const nameLower = name.toLowerCase();
 
-    const isLikelyPercent =
-      vType === 0 ||
-      nameLower.includes("cpu") ||
-      nameLower.includes("util") ||
-      nameLower.includes("usage") ||
-      nameLower.includes("memory") ||
-      nameLower.includes("percent") ||
-      nameLower.includes("%");
+    const isPercent = ["cpu", "util", "usage", "memory", "percent", "%"].some((s) => nameLower.includes(s));
+    const isBand = ["net", "interface", "traffic", "bandwidth", "bps", "kps", "inbound", "outbound", "rx", "tx"].some((s) => nameLower.includes(s));
+    const isLoad = nameLower.includes("load");
+
+    const newItemType = isPercent ? "percent" : isBand ? "bandwidth" : isLoad ? "plain" : vType === 0 ? "plain" : "bandwidth";
 
     setCurrentValueType(vType);
-    setIsPercentage(isLikelyPercent);
+    setItemType(newItemType);
     setHistoryData([]);
 
     const now = new Date();
@@ -436,128 +444,126 @@ export default function SysReportPage() {
     setHistoryOpen(true);
   };
 
-const reloadHistoryWithDateRange = async (range: DateRange) => {
-  if (!currentItemId || !range.startDate || !range.endDate) return;
-  setHistoryLoading(true);
+  const reloadHistoryWithDateRange = async (range: DateRange) => {
+    if (!currentItemId || !range.startDate || !range.endDate) return;
+    setHistoryLoading(true);
 
-  try {
-    const start = new Date(`${range.startDate} ${range.startTime || "00:00:00"}`).getTime() / 1000;
-    const end = new Date(`${range.endDate} ${range.endTime || "23:59:59"}`).getTime() / 1000;
+    try {
+      const start = new Date(`${range.startDate} ${range.startTime || "00:00:00"}`).getTime() / 1000;
+      const end = new Date(`${range.endDate} ${range.endTime || "23:59:59"}`).getTime() / 1000;
 
-    const histRes = await axios.post(
-      "/api/zabbix-proxy",
-      {
-        jsonrpc: "2.0",
-        method: "history.get",
-        params: {
-          output: "extend",
-          history: currentValueType,
-          itemids: [currentItemId],
-          time_from: Math.floor(start),
-          time_till: Math.floor(end),
-          sortfield: "clock",
-          sortorder: "ASC",
-          limit: 1200,
-        },
-        id: 100,
-      },
-      getAxiosConfig()
-    );
-
-    let points = (histRes.data.result ?? []).map((h: any) => {
-      const rawValue = Number(h.value);
-      const clock = Number(h.clock);
-
-      if (isPercentage) {
-        return { clock, value: rawValue, rawValue, bitsPerSec: null, isTrigger: false };
-      } else {
-        const bitsPerSec = rawValue;
-        return { clock, value: bitsPerSec / 1_000_000, rawValue, bitsPerSec, isTrigger: false };
-      }
-    });
-
-    points = points.sort((a: any, b: any) => b.clock - a.clock);
-
-    if (!points.length) {
-      message.warning("No history data in selected range");
-      setHistoryData([]);
-      return;
-    }
-
-    const trigRes = await axios.post(
-      "/api/zabbix-proxy",
-      {
-        jsonrpc: "2.0",
-        method: "trigger.get",
-        params: {
-          output: ["triggerid", "description", "priority"],
-          itemids: [currentItemId],
-          filter: { status: 0 },
-        },
-        id: 101,
-      },
-      getAxiosConfig()
-    );
-
-    const triggers = trigRes.data.result ?? [];
-    const triggerIds = triggers.map((t: any) => t.triggerid);
-
-    if (triggerIds.length > 0) {
-      const eventRes = await axios.post(
+      const histRes = await axios.post(
         "/api/zabbix-proxy",
         {
           jsonrpc: "2.0",
-          method: "event.get",
+          method: "history.get",
           params: {
-            output: ["eventid", "clock", "objectid", "value"],
-            object: 0,
-            objectids: triggerIds,
-            value: 1,
+            output: "extend",
+            history: currentValueType,
+            itemids: [currentItemId],
             time_from: Math.floor(start),
             time_till: Math.floor(end),
             sortfield: "clock",
-            sortorder: "DESC",
-            limit: 300,
+            sortorder: "ASC",
+            limit: 1200,
           },
-          id: 102,
+          id: 100,
         },
         getAxiosConfig()
       );
 
-      const events = eventRes.data.result ?? [];
+      let points = (histRes.data.result ?? []).map((h: any) => {
+        const clock = Number(h.clock);
+        const rawValue = Number(h.value);
 
-      const MATCH_SEC = 120;
-      events.forEach((ev: any) => {
-        let bestIdx = -1;
-        let bestDiff = MATCH_SEC + 1;
-        points.forEach((p: any, i: number) => {
-          const diff = Math.abs(p.clock - Number(ev.clock));
-          if (diff <= MATCH_SEC && diff < bestDiff) {
-            bestDiff = diff;
-            bestIdx = i;
-          }
-        });
-        if (bestIdx !== -1) {
-          const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
-          points[bestIdx] = {
-            ...points[bestIdx],
-            isTrigger: true,
-            triggerName: trig?.description || "Unnamed Trigger",
-            severity: trig?.priority ?? 0,
-          };
+        if (itemType === "bandwidth") {
+          const bitsPerSec = rawValue;
+          return { clock, value: bitsPerSec / 1_000_000, rawValue, bitsPerSec, isTrigger: false };
+        } else {
+          return { clock, value: rawValue, rawValue, bitsPerSec: null, isTrigger: false };
         }
       });
-    }
 
-    setHistoryData(points);
-    message.success(`Loaded ${points.length} points`);
-  } catch (err) {
-    console.error(err);
-    message.error("Failed to load history / triggers");
-  } finally {
-    setHistoryLoading(false);
-  }
-};
+      if (!points.length) {
+        message.warning("No history data in selected range");
+        setHistoryData([]);
+        return;
+      }
+
+      const trigRes = await axios.post(
+        "/api/zabbix-proxy",
+        {
+          jsonrpc: "2.0",
+          method: "trigger.get",
+          params: {
+            output: ["triggerid", "description", "priority"],
+            itemids: [currentItemId],
+            filter: { status: 0 },
+          },
+          id: 101,
+        },
+        getAxiosConfig()
+      );
+
+      const triggers = trigRes.data.result ?? [];
+      const triggerIds = triggers.map((t: any) => t.triggerid);
+
+      if (triggerIds.length > 0) {
+        const eventRes = await axios.post(
+          "/api/zabbix-proxy",
+          {
+            jsonrpc: "2.0",
+            method: "event.get",
+            params: {
+              output: ["eventid", "clock", "objectid", "value"],
+              object: 0,
+              objectids: triggerIds,
+              value: 1,
+              time_from: Math.floor(start),
+              time_till: Math.floor(end),
+              sortfield: "clock",
+              sortorder: "DESC",
+              limit: 300,
+            },
+            id: 102,
+          },
+          getAxiosConfig()
+        );
+
+        const events = eventRes.data.result ?? [];
+
+        const MATCH_SEC = 120;
+        events.forEach((ev: any) => {
+          let bestIdx = -1;
+          let bestDiff = MATCH_SEC + 1;
+          points.forEach((p: any, i: number) => {
+            const diff = Math.abs(p.clock - Number(ev.clock));
+            if (diff <= MATCH_SEC && diff < bestDiff) {
+              bestDiff = diff;
+              bestIdx = i;
+            }
+          });
+          if (bestIdx !== -1) {
+            const trig = triggers.find((t: any) => t.triggerid === ev.objectid);
+            points[bestIdx] = {
+              ...points[bestIdx],
+              isTrigger: true,
+              triggerName: trig?.description || "Unnamed Trigger",
+              severity: trig?.priority ?? 0,
+            };
+          }
+        });
+      }
+
+      setHistoryData(points);
+      message.success(`Loaded ${points.length} points`);
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to load history / triggers");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
   useEffect(() => {
     if (historyOpen && currentItemId && historyDateRange.startDate && historyDateRange.endDate) {
       const timer = setTimeout(() => reloadHistoryWithDateRange(historyDateRange), 300);
@@ -659,14 +665,14 @@ const reloadHistoryWithDateRange = async (range: DateRange) => {
             <Button
               type="primary"
               loading={historyLoading}
-              onClick={() => exportHistoryToPDF(historyTitle, historyHost, historyData, chartRef.current, isPercentage)}
+              onClick={() => exportHistoryToPDF(historyTitle, historyHost, historyData, chartRef.current, itemType)}
             >
               Export to PDF
             </Button>
           </Space>
 
           <div ref={chartRef}>
-            <HistoryLineChart data={historyData} isPercentage={isPercentage} />
+            <HistoryLineChart data={historyData} itemType={itemType} />
           </div>
 
           <Table
@@ -684,10 +690,10 @@ const reloadHistoryWithDateRange = async (range: DateRange) => {
                 title: "Value",
                 align: "center",
                 render: (_: any, r: any) =>
-                  isPercentage ? formatSafePercent(r.rawValue) : formatForDisplay(r.bitsPerSec),
+                  itemType === 'percent' ? formatSafePercent(r.rawValue) : itemType === 'bandwidth' ? formatForDisplay(r.bitsPerSec) : formatPlain(r.rawValue),
               },
             ]}
-            dataSource={historyData.map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
+            dataSource={historyData.slice().sort((a, b) => b.clock - a.clock).map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
           />
         </Space>
       </Modal>
