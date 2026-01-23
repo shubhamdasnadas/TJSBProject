@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Modal, Button, Space, Table, message } from "antd";
-import { exportHistoryPdf } from "./Utils";
+import { exportHistoryPdf } from "../SysReport/Utils";
 import {
   LineChart,
   Line,
