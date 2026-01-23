@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Modal, Button, Space, Table, message } from "antd";
 import { exportHistoryPdf } from "../SysReport/Utils";
+
 import {
   LineChart,
   Line,
@@ -12,7 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import axios from "axios";
-import RangePickerDemo from  "../../RangePickerDemo2" 
+import RangePickerDemo from "../../RangePickerDemo2"; // adjust path as needed
 
 // Assume exported from ./utils.ts or define here
 const getAxiosConfig = () => ({
