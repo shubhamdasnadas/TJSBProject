@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Table,
   Form,
@@ -25,6 +25,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import * as Papa from "papaparse";
+
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -67,6 +71,8 @@ const COLORS = ["#1677ff", "#52c41a"];
 /* ===================== COMPONENT ===================== */
 
 const SummaryReport: React.FC = () => {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const exportCSVRef = useRef<HTMLDivElement>(null);
   const { hosts } = useZabbixData();
   const user_token =
     typeof window !== "undefined"
@@ -80,9 +86,9 @@ const SummaryReport: React.FC = () => {
     useState<GenerateType>("primary");
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const [pdftitle, setPdftitle] = useState("")
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
-  const [yUnit, setYUnit] = useState<SpeedUnit>("K");
+
 
   /* ===================== HELPERS ===================== */
 
@@ -183,7 +189,7 @@ const SummaryReport: React.FC = () => {
       });
 
       setChartData(Object.values(grouped));
-      setYUnit(detectedUnit);
+      // setYUnit(detectedUnit);
       message.success("History loaded");
     } catch (e) {
       console.error(e);
@@ -247,6 +253,216 @@ const SummaryReport: React.FC = () => {
     if (user_token) fetchData();
   }, [user_token, hosts]);
 
+  const handleExportPDF = async () => {
+    if (!selectedRow || !chartData.length) return;
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const logo = "/images/logos/techsec-logo_name.png";
+    const generatedAt = dayjs().format("DD/MM/YYYY, h:mm a");
+    const margin = 15;
+
+    /* ================= COMMON HELPERS ================= */
+
+    const drawPageBorder = () => {
+      pdf.setDrawColor(0);
+      pdf.setLineWidth(0.6);
+      pdf.rect(
+        margin,
+        margin,
+        pageWidth - margin * 2,
+        pageHeight - margin * 2
+      );
+    };
+
+    // 🔵 MAIN LOGO SIZE (cover)
+    const logoWidth = 90;
+    const logoHeight = 60;
+
+    // 🔵 DYNAMIC WATERMARK SIZE (relative to page)
+    const watermarkWidth = pageWidth * 0.45;
+    const watermarkHeight = watermarkWidth * (logoHeight / logoWidth);
+
+    const drawWatermark = (opacity = 0.06) => {
+      pdf.setGState(new (pdf as any).GState({ opacity }));
+      pdf.addImage(
+        logo,
+        "PNG",
+        pageWidth / 2 - watermarkWidth / 2,
+        pageHeight / 2 - watermarkHeight / 2,
+        watermarkWidth,
+        watermarkHeight
+      );
+      pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+    };
+
+    /* ================= PAGE 1 – COVER ================= */
+
+    drawPageBorder();
+
+    pdf.addImage(
+      logo,
+      "PNG",
+      pageWidth / 2 - logoWidth / 2,
+      margin + 45,
+      logoWidth,
+      logoHeight
+    );
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(20);
+    pdf.text("Techsec NMS – History Report", pageWidth / 2, 135, {
+      align: "center",
+    });
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+    pdf.text(`Host: ${selectedRow.host}`, 40, 160);
+    pdf.text(`Branch: ${selectedRow.branch}`, 40, 170);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Item Name:", 40, 185);
+
+    pdf.setFont("helvetica", "normal");
+    INTERFACE_ITEM_MAP[generateType].forEach((item, idx) => {
+      pdf.text(`• ${item}`, 45, 195 + idx * 8);
+    });
+
+    pdf.setFontSize(9);
+    pdf.text(`Generated: ${generatedAt}`, pageWidth - 20, 25, {
+      align: "right",
+    });
+
+    /* ================= PAGE 2 – GRAPH + SUMMARY ================= */
+
+    pdf.addPage();
+    drawPageBorder();
+    drawWatermark(0.08);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("Utilization Graph", 30, 30);
+
+    if (chartRef.current) {
+      const canvas = await html2canvas(chartRef.current, { scale: 2 });
+      const img = canvas.toDataURL("image/png");
+      pdf.addImage(img, "PNG", 25, 40, pageWidth - 50, 80);
+    }
+
+    pdf.setFontSize(13);
+    pdf.text("Summary", 30, 135);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+
+    pdf.text(`Bits Received  Min: ${summaryData.received.min}`, 30, 150);
+    pdf.text(`Avg: ${summaryData.received.avg}`, 90, 150);
+    pdf.text(`Max: ${summaryData.received.max}`, 140, 150);
+
+    pdf.text(`Bits Sent       Min: ${summaryData.sent.min}`, 30, 160);
+    pdf.text(`Avg: ${summaryData.sent.avg}`, 90, 160);
+    pdf.text(`Max: ${summaryData.sent.max}`, 140, 160);
+
+    /* ================= PAGE 3 – HISTORY TABLE ================= */
+
+    pdf.addPage();
+    drawPageBorder();
+    drawWatermark(0.05);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("History Data", 30, 30);
+
+    const tableStartX = 30;
+    const tableTop = 40;
+    const rowHeight = 7;
+
+    const colW = { time: 70, recv: 45, sent: 45 };
+    const colX = {
+      time: tableStartX,
+      recv: tableStartX + colW.time,
+      sent: tableStartX + colW.time + colW.recv,
+    };
+
+    let y = tableTop;
+
+    const drawHeader = () => {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+
+      pdf.rect(colX.time, y, colW.time, rowHeight);
+      pdf.rect(colX.recv, y, colW.recv, rowHeight);
+      pdf.rect(colX.sent, y, colW.sent, rowHeight);
+
+      pdf.text("Time", colX.time + 2, y + 5);
+      pdf.text("Bits Received", colX.recv + 2, y + 5);
+      pdf.text("Bits Sent", colX.sent + 2, y + 5);
+
+      y += rowHeight;
+      pdf.setFont("helvetica", "normal");
+    };
+
+    drawHeader();
+
+    chartData.forEach((r) => {
+      if (y + rowHeight > pageHeight - 20) {
+        pdf.addPage();
+        drawPageBorder();
+        drawWatermark(0.05);
+        y = tableTop;
+        drawHeader();
+      }
+
+      const recv =
+        r["Bits Received"] !== undefined
+          ? `${normalizeBitsValue(r["Bits Received"]).value}${normalizeBitsValue(r["Bits Received"]).unit}`
+          : "-";
+
+      const sent =
+        r["Bits Sent"] !== undefined
+          ? `${normalizeBitsValue(r["Bits Sent"]).value}${normalizeBitsValue(r["Bits Sent"]).unit}`
+          : "-";
+
+      pdf.rect(colX.time, y, colW.time, rowHeight);
+      pdf.rect(colX.recv, y, colW.recv, rowHeight);
+      pdf.rect(colX.sent, y, colW.sent, rowHeight);
+
+      pdf.text(r.time, colX.time + 2, y + 5);
+      pdf.text(recv, colX.recv + 2, y + 5);
+      pdf.text(sent, colX.sent + 2, y + 5);
+
+      y += rowHeight;
+    });
+
+    pdf.save("Techsec-History-Report.pdf");
+  };
+
+
+  const handleExportCSV = () => {
+    if (!chartData.length) return;
+
+    const csv = Papa.unparse(
+      chartData.map((r) => ({
+        Time: r.time,
+        "Bits Received":
+          r["Bits Received"] !== undefined
+            ? `${normalizeBitsValue(r["Bits Received"]).value}${normalizeBitsValue(r["Bits Received"]).unit}`
+            : "-",
+        "Bits Sent":
+          r["Bits Sent"] !== undefined
+            ? `${normalizeBitsValue(r["Bits Sent"]).value}${normalizeBitsValue(r["Bits Sent"]).unit}`
+            : "-",
+      }))
+    );
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "history-table.csv";
+    link.click();
+  };
   <style jsx global>{`
   @keyframes pulseGlowOrange {
     0% {
@@ -402,14 +618,19 @@ const SummaryReport: React.FC = () => {
           style={{ width: "100%", marginBottom: 24 }}
           onChange={(v) => setRange(v as [Dayjs, Dayjs] | null)}
         />
-
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
+          <Button onClick={handleExportCSV}>Export CSV</Button>
+          <Button type="primary" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+        </div>
 
 
         {loading ? (
           <Spin />
         ) : chartData.length ? (
-          <>
-            <ResponsiveContainer width="100%" height={300}>
+          <div >
+            <ResponsiveContainer width="100%" height={300} ref={chartRef}>
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
@@ -506,17 +727,20 @@ const SummaryReport: React.FC = () => {
                 },
               ]}
             />
+            <div>
 
-            <Table
-              style={{ marginTop: 24 }}
-              size="small"
-              bordered
-              pagination={false}
-              rowKey="time"
-              columns={historyColumns}
-              dataSource={chartData}
-            />
-          </>
+              <Table
+                style={{ marginTop: 24 }}
+                size="small"
+                bordered
+                pagination={false}
+                rowKey="time"
+                columns={historyColumns}
+                dataSource={chartData}
+              />
+
+            </div>
+          </div>
         ) : (
           <Text type="secondary">
             Select date range and click Fetch History

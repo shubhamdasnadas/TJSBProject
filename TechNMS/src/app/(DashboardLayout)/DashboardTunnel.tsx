@@ -20,6 +20,10 @@ type IpRow = {
   branchName: string;
   tunnels: any[];
   rowState: "up" | "down" | "partial";
+
+  // ✅ ADD THESE
+  siteState?: "UP" | "DOWN";
+  downtimeSec?: number;
 };
 
 /* ===================== HELPERS ===================== */
@@ -80,6 +84,8 @@ function transformJsonToRows(json: any): IpRow[] {
       branchName: getBranchNameByHostname(hostname),
       tunnels,
       rowState,
+      siteState: site?.siteState,
+      downtimeSec: site?.downtimeSec,
     });
   });
 
@@ -178,6 +184,18 @@ export default function DashboardTunnel({
   }, []);
 
   const TUNNEL_DROPDOWN_WIDTH = 200;
+
+  const formatDowntime = (seconds?: number) => {
+    if (!seconds || seconds <= 0) return "NA";
+
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
 
   async function load() {
     if (fetchingRef.current) return;
@@ -370,6 +388,11 @@ export default function DashboardTunnel({
 
     render: (_: any, row: IpRow) => {
       if (row.tunnels.length === 0) {
+        const isDown = row.siteState === "DOWN";
+        const downtimeText = isDown
+          ? `DOWN — ${formatDowntime(row.downtimeSec)}`
+          : "NA";
+
         return (
           <Select
             style={{
@@ -378,12 +401,25 @@ export default function DashboardTunnel({
               border: "1px solid #000",
               fontWeight: 700,
             }}
-            value="NA"
+            value={downtimeText}
           >
-            <Select.Option value="NA">NA</Select.Option>
+            <Select.Option value={downtimeText}>
+              <span
+                title={downtimeText}
+                style={{
+                  display: "block",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {downtimeText}
+              </span>
+            </Select.Option>
           </Select>
         );
       }
+
 
       const colorCounts: Record<string, number> = {};
       row.tunnels.forEach((t: any) => {
@@ -409,22 +445,27 @@ export default function DashboardTunnel({
             fontWeight: 700,
           }}
           value={getIspNameOnly(first)}
-          optionLabelProp="label" // ✅ important for tooltip + ellipsis behavior
+          optionLabelProp="label"
         >
           {primaryList.map((t: any, i: number) => {
-            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+            const statusText =
+              t.state === "down"
+                ? formatDowntime(t.downtimeSec) // ✅ USE DOWN TIME
+                : t.uptime;                     // ✅ KEEP EXISTING
+
+            const text = `${resolveIspName(t.tunnelName)} — ${statusText}`;
 
             return (
               <Select.Option
                 key={i}
                 value={t.tunnelName}
-                label={text} // used when collapsed
+                label={text}
                 style={{
                   backgroundColor: getBgForTunnel(t),
                 }}
               >
                 <span
-                  title={text} // ✅ Native browser tooltip on hover
+                  title={text}
                   style={{
                     display: "block",
                     whiteSpace: "nowrap",
@@ -448,6 +489,11 @@ export default function DashboardTunnel({
 
     render: (_: any, row: IpRow) => {
       if (row.tunnels.length === 0) {
+        const isDown = row.siteState === "DOWN";
+        const downtimeText = isDown
+          ? `DOWN — ${formatDowntime(row.downtimeSec)}`
+          : "NA";
+
         return (
           <Select
             style={{
@@ -456,12 +502,25 @@ export default function DashboardTunnel({
               border: "1px solid #000",
               fontWeight: 700,
             }}
-            value="NA"
+            value={downtimeText}
           >
-            <Select.Option value="NA">NA</Select.Option>
+            <Select.Option value={downtimeText}>
+              <span
+                title={downtimeText}
+                style={{
+                  display: "block",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {downtimeText}
+              </span>
+            </Select.Option>
           </Select>
         );
       }
+
 
       const colorCounts: Record<string, number> = {};
       row.tunnels.forEach((t: any) => {
@@ -500,22 +559,27 @@ export default function DashboardTunnel({
             fontWeight: 700,
           }}
           value={getIspNameOnly(first)}
-          optionLabelProp="label" // ✅ IMPORTANT (same as primary)
+          optionLabelProp="label"
         >
           {secondaryList.map((t: any, i: number) => {
-            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+            const statusText =
+              t.state === "down"
+                ? formatDowntime(t.downtimeSec) // ✅ USE DOWN TIME
+                : t.uptime;                     // ✅ KEEP EXISTING
+
+            const text = `${resolveIspName(t.tunnelName)} — ${statusText}`;
 
             return (
               <Select.Option
                 key={i}
                 value={t.tunnelName}
-                label={text} // used when collapsed
+                label={text}
                 style={{
                   backgroundColor: getBgForTunnel(t),
                 }}
               >
                 <span
-                  title={text} // ✅ Tooltip on hover
+                  title={text}
                   style={{
                     display: "block",
                     whiteSpace: "nowrap",
