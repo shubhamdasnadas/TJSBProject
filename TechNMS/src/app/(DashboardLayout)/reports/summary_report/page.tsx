@@ -45,6 +45,7 @@ interface RowData {
   branch: string;
   speed: number | string;
   unit: string;
+  rawSpeed: number | string;
 }
 
 interface ChartPoint {
@@ -114,7 +115,16 @@ const SummaryReport: React.FC = () => {
     return { value: Number(kb.toFixed(2)), unit: " kbps" as const };
   };
 
+  // const formatSpeedToMbps = (value: number | string) => {
+  //   console.log(value)
+  //   const num = Number(value);
+  //   if (isNaN(num)) return "-";
 
+  //   // assuming input is in bits per second
+  //   const mbps = num / 1_000_000;
+
+  //   return `${mbps.toFixed(2)} MBPS`;
+  // };
   /* ===================== OPEN MODAL ===================== */
 
   const handleGenerateClick = (
@@ -245,6 +255,7 @@ const SummaryReport: React.FC = () => {
             branch: findBranch(r.hostname),
             speed: normalized.value,
             unit: normalized.unit,
+            rawSpeed: r.speed,
           };
         })
       );
@@ -528,7 +539,7 @@ const SummaryReport: React.FC = () => {
             title: "Speed",
             align: "center",
             render: (_: any, r: RowData) =>
-              r.speed !== "-" ? `${r.speed} ${r.unit}` : "-",
+              r.rawSpeed !== "-" ? r.rawSpeed + " Mbps" : "-",
           },
           {
             title: "Primary",

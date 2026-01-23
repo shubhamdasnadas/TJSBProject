@@ -786,9 +786,29 @@ export default function SysReportPage() {
 
   <div ref={chartRef}>
     <HistoryLineChart data={historyData} itemType={itemType} />
+
   </div>
 
-  {/* ... rest of the table ... */}
+           <Table
+            size="small"
+            loading={historyLoading}
+            pagination={{ pageSize: 12 }}
+            columns={[
+              {
+                title: "Time",
+                dataIndex: "clock",
+                render: (v: number) => new Date(v * 1000).toLocaleString(),
+                width: 180,
+              },
+              {
+                title: "Value",
+                align: "center",
+                render: (_: any, r: any) =>
+                  formatValueByType(r.rawValue, itemType),
+              },
+            ]}
+            dataSource={historyData.slice().sort((a, b) => b.clock - a.clock).map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
+          />
 </Space>      </Modal>
     </Card>
   );

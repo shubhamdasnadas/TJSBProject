@@ -26,6 +26,9 @@ type IpRow = {
   downtimeSec?: number;
 };
 
+
+
+
 /* ===================== HELPERS ===================== */
 function getBranchNameByHostname(hostname: string) {
   if (!hostname) return "Unknown";
@@ -47,16 +50,25 @@ function resolveIspName(text: string) {
   return result;
 }
 
-function getIspNameOnly(tunnel: any) {
+function getIspNameOnly(
+  tunnel: any,
+  suffix?: string // ✅ downtime / uptime text
+) {
   let ispName = "";
+
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
     if (tunnel?.tunnelName?.toLowerCase().includes(type)) {
       ispName = isp.name;
     }
   });
-  return ispName || resolveIspName(tunnel.tunnelName);
+
+  const finalName = ispName || resolveIspName(tunnel.tunnelName);
+
+  // ✅ append only if suffix is provided
+  return suffix ? `${finalName} — ${suffix}` : finalName;
 }
+
 
 /* ===================== JSON → TABLE ===================== */
 function transformJsonToRows(json: any): IpRow[] {
@@ -171,6 +183,30 @@ export default function DashboardTunnel({
     }, NOTIFICATION_DELAY_MS);
   };
 
+  const getPartialDowntime = (current: any, list: any[]) => {
+    if (!current || !Array.isArray(list)) return "NA";
+
+    // Get ISP name of current tunnel
+    const currentIsp = resolveIspName(current.tunnelName);
+
+    // Filter tunnels of same ISP that are DOWN
+    const sameIspDownTunnels = list.filter(
+      (t) =>
+        resolveIspName(t.tunnelName) === currentIsp &&
+        t.state === "down" &&
+        typeof t.downtimeSec === "number"
+    );
+
+    if (!sameIspDownTunnels.length) return "NA";
+
+    // Find maximum downtime
+    const maxDowntime = Math.max(
+      ...sameIspDownTunnels.map((t) => t.downtimeSec)
+    );
+
+    // Format using your existing helper
+    return formatDowntime(maxDowntime);
+  };
   useEffect(() => {
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -205,7 +241,7 @@ export default function DashboardTunnel({
     try {
       const res = await fetch("/api/sdwan/tunnels");
       const json = await res.json();
-
+      console.log("json", json.generatedAt)
       if (json.generatedAt) {
         const d = new Date(json.generatedAt);
         setTime({
@@ -433,7 +469,12 @@ export default function DashboardTunnel({
       );
 
       const first = primaryList[0];
-
+      const firstStatusText =
+        first.state === "down"
+          ? formatDowntime(first.downtimeSec)
+          : first.state === "partial"
+            ? getPartialDowntime(first, primaryList)
+            : first.uptime;
       return (
         <Select
           style={{
@@ -442,14 +483,16 @@ export default function DashboardTunnel({
             border: "1px solid #000",
             fontWeight: 700,
           }}
-          value={getIspNameOnly(first)}
+          value={getIspNameOnly(first, firstStatusText)}
           optionLabelProp="label"
         >
           {primaryList.map((t: any, i: number) => {
             const statusText =
               t.state === "down"
-                ? formatDowntime(t.downtimeSec) // ✅ USE DOWN TIME
-                : t.uptime;                     // ✅ KEEP EXISTING
+                ? formatDowntime(t.downtimeSec)
+                : t.state === "partial"
+                  ? getPartialDowntime(t, primaryList)
+                  : t.uptime;
 
             const text = `${resolveIspName(t.tunnelName)} — ${statusText}`;
 
@@ -547,7 +590,12 @@ export default function DashboardTunnel({
       }
 
       const first = secondaryList[0];
-
+      const firstStatusText =
+        first.state === "down"
+          ? formatDowntime(first.downtimeSec)
+          : first.state === "partial"
+            ? getPartialDowntime(first, secondaryList)
+            : first.uptime;
       return (
         <Select
           style={{
@@ -556,14 +604,16 @@ export default function DashboardTunnel({
             border: "1px solid #000",
             fontWeight: 700,
           }}
-          value={getIspNameOnly(first)}
+          value={getIspNameOnly(first, firstStatusText)}
           optionLabelProp="label"
         >
           {secondaryList.map((t: any, i: number) => {
             const statusText =
               t.state === "down"
-                ? formatDowntime(t.downtimeSec) // ✅ USE DOWN TIME
-                : t.uptime;                     // ✅ KEEP EXISTING
+                ? formatDowntime(t.downtimeSec)
+                : t.state === "partial"
+                  ? getPartialDowntime(t, secondaryList)
+                  : t.uptime;
 
             const text = `${resolveIspName(t.tunnelName)} — ${statusText}`;
 

@@ -301,7 +301,7 @@ const Host1Count = () => {
 
   return (
     <Card
-      title="Host-1 — Primary vs Secondary Interface Status"
+      title="Primary & Secondary Interface Status"
       style={{ width: "100%", borderRadius: 18 }}
     >
       {loading ? (
