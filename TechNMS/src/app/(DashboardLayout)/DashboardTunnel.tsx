@@ -419,8 +419,6 @@ export default function DashboardTunnel({
           </Select>
         );
       }
-
-
       const colorCounts: Record<string, number> = {};
       row.tunnels.forEach((t: any) => {
         colorCounts[t.localColor] =
