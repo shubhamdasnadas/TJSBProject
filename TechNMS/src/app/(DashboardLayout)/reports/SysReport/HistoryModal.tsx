@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Modal, Button, Space, Table, message } from "antd";
+import { exportHistoryPdf } from "./utils";
 import {
   LineChart,
   Line,
@@ -11,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import axios from "axios";
-import RangePickerDemo2 from "../../RangePickerDemo2"; // adjust path as needed
+import RangePickerDemo from  "../../RangePickerDemo2" 
 
 // Assume exported from ./utils.ts or define here
 const getAxiosConfig = () => ({
@@ -311,8 +312,7 @@ const HistoryModal = ({
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 300 }}>
-            <RangePickerDemo2
-              itemId={item?.itemid}
+            <RangePickerDemo
               onRangeChange={(newRange) => {
                 setDateRange(newRange);
 
@@ -382,18 +382,19 @@ const HistoryModal = ({
               Refresh
             </Button>
 
-            <Button
-              type="primary"
-              onClick={() => {
-                if (chartRef.current) {
-                  exportHistoryToPDF(title, host, historyData, chartRef.current);
-                } else {
-                  message.warning("Chart not ready yet");
-                }
-              }}
-            >
-              Export PDF
-            </Button>
+        <Button
+          type="primary"
+          onClick={() =>
+            exportHistoryPdf({
+              title,
+              host,
+              rows: historyData,
+              chartEl: chartRef.current,
+            })
+          }
+        >
+          Export PDF
+        </Button>
           </Space>
         </Space>
 
@@ -431,12 +432,16 @@ const HistoryModal = ({
         >
           <ResponsiveContainer height={260}>
             <LineChart data={chartData.length ? chartData : historyData}>
-              <XAxis
-                dataKey="clock"
-                type="number"
-                domain={["auto", "auto"]}
-                tickFormatter={(v: number) => new Date(v * 1000).toLocaleTimeString()}
-              />
+<XAxis
+  dataKey="clock"
+  type="number"
+  domain={[
+    (dataMin: number) => dataMin,
+    (dataMax: number) => dataMax
+  ]}
+  allowDataOverflow={false}
+  tickFormatter={(v: number) => new Date(v * 1000).toLocaleTimeString()}
+/>
               <YAxis />
               <Tooltip
                 labelFormatter={(v: number) => new Date(v * 1000).toLocaleString()}
@@ -445,7 +450,7 @@ const HistoryModal = ({
                 }
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="value"
                 stroke="#1890ff"
                 strokeWidth={2}

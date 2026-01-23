@@ -70,7 +70,7 @@ async function getOldestHistoryTime(itemid: string): Promise<Dayjs | null> {
 /* =======================
    Component
 ======================= */
-export default function RangePickerDemo2({
+export default function RangePickerDemo({
   onRangeChange,
   itemId,
 }: {

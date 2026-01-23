@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Card, Spin, Table, Tooltip } from "antd";
-
+import branches from "@/app/(DashboardLayout)/availability/data/data";
 /* =====================
    CONSTANTS
 ===================== */
@@ -54,6 +54,16 @@ const Vmanage = () => {
     partial: any[];
     down: any[];
   }>({ partial: [], down: [] });
+
+  const getBranchName = (host?: string) => {
+    if (!host) return "-";
+    const match = branches.find(
+      (b: any) =>
+        host.includes(b.code) ||
+        host.toLowerCase() === b.name.toLowerCase()
+    );
+    return match ? match.name : "-";
+  };
 
   /* =====================
      LOAD (UNCHANGED)
@@ -161,22 +171,10 @@ const Vmanage = () => {
     >
       {details[type].map((s, i) => (
         <div key={i} style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 600 }}>{s.host}</div>
+          <div style={{ fontWeight: 600 }}>
+            {getBranchName(s.host)}
+          </div>
           <div style={{ fontSize: 12, opacity: 0.85 }}>{s.ip}</div>
-
-          {s.tunnels.map((t: any, j: number) => (
-            <div
-              key={j}
-              style={{
-                fontFamily: "monospace",
-                fontSize: 12,
-                marginTop: 6,
-              }}
-            >
-              {/* 🔥 EXACT SAME STRING AS PRIMARY COLUMN */}
-              {t.tunnel || t.link || t.name}
-            </div>
-          ))}
         </div>
       ))}
     </div>
@@ -199,7 +197,24 @@ const Vmanage = () => {
     {
       title: "Count",
       align: "right" as const,
-      render: (_: any, r: any) => <AnimatedNumber value={r.value} />,
+      render: (_: any, r: any) => {
+        const countNode = <AnimatedNumber value={r.value} />;
+
+        // Tooltip ONLY for non-"up" rows
+        if (r.key === "up") return countNode;
+
+        return (
+          <Tooltip
+            placement="right"
+            color={r.color}
+            title={TooltipContent(r.key, r.color)}
+          >
+            <span style={{ cursor: "pointer" }}>
+              {countNode}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: "Usage",

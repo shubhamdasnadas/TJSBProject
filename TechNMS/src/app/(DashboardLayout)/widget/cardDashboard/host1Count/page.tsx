@@ -10,7 +10,7 @@ import {
   Tag,
   Tooltip,
 } from "antd";
-
+import branches from "@/app/(DashboardLayout)/availability/data/data";
 /* =====================
    CONFIG
 ===================== */
@@ -182,6 +182,15 @@ const Host1Count = () => {
      TOOLTIP UI
   ===================== */
 
+    const getBranchName = (host?: string) => {
+    if (!host) return "-";
+    const match = branches.find(
+      (b: any) =>
+        host.includes(b.code) ||
+        host.toLowerCase() === b.name.toLowerCase()
+    );
+    return match ? match.name : "-";
+  };
   const renderDownTooltip = (list?: DownInfo[]) => (
     <div
       style={{
@@ -206,9 +215,12 @@ const Host1Count = () => {
             }}
           >
             {/* <div style={{ fontWeight: 700 }}>{d.branch}</div> */}
-            <div style={{ fontSize: 12, opacity: 0.9 }}>
+            {/* <div style={{ fontSize: 12, opacity: 0.9 }}>
               {d.hostname}
-            </div>
+            </div> */}
+            <div style={{ fontWeight: 600 }}>
+            {getBranchName(d.hostname)}
+          </div>
           </div>
         ))
       ) : (

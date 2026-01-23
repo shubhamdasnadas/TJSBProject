@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Card, Progress, Table, Tag, Tooltip } from "antd";
+import branches from "@/app/(DashboardLayout)/availability/data/data";
 import axios from "axios";
 
 /* ===================== TYPES ===================== */
@@ -155,6 +156,15 @@ export default function ProblemsSummaryTable() {
 
     /* ===================== TOOLTIP ===================== */
 
+    const getBranchName = (host?: string) => {
+        if (!host) return "-";
+        const match = branches.find(
+            (b: any) =>
+                host.includes(b.code) ||
+                host.toLowerCase() === b.name.toLowerCase()
+        );
+        return match ? match.name : "-";
+    };
     const renderTooltip = (sev: string, color: string) => (
         <div
             style={{
@@ -179,13 +189,8 @@ export default function ProblemsSummaryTable() {
                         }}
                     >
                         {/* ✅ HOSTNAME IN BOLD */}
-                        <div
-                            style={{
-                                fontWeight: 700,
-                                fontSize: 13,
-                            }}
-                        >
-                            {hostName}
+                        <div style={{ fontWeight: 600 }}>
+                            {getBranchName(hostName)}
                         </div>
 
                         {/* ✅ PROBLEM NAME ON NEW LINE */}
@@ -220,9 +225,30 @@ export default function ProblemsSummaryTable() {
         {
             title: "Counts",
             dataIndex: "count",
-            render: (c: number) => (
-                <span style={{ fontWeight: 600 }}>{c}</span>
-            ),
+            render: (_: any, r: SeverityRow) => {
+                const countNode = (
+                    <span style={{ fontWeight: 600 }}>
+                        {r.count}
+                    </span>
+                );
+
+                // No tooltip when count is 0
+                if (r.count === 0) return countNode;
+
+                const strokeColor = COLOR_HEX_MAP[r.color] || r.color;
+
+                return (
+                    <Tooltip
+                        placement="right"
+                        color={strokeColor}
+                        title={renderTooltip(r.key, r.color)}
+                    >
+                        <span style={{ cursor: "pointer" }}>
+                            {countNode}
+                        </span>
+                    </Tooltip>
+                );
+            },
         },
         {
             title: "Problem Count",

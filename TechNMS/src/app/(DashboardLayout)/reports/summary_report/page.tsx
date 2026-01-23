@@ -6,7 +6,6 @@ import {
   Form,
   Button,
   Modal,
-  Tag,
   Typography,
   message,
   DatePicker,
@@ -33,7 +32,7 @@ const { RangePicker } = DatePicker;
 /* ===================== TYPES ===================== */
 
 type GenerateType = "primary" | "secondary";
-type SpeedUnit = "Kbps" | "Mbps";
+type SpeedUnit = "K" | "M";
 
 interface RowData {
   key: string;
@@ -83,7 +82,7 @@ const SummaryReport: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
-  const [yUnit, setYUnit] = useState<SpeedUnit>("Mbps");
+  const [yUnit, setYUnit] = useState<SpeedUnit>("K");
 
   /* ===================== HELPERS ===================== */
 
@@ -97,12 +96,18 @@ const SummaryReport: React.FC = () => {
     return match ? match.name : "-";
   };
 
-  const convertSpeed = (bps: number) => {
-    if (bps >= 1_000_000) {
-      return { value: +(bps / 1_000_000).toFixed(2), unit: "Mbps" as const };
+  /* ===================== REQUIRED LOGIC ===================== */
+  const normalizeBitsValue = (value: any) => {
+    const bits = Number(value);
+    if (isNaN(bits)) return { value, unit: "" };
+
+    const kb = bits / 1000;
+    if (kb >= 1000) {
+      return { value: Number((kb / 1000).toFixed(2)), unit: " MBPS" as const };
     }
-    return { value: +(bps / 1_000).toFixed(2), unit: "Kbps" as const };
+    return { value: Number(kb.toFixed(2)), unit: " kbps" as const };
   };
+
 
   /* ===================== OPEN MODAL ===================== */
 
@@ -161,8 +166,11 @@ const SummaryReport: React.FC = () => {
       );
 
       const history = historyRes.data?.result ?? [];
+
+      const maxBits = Math.max(...history.map((h: any) => Number(h.value)));
+      const detectedUnit = normalizeBitsValue(maxBits).unit as SpeedUnit;
+
       const grouped: Record<string, ChartPoint> = {};
-      let detectedUnit: SpeedUnit = "Kbps";
 
       history.forEach((h: any) => {
         const time = dayjs
@@ -171,10 +179,7 @@ const SummaryReport: React.FC = () => {
 
         if (!grouped[time]) grouped[time] = { time };
 
-        const { value, unit } = convertSpeed(Number(h.value));
-        detectedUnit = unit;
-
-        grouped[time][itemNameMap[h.itemid]] = value;
+        grouped[time][itemNameMap[h.itemid]] = Number(h.value);
       });
 
       setChartData(Object.values(grouped));
@@ -188,7 +193,7 @@ const SummaryReport: React.FC = () => {
     }
   };
 
-  /* ===================== NEW SUMMARY TABLE LOGIC (ADDED) ===================== */
+  /* ===================== SUMMARY TABLE ===================== */
 
   const summaryData = useMemo(() => {
     const calc = (key: "Bits Sent" | "Bits Received") => {
@@ -225,14 +230,17 @@ const SummaryReport: React.FC = () => {
 
       const data = res.data?.result ?? [];
       setRows(
-        data.map((r: any) => ({
-          key: r.hostname,
-          host: r.hostname,
-          hostid: r.hostid,
-          branch: findBranch(r.hostname),
-          speed: r.speed,
-          unit: r.unit,
-        }))
+        data.map((r: any) => {
+          const normalized = normalizeBitsValue(r.speed);
+          return {
+            key: r.hostname,
+            host: r.hostname,
+            hostid: r.hostid,
+            branch: findBranch(r.hostname),
+            speed: normalized.value,
+            unit: normalized.unit,
+          };
+        })
       );
     };
 
@@ -264,17 +272,19 @@ const SummaryReport: React.FC = () => {
     },
     {
       title: "Bits Received",
-      render: (_: any, r: ChartPoint) =>
-        r["Bits Received"] !== undefined
-          ? `${r["Bits Received"]} ${yUnit}`
-          : "-",
+      render: (_: any, r: ChartPoint) => {
+        if (r["Bits Received"] === undefined) return "-";
+        const { value, unit } = normalizeBitsValue(r["Bits Received"]);
+        return `${value}${unit}`;
+      },
     },
     {
       title: "Bits Sent",
-      render: (_: any, r: ChartPoint) =>
-        r["Bits Sent"] !== undefined
-          ? `${r["Bits Sent"]} ${yUnit}`
-          : "-",
+      render: (_: any, r: ChartPoint) => {
+        if (r["Bits Sent"] === undefined) return "-";
+        const { value, unit } = normalizeBitsValue(r["Bits Sent"]);
+        return `${value}${unit}`;
+      },
     },
   ];
 
@@ -403,8 +413,18 @@ const SummaryReport: React.FC = () => {
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
-                <YAxis tickFormatter={(v) => `${v} ${yUnit}`} />
-                <Tooltip formatter={(v: any) => `${v} ${yUnit}`} />
+                <YAxis
+                  tickFormatter={(v) => {
+                    const { value, unit } = normalizeBitsValue(v);
+                    return `${value}${unit}`;
+                  }}
+                />
+                <YAxis
+                  tickFormatter={(v) => {
+                    const { value, unit } = normalizeBitsValue(v);
+                    return `${value}${unit}`;
+                  }}
+                />
                 <Area
                   type="monotone"
                   dataKey="Bits Received"
@@ -463,23 +483,26 @@ const SummaryReport: React.FC = () => {
                 {
                   title: "min",
                   align: "right",
-                  render: (_: any, r: any) => (
-                    <Text style={{ fontSize: 11 }}>{r.min} {yUnit}</Text>
-                  ),
+                  render: (_: any, r: any) => {
+                    const { value, unit } = normalizeBitsValue(r.min);
+                    return <Text>{value}{unit}</Text>;
+                  }
                 },
                 {
                   title: "avg",
                   align: "right",
-                  render: (_: any, r: any) => (
-                    <Text style={{ fontSize: 11 }}>{r.avg} {yUnit}</Text>
-                  ),
+                  render: (_: any, r: any) => {
+                    const { value, unit } = normalizeBitsValue(r.avg);
+                    return <Text>{value}{unit}</Text>;
+                  }
                 },
                 {
                   title: "max",
                   align: "right",
-                  render: (_: any, r: any) => (
-                    <Text style={{ fontSize: 11 }}>{r.max} {yUnit}</Text>
-                  ),
+                  render: (_: any, r: any) => {
+                    const { value, unit } = normalizeBitsValue(r.max);
+                    return <Text>{value}{unit}</Text>;
+                  }
                 },
               ]}
             />
