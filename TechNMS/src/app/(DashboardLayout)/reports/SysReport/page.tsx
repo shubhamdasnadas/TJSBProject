@@ -27,6 +27,7 @@ import html2canvas from "html2canvas";
 import { IconNumber0 } from "@tabler/icons-react";
 import { color } from "html2canvas/dist/types/css/types/color";
 import { Bold } from "lucide-react";
+import { ExportOutlined, FileTextOutlined } from "@ant-design/icons";
 
 /* ────────────────────────────────────────────────
    TYPES
@@ -44,7 +45,7 @@ type TableRow = {
   change: string;
   value_type?: number;
 };
-
+ 
  type DateRange = {
   startDate: string;
   startTime: string;
@@ -162,46 +163,46 @@ const exportHistoryToPDF = async (
   const MARGIN_X = 40;
   const CONTENT_WIDTH = pageWidth - MARGIN_X * 2;
   const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
-  let pageNumber = 1;
 
-  const finalizePage = () => {
-    drawWatermark(doc, logoPng, pageNumber);
-    drawPageBorder(doc);
-  };
-
-  // Cover page
+  // Cover page (page 1) – no watermark
   const centerX = pageWidth / 2;
   doc.addImage(logoPng, "PNG", centerX - 120, 70, 240, 150);
-  pageNumber++;
+
   doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
   doc.text("Techsec NMS – History Report", centerX, 260, { align: "center" });
+
   doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
   doc.text(`Host: ${host || "Unknown"}`, centerX, 320, { align: "center" });
+
   doc.setFontSize(16);
   const safeTitle = title.length > 70 ? title.substring(0, 67) + "..." : title;
   const titleLines = doc.splitTextToSize(`Item: ${safeTitle}`, CONTENT_WIDTH - 40);
   doc.text(titleLines, centerX, 355, { align: "center" });
+
   doc.setFontSize(13);
   doc.setTextColor(80, 80, 80);
   doc.text(`Generated: ${new Date().toLocaleString()}`, centerX, 410, { align: "center" });
-  finalizePage();
 
-  // Chart page
+  drawPageBorder(doc); // no watermark on page 1
+
+  // Chart page (if exists)
   if (chartEl) {
     doc.addPage();
-    pageNumber++;
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("Utilization Graph", MARGIN_X, 60);
+
     const canvas = await html2canvas(chartEl, { scale: 3, backgroundColor: "#ffffff" });
     doc.addImage(canvas.toDataURL("image/png"), "PNG", MARGIN_X, 100, CONTENT_WIDTH, 220);
-    finalizePage();
+
+    drawWatermark(doc, logoPng, (doc as any).internal.pages.length);
+    drawPageBorder(doc);
   }
 
-  // Data table
+  // Table pages (can be multiple)
   doc.addPage();
-  pageNumber++;
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
   doc.text("History Data", MARGIN_X, 60);
@@ -213,19 +214,56 @@ const exportHistoryToPDF = async (
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
       formatValueByType(r.rawValue, itemType),
-    ]),    styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
+    ]),
+    styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: 180 }, 1: { cellWidth: "auto" } },
     didDrawPage: () => {
-      drawWatermark(doc, logoPng, pageNumber);
+      // Use getNumberOfPages() – safe and typed in all versions
+      const currentPage = doc.getNumberOfPages();
+      drawWatermark(doc, logoPng, currentPage);
       drawPageBorder(doc);
     },
   });
 
   const safeHost = host.replace(/[^a-zA-Z0-9]/g, "_") || "unknown";
   doc.save(`techsec_history_${safeHost}_${Date.now()}.pdf`);
-};
+};  
+const exportHistoryToCSV = (
+  title: string,
+  host: string,
+  data: any[],
+  itemType: string
+) => {
+  if (!data.length) {
+    message.warning("No data to export");
+    return;
+  }
 
+  const headers = ["Time", "Value"];
+  const rows = data.map((r) => [
+    new Date(r.clock * 1000).toLocaleString().replace(/,/g, ""), // avoid CSV breaking
+    formatValueByType(r.rawValue, itemType).replace(/,/g, ""),
+  ]);
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) => row.join(","))
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `techsec_history_${host.replace(/[^a-zA-Z0-9]/g, "_") || "unknown"}_${Date.now()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  message.success("CSV exported successfully");
+};
 /* ────────────────────────────────────────────────
    SEVERITY COLOR
 ───────────────────────────────────────────────── */
@@ -718,44 +756,40 @@ export default function SysReportPage() {
         footer={null}
         width={960}
       >
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
-          <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <RangePickerDemo   onRangeChange={setHistoryDateRange}   itemId={currentItemId} />
+<Space direction="vertical" style={{ width: "100%" }} size="middle">
+  <Space style={{ justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+    <RangePickerDemo 
+      onRangeChange={setHistoryDateRange} 
+      itemId={currentItemId} 
+    />
 
-            <Button
-              type="primary"
-              loading={historyLoading}
-              onClick={() => exportHistoryToPDF(historyTitle, historyHost, historyData, chartRef.current, itemType)}
-            >
-              Export to PDF
-            </Button>
-          </Space>
+    <Space size="middle">
+      <Button
+        type="primary"
+        loading={historyLoading}
+        onClick={() => exportHistoryToPDF(historyTitle, historyHost, historyData, chartRef.current, itemType)}
+        icon={<ExportOutlined />}   // optional: import { ExportOutlined } from '@ant-design/icons'
+      >
+        Export to PDF
+      </Button>
 
-          <div ref={chartRef}>
-            <HistoryLineChart data={historyData} itemType={itemType} />
-          </div>
+      <Button
+        type="default"
+        loading={historyLoading}
+        onClick={() => exportHistoryToCSV(historyTitle, historyHost, historyData, itemType)}
+        icon={<FileTextOutlined />}   // optional: import { FileTextOutlined } from '@ant-design/icons'
+      >
+        Export to CSV
+      </Button>
+    </Space>
+  </Space>
 
-          <Table
-            size="small"
-            loading={historyLoading}
-            pagination={{ pageSize: 12 }}
-           columns={[
-          {
-            title: "Time",
-            dataIndex: "clock",
-            render: (v: number) => new Date(v * 1000).toLocaleString(),
-            width: 180,
-          },
-          {
-            title: "Value",
-            align: "center",
-            render: (_: any, r: any) => formatValueByType(r.rawValue, itemType),
-          },
-        ]}
-            dataSource={historyData.slice().sort((a, b) => b.clock - a.clock).map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
-          />
-        </Space>
-      </Modal>
+  <div ref={chartRef}>
+    <HistoryLineChart data={historyData} itemType={itemType} />
+  </div>
+
+  {/* ... rest of the table ... */}
+</Space>      </Modal>
     </Card>
   );
 }
