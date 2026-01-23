@@ -45,7 +45,7 @@ type TableRow = {
   value_type?: number;
 };
 
-type DateRange = {
+ type DateRange = {
   startDate: string;
   startTime: string;
   endDate: string;
@@ -62,24 +62,51 @@ const getAxiosConfig = () => ({
   },
 });
 
-const formatForDisplay = (bitsPerSec: number) => {
-  if (!Number.isFinite(bitsPerSec)) return "—";
-  if (bitsPerSec >= 1_000_000) return `${(bitsPerSec / 1_000_000).toFixed(2)} Mbps`;
-  return `${(bitsPerSec / 1_000).toFixed(2)} Kbps`;
+const formatBandwidth = (bitsPerSec: number | string): string => {
+  if (bitsPerSec == null || !Number.isFinite(Number(bitsPerSec))) return "—";
+  const bps = Number(bitsPerSec);
+  if (bps >= 1_000_000_000) return `${(bps / 1_000_000_000).toFixed(2)} Gbps`;
+  if (bps >= 1_000_000)     return `${(bps / 1_000_000).toFixed(2)} Mbps`;
+  if (bps >= 1_000)         return `${(bps / 1_000).toFixed(2)} Kbps`;
+  return `${bps.toFixed(2)} bps`;
 };
 
-const formatSafePercent = (value: any): string => {
+const formatPercent = (value: number | string): string => {
   const num = Number(value);
   if (isNaN(num) || !Number.isFinite(num)) return "—";
-  return `${num.toFixed(2)} %`;
+  return `${num.toFixed(1)} %`;
 };
 
-const formatPlain = (value: any): string => {
+// ... rest of formatters, detectItemType, etc.
+const formatNumber = (value: number | string, decimals = 2): string => {
   const num = Number(value);
   if (isNaN(num) || !Number.isFinite(num)) return "—";
-  return num.toFixed(2);
+  return num.toFixed(decimals);
 };
 
+const formatValueByType = (rawValue: number | string, itemType: string): string => {
+  if (itemType === "bandwidth") return formatBandwidth(rawValue);
+  if (itemType === "percent")   return formatPercent(rawValue);
+  return formatNumber(rawValue, 2);
+};
+
+const detectItemType = (itemName: string, valueType?: number): string => {
+  const lower = itemName.toLowerCase();
+  if (lower.includes("bit") || lower.includes("bps") || lower.includes("traffic") ||
+      lower.includes("interface") || lower.includes("received") || lower.includes("sent") ||
+      lower.includes("inbound") || lower.includes("outbound") || lower.includes("rx") ||
+      lower.includes("tx")) {
+    return "bandwidth";
+  }
+  if (lower.includes("cpu") || lower.includes("util") || lower.includes("usage") ||
+      lower.includes("memory") || lower.includes("percent") || lower.includes("%")) {
+    return "percent";
+  }
+  return "plain";
+};
+ 
+ 
+ 
 /* ────────────────────────────────────────────────
    PDF EXPORT HELPERS
 ───────────────────────────────────────────────── */
@@ -185,9 +212,8 @@ const exportHistoryToPDF = async (
     head: [["Time", "Value"]],
     body: data.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
-      itemType === 'percent' ? formatSafePercent(r.rawValue) : itemType === 'bandwidth' ? formatForDisplay(r.bitsPerSec) : formatPlain(r.rawValue),
-    ]),
-    styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
+      formatValueByType(r.rawValue, itemType),
+    ]),    styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: "bold" },
     columnStyles: { 0: { cellWidth: 180 }, 1: { cellWidth: "auto" } },
     didDrawPage: () => {
@@ -251,8 +277,10 @@ const chartData = [...baseData];
  
  
   const maxValue = Math.max(...chartData.map((d) => (Number.isFinite(d.value) ? d.value : 0)), 0);
-  const yMax = maxValue > 0 ? maxValue * 1.2 : (itemType === 'percent' ? 100 : itemType === 'bandwidth' ? 10 : 1);
-
+const yMax = maxValue > 0 ? maxValue * 1.2 :
+             itemType === 'percent' ? 100 :
+             itemType === 'bandwidth' ? 1 :  // ← was 10, but 1 Mbps fallback is often better for small links
+             1;
   return (
     <div style={{ height: 280, background: "#fff", padding: "12px 8px" }}>
       <ResponsiveContainer>
@@ -269,22 +297,21 @@ const chartData = [...baseData];
   label={{ value: "Time", position: "insideBottom", offset: 2 }}
 />
 
-          <YAxis
-            domain={[0, yMax]}
-            tickFormatter={(v) => 
-              itemType === 'percent' ? `${v.toFixed(0)} %` : 
-              itemType === 'bandwidth' ? `${v.toFixed(0)} Mbps` : 
+<YAxis
+  domain={[0, yMax]}
+             tickFormatter={(v) =>
+              itemType === "percent" ? `${v.toFixed(0)}%` :
+              itemType === "bandwidth" ? `${v.toFixed(1)} Mbps` :
               v.toFixed(2)
             }
             label={{
-              // value:      "(Mbps)" ,
+              value: itemType === "percent" ? "Percentage (%)" :
+                     itemType === "bandwidth" ? "Throughput (Mbps)" :
+                     "Value",
               angle: -90,
-              dy: -40,
-              
               position: "insideLeft",
             }}
-          />
-          <Tooltip
+/>          <Tooltip
             labelFormatter={(v) => new Date(Number(v)).toLocaleString()}
             content={({ payload }) => {
               if (!payload?.length) return null;
@@ -293,9 +320,7 @@ const chartData = [...baseData];
                 <div style={{ background: "#fff", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}>
                   <div><strong>Time:</strong> {new Date(p.time).toLocaleString()}</div>
                   <div>
-                    <strong>Value:</strong>{" "}
-                    {itemType === 'percent' ? formatSafePercent(p.rawValue) : itemType === 'bandwidth' ? formatForDisplay(p.bitsPerSec) : p.rawValue.toFixed(2)}
-                  </div>
+                    <strong>Value:</strong> {formatValueByType(p.rawValue, itemType)}                  </div>
                   {p.isTrigger && (
                     <>
                       <div style={{ color: severityColor(p.severity), fontWeight: "bold", marginTop: 6 }}>
@@ -454,12 +479,7 @@ export default function SysReportPage() {
     const vType = valueType ?? 3;
     const nameLower = name.toLowerCase();
 
-    const isPercent = ["cpu", "util", "usage", "memory", "percent", "%"].some((s) => nameLower.includes(s));
-    const isBand = ["net", "interface", "traffic", "bandwidth", "bps", "kps", "inbound", "outbound", "rx", "tx"].some((s) => nameLower.includes(s));
-    const isLoad = nameLower.includes("load");
-
-    const newItemType = isPercent ? "percent" : isBand ? "bandwidth" : isLoad ? "plain" : vType === 0 ? "plain" : "bandwidth";
-
+     const newItemType = detectItemType(name, valueType);
     setCurrentValueType(vType);
     setItemType(newItemType);
     setHistoryData([]);
@@ -506,15 +526,19 @@ export default function SysReportPage() {
 
       let points = (histRes.data.result ?? []).map((h: any) => {
         const clock = Number(h.clock);
-        const rawValue = Number(h.value);
+        const rawValue = Number(h.value) || 0;
+         const chartValue =
+          itemType === "bandwidth" ? rawValue / 1_000_000 :  // → Mbps for nice Y-axis
+          itemType === "percent"   ? rawValue :
+          rawValue;
 
-        if (itemType === "bandwidth") {
-          const bitsPerSec = rawValue;
-          return { clock, value: bitsPerSec / 1_000_000, rawValue, bitsPerSec, isTrigger: false };
-        } else {
-          return { clock, value: rawValue, rawValue, bitsPerSec: null, isTrigger: false };
-        }
-      });
+        return {
+          clock,
+          value: chartValue,
+          rawValue,               // keep original number
+          bitsPerSec: itemType === "bandwidth" ? rawValue : null,
+          isTrigger: false,
+        };      });
 
       if (!points.length) {
         message.warning("No history data in selected range");
@@ -715,20 +739,19 @@ export default function SysReportPage() {
             size="small"
             loading={historyLoading}
             pagination={{ pageSize: 12 }}
-            columns={[
-              {
-                title: "Time",
-                dataIndex: "clock",
-                render:  (v: number) => new Date(v * 1000).toLocaleString(),
-                width: 180,
-              },
-              {
-                title: "Value",
-                align: "center",
-                render: (_: any, r: any) =>
-                  itemType === 'percent' ? formatSafePercent(r.rawValue) : itemType === 'bandwidth' ? formatForDisplay(r.bitsPerSec) : formatPlain(r.rawValue),
-              },
-            ]}
+           columns={[
+          {
+            title: "Time",
+            dataIndex: "clock",
+            render: (v: number) => new Date(v * 1000).toLocaleString(),
+            width: 180,
+          },
+          {
+            title: "Value",
+            align: "center",
+            render: (_: any, r: any) => formatValueByType(r.rawValue, itemType),
+          },
+        ]}
             dataSource={historyData.slice().sort((a, b) => b.clock - a.clock).map((r, i) => ({ key: `${r.clock}-${i}`, ...r }))}
           />
         </Space>
