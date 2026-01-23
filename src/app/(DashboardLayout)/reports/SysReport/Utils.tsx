@@ -57,53 +57,78 @@ export const exportHistoryPdf = async ({
   chartEl?: HTMLDivElement | null;
 }) => {
   const doc = new jsPDF("p", "pt", "a4");
-  const W = doc.internal.pageSize.getWidth();
+  const pageWidth = doc.internal.pageSize.getWidth();
   const M = 40;
-  const CONTENT = W - M * 2;
+  const CONTENT_WIDTH = pageWidth - M * 2;
 
-  const logo = await loadSvgAsPng(TECHSEC_LOGO);
-  let pageNo = 1;
+  const logoPng = await loadSvgAsPng(TECHSEC_LOGO);
 
   /* ===== PAGE 1: COVER ===== */
-  doc.addImage(logo, "PNG", W / 2 - 120, 70, 240, 150);
-  doc.setFontSize(26).setFont("helvetica", "bold");
-  doc.text("Techsec NMS – History Report", W / 2, 260, { align: "center" });
+  const centerX = pageWidth / 2;
+
+  doc.addImage(logoPng, "PNG", centerX - 120, 70, 240, 150);
+
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.text("Techsec NMS – History Report", centerX, 260, { align: "center" });
 
   doc.setFontSize(18);
-  doc.text(`Host: ${host}`, W / 2, 320, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.text(`Host: ${host || "Unknown"}`, centerX, 320, { align: "center" });
 
-  doc.setFontSize(14).setFont("helvetica", "normal");
-  doc.text(`Item: ${title}`, W / 2, 360, { align: "center" });
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "normal");
+  const safeTitle = title.length > 70 ? title.substring(0, 67) + "..." : title;
+  const titleLines = doc.splitTextToSize(
+    `Item / Metric: ${safeTitle}`,
+    CONTENT_WIDTH - 40
+  );
+  doc.text(titleLines, centerX, 355, { align: "center" });
 
-  doc.setFontSize(12).setTextColor(90);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, W / 2, 410, { align: "center" });
+  doc.setFontSize(13);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, centerX, 410, {
+    align: "center",
+  });
 
   drawPageBorder(doc);
 
-  /* ===== PAGE 2: CHART ===== */
+  /* ===== PAGE 2: CHART (optional) ===== */
+  let currentPage = 1; // just for reference — we don't need it for watermark anymore
+
   if (chartEl) {
-    doc.addPage(); pageNo++;
-    const canvas = await html2canvas(chartEl, { scale: 3, backgroundColor: "#fff" });
-    doc.addImage(canvas.toDataURL("image/png"), "PNG", M, 100, CONTENT, 220);
-    drawWatermark(doc, logo, pageNo);
+    doc.addPage();
+    currentPage++;
+
+    const canvas = await html2canvas(chartEl, {
+      scale: 3,
+      backgroundColor: "#fff",
+    });
+
+    doc.addImage(canvas.toDataURL("image/png"), "PNG", M, 100, CONTENT_WIDTH, 220);
+
+    drawWatermark(doc, logoPng, currentPage);
     drawPageBorder(doc);
   }
 
-  /* ===== PAGE 3+: TABLE ===== */
-  doc.addPage(); pageNo++;
+  /* ===== PAGE 3+: TABLE (can span multiple pages) ===== */
+  doc.addPage();
+
   autoTable(doc, {
     startY: 80,
     margin: { left: M, right: M },
     head: [["Time", "Value"]],
-    body: rows.map(r => [
+    body: rows.map((r) => [
       new Date(r.clock * 1000).toLocaleString(),
       typeof r.value === "number" ? r.value.toFixed(2) : r.value ?? "—",
     ]),
     didDrawPage: () => {
-      drawWatermark(doc, logo, pageNo);
+      // This runs after each page of the table is rendered
+      const currentPage = doc.getCurrentPageInfo().pageNumber;
+      drawWatermark(doc, logoPng, currentPage);
       drawPageBorder(doc);
     },
   });
 
-  doc.save(`techsec_history_${host}_${Date.now()}.pdf`);
+  doc.save(`techsec_history_${host.replace(/[^a-z0-9]/gi, "_")}_${Date.now()}.pdf`);
 };
