@@ -90,7 +90,7 @@ const branches: Branch[] = [
   { "name": "Surat", "code": "BR-C098-SURAT", "ip": "192.168.222.100" },
   { "name": "Baroda", "code": "BR-C099-VDDRA", "ip": "192.168.222.101" },
   { "name": "Ahmedabad", "code": "BR-C100-AHMBD", "ip": "192.168.222.102" },
-  { "name": "Bangalore ( Jayanagar )", "code": "BR-C101-JYNGR", "ip": "192.168.222.103" },
+  { "name": "Bangalore (Jayanagar)", "code": "BR-C101-JYNGR", "ip": "192.168.222.103" },
   { "name": "Louiswadi", "code": "BR-C103-LOSWD", "ip": "192.168.222.104" },
   { "name": "Dombivli-west", "code": "BR-C104-DOMBW", "ip": "192.168.222.105" },
   { "name": "Shahapur", "code": "BR-C105-SHPUR", "ip": "192.168.222.106" },
@@ -230,7 +230,7 @@ export const ISP_BRANCHES = [
     "type": "Private5",
   },
   {
-    "name": "Passcom",
+    "name": "Biz-Internet",
     "type": "Biz-Internet",
   },
   {

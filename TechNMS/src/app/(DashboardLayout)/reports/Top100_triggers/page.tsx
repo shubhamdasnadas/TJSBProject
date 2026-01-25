@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { Card, Select, Table, Button, Row, Col } from "antd";
 
@@ -17,6 +17,8 @@ const axiosCfg = {
   },
 };
 
+import branches from "../../availability/data/data"; // keep your existing data
+
 export default function ZabbixTopProblemsPage() {
   const [groups, setGroups] = useState<any[]>([]);
   const [hosts, setHosts] = useState<any[]>([]);
@@ -25,8 +27,26 @@ export default function ZabbixTopProblemsPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  /* Load groups */
+  // 🔹 STRICT MODE GUARD (NEW)
+  const hasFetchedGroups = useRef(false);
+
+  /* ===================== FIND BRANCH (NEW) ===================== */
+  const findBranch = (hostName: string | undefined) => {
+    if (!hostName) return "-";
+    const match =
+      branches.find(
+        (b: any) =>
+          hostName.includes(b.code) ||
+          hostName.toLowerCase() === b.name.toLowerCase()
+      ) ?? null;
+    return match ? match.name : "-";
+  };
+
+  /* Load groups — ONLY ONCE */
   useEffect(() => {
+    if (hasFetchedGroups.current) return;
+    hasFetchedGroups.current = true;
+
     axios
       .post(
         "/api/zabbix-proxy",
@@ -69,7 +89,7 @@ export default function ZabbixTopProblemsPage() {
     setLoading(true);
     try {
       const now = Math.floor(Date.now() / 1000);
-      const time_from = now - 24 * 3600; // last 6 hours (same as working page)
+      const time_from = now - 24 * 3600; // last 24 hours
 
       const r = await axios.post(
         "/api/zabbix-proxy",
@@ -92,7 +112,7 @@ export default function ZabbixTopProblemsPage() {
 
       const events = r.data.result ?? [];
 
-      /* ✅ SAME OCCURRENCE LOGIC */
+      /* ✅ SAME OCCURRENCE LOGIC (UNCHANGED) */
       const map: Record<string, any> = {};
 
       events.forEach((e: any) => {
@@ -100,11 +120,14 @@ export default function ZabbixTopProblemsPage() {
           const key = `${h.hostid}-${e.name}`;
 
           if (!map[key]) {
+            const hostName = h.name;
+
             map[key] = {
               key,
-              host: h.name,
+              host: hostName,
+              branch: findBranch(hostName), // ✅ NEW
               trigger: e.name,
-              severity: "N/A", // optional
+              severity: "N/A",
               count: 0,
             };
           }
@@ -172,6 +195,7 @@ export default function ZabbixTopProblemsPage() {
         dataSource={data}
         columns={[
           { title: "Host", dataIndex: "host" },
+          { title: "Branch", dataIndex: "branch" }, // ✅ NEW (AFTER HOST)
           { title: "Trigger", dataIndex: "trigger" },
           { title: "Severity", dataIndex: "severity" },
           {
@@ -184,9 +208,3 @@ export default function ZabbixTopProblemsPage() {
     </Card>
   );
 }
-
-
-
-
-
-

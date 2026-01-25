@@ -22,7 +22,7 @@ export async function POST(req: Request) {
         groupids: groupid, // keep if filtering by group
         output: ["hostid", "host", "name"],
         selectHostGroups: ["name"],
-        selectInventory: ["os", "serialno_a"],
+        selectInventory: ["os", "serialno_a","model", "software_full"],
         sortfield: "host",
         sortorder: "ASC",
       },
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       },
       httpsAgent,
     });
-
+    console.log("response", response.data.result[0])
     if (response.data?.result) {
       // =========================
       // FRONTEND-FRIENDLY FORMAT

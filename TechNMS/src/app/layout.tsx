@@ -45,12 +45,13 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body>
+      <body style={{ margin: 0, padding: 0, width: "100%", overflowX: "hidden" }}>
         <ThemeProvider theme={baselightTheme}>
           <CssBaseline />
 
-          {/* Show nothing until auth check is done */}
-          {isReady && children}
+          <div style={{ width: "100%", margin: 0, padding: 0 }}>
+            {isReady && children}
+          </div>
         </ThemeProvider>
       </body>
     </html>

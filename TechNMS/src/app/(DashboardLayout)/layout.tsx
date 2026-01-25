@@ -17,6 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const MainWrapper = styled("div")(() => ({
     display: "flex",
     width: "100%",
+    margin: 0,
+    padding: 0,
   }));
 
   const SidebarWrapper = styled("div")(() => ({
@@ -70,8 +72,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             toggleMobileSidebar={() => setMobileSidebarOpen(true)}
           />
 
-          <Container sx={{ paddingTop: "10px" }}>
-            <Box sx={{ minHeight: "calc(100vh - 170px)" }}>{children}</Box>
+          {/* ✅ CENTERED BUT WIDER CONTENT */}
+          <Container
+            maxWidth="xl"
+            disableGutters
+            sx={{
+              paddingTop: "10px",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Box
+              sx={{
+                width: "165%",
+                maxWidth: "2000px",   // ← Controls how wide your dashboard is
+                minHeight: "calc(100vh - 170px)",
+                margin: "0 auto",
+                padding: 0,
+              }}
+            >
+              {children}
+            </Box>
           </Container>
         </PageWrapper>
       </MainWrapper>

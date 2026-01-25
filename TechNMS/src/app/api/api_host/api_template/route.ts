@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const httpsAgent = new https.Agent({
       rejectUnauthorized: false,
     });
-    console.log("groupids", groupids);
+    // console.log("groupids", groupids);
     const ZABBIX_URL =
       process.env.NEXT_PUBLIC_ZABBIX_URL as string;
     const payload = {

@@ -1,19 +1,43 @@
-import axios from "axios";
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 import nodemailer from "nodemailer";
+import { ISP_BRANCHES } from "../../../(DashboardLayout)/availability/data/data";
+import branches from "../../../(DashboardLayout)/availability/data/data";
 
-const BASE = "https://vmanage-31949190.sdwan.cisco.com";
-const CONCURRENCY = 6;
+/* ===================== CONFIG ===================== */
 
-/* =====================================================
-   SERVER-SIDE CACHE (GLOBAL, SHARED)
-   ===================================================== */
-let SERVER_CACHE: any = null;
-let LAST_FETCH = 0;
-const CACHE_TTL = 60 * 1000; // 1 minute
-let IN_PROGRESS: Promise<any> | null = null;
+// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+const DATA_FILE = "C:\\Users\\shaila\\OneDrive\\Desktop\\sdwan_tunnels.json";
 
-/* ---------------- EMAIL TRANSPORT ---------------- */
+// Alert state persistence
+const ALERT_STATE_FILE = path.join(process.cwd(), "alert_state.json");
+
+/* ===================== HELPERS ===================== */
+
+function getBranchName(hostname: string) {
+  if (!hostname) return "NA";
+  const found = branches.find((b: any) =>
+    hostname.toLowerCase().includes(String(b.code || "").toLowerCase())
+  );
+  return found?.name || "NA";
+}
+
+/* 🔑 Replace Private1 → TCL etc inside strings */
+function replaceISPNames(text: string) {
+  if (!text) return text;
+
+  let result = text;
+  ISP_BRANCHES.forEach((isp: any) => {
+    const regex = new RegExp(isp.type, "gi");
+    result = result.replace(regex, isp.name);
+  });
+
+  return result;
+}
+
+/* ===================== EMAIL ===================== */
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT || 587),
@@ -24,206 +48,292 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendAlertMail(subject: string, html: string) {
+transporter.verify((err) => {
+  if (err) console.error("❌ SMTP FAILED:", err);
+  else console.log("✅ SMTP READY");
+});
+
+async function sendMail(subject: string, html: string) {
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"SD-WAN Monitor" <${process.env.SMTP_USER}>`,
       to: process.env.ALERT_MAIL_TO,
       subject,
       html,
     });
-  } catch (e) {
-    console.error("MAIL ERROR:", e);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+    };
+  } catch (err: any) {
+    console.error("❌ MAIL SEND FAILED:", err?.message || err);
+
+    return {
+      success: false,
+      error: err?.message || "Mail failed",
+    };
   }
 }
 
-/* =====================================================
-   CORE FETCH FUNCTION (UNCHANGED LOGIC)
-   ===================================================== */
-async function fetchFromCiscoAndProcess() {
-  const user = process.env.VMANAGE_USER!;
-  const pass = process.env.VMANAGE_PASS!;
+/* ===================== ALERT STATE ===================== */
 
-  /* ---------------- LOGIN ---------------- */
-  const loginRes = await axios.post(
-    `${BASE}/j_security_check`,
-    `j_username=${user}&j_password=${pass}`,
-    { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+function loadAlertState(): Record<string, string> {
+  try {
+    if (!fs.existsSync(ALERT_STATE_FILE)) return {};
+    return JSON.parse(fs.readFileSync(ALERT_STATE_FILE, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveAlertState(state: Record<string, string>) {
+  fs.writeFileSync(ALERT_STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+/* ===================== ADDED: MAIL CONTROL HELPERS ===================== */
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isDailyLimitError(msg: string) {
+  if (!msg) return false;
+  return (
+    msg.includes("Daily user sending limit exceeded") ||
+    msg.includes("550-5.4.5") ||
+    msg.includes("sending limits") ||
+    msg.includes("https://support.google.com/a/answer/166852")
   );
+}
 
-  const cookieHeader = (loginRes.headers["set-cookie"] || [])
-    .map((c: string) => c.split(";")[0])
-    .join("; ");
+/* ===================== API ===================== */
 
-  if (!cookieHeader) throw new Error("Login failed – no session cookie");
+export async function GET() {
+  try {
+    let downCount = 0;
+    let partialCount = 0;
 
-  /* ---------------- TOKEN ---------------- */
-  const tokenRes = await axios.get(`${BASE}/dataservice/client/token`, {
-    headers: { Cookie: cookieHeader },
-  });
+    let mailAttempted = 0;
+    let mailSent = 0;
+    let mailFailed = 0;
 
-  const token = tokenRes.data || "";
+    const mailResults: any[] = [];
 
-  /* ---------------- SESSION ---------------- */
-  const vmanage = axios.create({
-    baseURL: BASE,
-    headers: {
-      Cookie: cookieHeader,
-      "X-XSRF-TOKEN": token,
-    },
-    timeout: 15000,
-  });
+    // ✅ ADDED: mail throttling & breaker
+    let stopMailSending = false;
+    let stopReason = "";
+    const MAIL_DELAY_MS = Number(process.env.MAIL_DELAY_MS || 800);
 
-  /* ---------------- INVENTORY ---------------- */
-  const deviceRes = await vmanage.get("/dataservice/device");
-  const devices = deviceRes.data?.data || [];
+    const raw = fs.readFileSync(DATA_FILE, "utf-8");
+    const json = JSON.parse(raw);
 
-  const wanEdges = devices.filter(
-    (d: any) =>
-      ["vedge", "cedge"].includes(d["device-type"]) &&
-      d["reachability"] === "reachable" &&
-      d["system-ip"]
-  );
+    const devices = json?.sites || {};
+    const alertState = loadAlertState();
 
-  const deviceMap = new Map<string, string>(
-    wanEdges.map((d: any) => [d["system-ip"], d["host-name"]])
-  );
+    // ✅ based on your json response image:
+    // sites: { "192.168.x.x": { hostname, tunnels: [...] } }
+    for (const [systemIp, siteObj] of Object.entries<any>(devices)) {
+      if (!siteObj) continue;
 
-  const systemIps = Array.from(deviceMap.keys());
+      const hostname = siteObj.hostname || "NA";
+      const branchName = getBranchName(hostname);
 
-  const results: any[] = [];
-  let index = 0;
+      const tunnels = Array.isArray(siteObj.tunnels) ? siteObj.tunnels : [];
+      if (tunnels.length === 0) continue;
 
-  /* ---------------- WORKERS ---------------- */
-  const MAX_RETRY = 2;
+      const states = tunnels.map((t: any) =>
+        String(t.state || "").toLowerCase()
+      );
 
-  const worker = async () => {
-    while (true) {
-      const systemIp = systemIps[index++];
-      if (!systemIp) break;
+      const hasDown = states.includes("down");
+      const hasPartial = states.includes("partial");
+      const allUp = states.every((s: string) => s === "up");
 
-      let sessions: any[] = [];
+      let currentState: "up" | "down" | "partial" = "partial";
+      if (allUp) currentState = "up";
+      else if (hasDown) currentState = "down";
+      else if (hasPartial) currentState = "partial";
 
-      for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
-        try {
-          const res = await vmanage.get(
-            `/dataservice/device/bfd/sessions?deviceId=${systemIp}`
-          );
+      const lastState = alertState[systemIp];
 
-          sessions = res.data?.data || [];
-          if (sessions.length > 0) break;
+      // ✅ send only when state changes
+      if (!lastState || currentState !== lastState) {
+        /* ================= DOWN / PARTIAL ================= */
+        if (currentState === "down" || currentState === "partial") {
+          currentState === "down" ? downCount++ : partialCount++;
 
-          await new Promise((r) => setTimeout(r, 300));
-        } catch {
-          sessions = [];
+          const issueRows = tunnels
+            .filter((t: any) => {
+              const st = String(t.state || "").toLowerCase();
+              return st === "down" || st === "partial";
+            })
+            .map((t: any) => {
+              const st = String(t.state || "").toLowerCase();
+              const color = st === "down" ? "red" : "orange";
+
+              return `
+                <tr>
+                  <td>${branchName}</td>
+                  <td>${hostname}</td>
+                  <td>${systemIp}</td>
+                  <td>${replaceISPNames(t.tunnelName || "-")}</td>
+                  <td style="color:${color};font-weight:bold">${st.toUpperCase()}</td>
+                  <td>${t.uptime || "-"}</td>
+                </tr>`;
+            })
+            .join("");
+
+          mailAttempted++;
+
+          let mailResp: any = { success: false, error: "Skipped" };
+
+          // ✅ ADDED: breaker if daily Gmail limit is exceeded
+          if (!stopMailSending) {
+            mailResp = await sendMail(
+              currentState === "down"
+                ? `🚨 TUNNEL DOWN — ${hostname}`
+                : `⚠️ PARTIAL TUNNEL ISSUE — ${hostname}`,
+              `
+                <h3>${currentState === "down" ? "🚨 DOWN" : "⚠️ PARTIAL"} ALERT</h3>
+                <table border="1" cellpadding="6" cellspacing="0">
+                  <thead>
+                    <tr>
+                      <th>Branch</th>
+                      <th>Hostname</th>
+                      <th>System IP</th>
+                      <th>Tunnel</th>
+                      <th>State</th>
+                      <th>Uptime</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${issueRows}
+                  </tbody>
+                </table>
+              `
+            );
+
+            // ✅ ADDED: delay after each mail
+            await sleep(MAIL_DELAY_MS);
+
+            // ✅ ADDED: stop all future mails if Gmail limit exceeded
+            if (
+              !mailResp.success &&
+              isDailyLimitError(String(mailResp.error || ""))
+            ) {
+              stopMailSending = true;
+              stopReason =
+                "Gmail daily sending limit exceeded. Remaining mails skipped.";
+            }
+          } else {
+            mailResp = {
+              success: false,
+              error:
+                stopReason ||
+                "Skipped sending mail (daily limit exceeded earlier)",
+            };
+          }
+
+          if (mailResp.success) mailSent++;
+          else mailFailed++;
+
+          mailResults.push({
+            systemIp,
+            hostname,
+            branchName,
+            state: currentState,
+            mail: mailResp,
+          });
         }
+
+        /* ================= RECOVERY ================= */
+        else if (currentState === "up" && lastState) {
+          mailAttempted++;
+
+          let mailResp: any = { success: false, error: "Skipped" };
+
+          // ✅ ADDED: breaker if daily Gmail limit is exceeded
+          if (!stopMailSending) {
+            mailResp = await sendMail(
+              `✅ RECOVERED — ${hostname}`,
+              `
+                <h3 style="color:green">✅ ALL TUNNELS UP</h3>
+                <p><b>Branch:</b> ${branchName}</p>
+                <p><b>Hostname:</b> ${hostname}</p>
+                <p><b>System IP:</b> ${systemIp}</p>
+              `
+            );
+
+            // ✅ ADDED: delay after each mail
+            await sleep(MAIL_DELAY_MS);
+
+            // ✅ ADDED: stop all future mails if Gmail limit exceeded
+            if (
+              !mailResp.success &&
+              isDailyLimitError(String(mailResp.error || ""))
+            ) {
+              stopMailSending = true;
+              stopReason =
+                "Gmail daily sending limit exceeded. Remaining mails skipped.";
+            }
+          } else {
+            mailResp = {
+              success: false,
+              error:
+                stopReason ||
+                "Skipped sending mail (daily limit exceeded earlier)",
+            };
+          }
+
+          if (mailResp.success) mailSent++;
+          else mailFailed++;
+
+          mailResults.push({
+            systemIp,
+            hostname,
+            branchName,
+            state: "recovered",
+            mail: mailResp,
+          });
+        }
+
+        // ✅ Update last state after processing
+        alertState[systemIp] = currentState;
       }
-
-      results.push({
-        systemIp,
-        hostname: deviceMap.get(systemIp),
-        sessions,
-      });
-    }
-  };
-
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, () => worker())
-  );
-
-  /* ---------------- DEVICE-WISE ---------------- */
-  const deviceWiseTunnels: Record<string, any[]> = {};
-
-  for (const d of results) {
-    deviceWiseTunnels[d.systemIp] = (d.sessions || []).map((s: any) => ({
-      tunnelName: `${d.systemIp}:${s["local-color"]} → ${s["system-ip"]}:${s["color"]}`,
-      localSystemIp: d.systemIp,
-      remoteSystemIp: s["system-ip"],
-      localColor: s["local-color"],
-      remoteColor: s["color"],
-      state: s.state,
-      uptime: s.uptime,
-      uptimeEpoch: s["uptime-date"],
-      lastUpdated: s.lastupdated,
-      transitions: s.transitions,
-      protocol: s.proto,
-      hostname: d.hostname,
-    }));
-  }
-
-  /* =====================================================
-     🔔 ALERT LOGIC – EXECUTED ONCE PER FETCH
-     ===================================================== */
-  for (const [systemIp, tunnels] of Object.entries(deviceWiseTunnels)) {
-    if (!tunnels || tunnels.length === 0) continue;
-
-    const hostname = tunnels[0].hostname || "NA";
-    const states = tunnels.map((t: any) => t.state);
-
-    const allUp = states.every((s: string) => s === "up");
-    const allDown = states.every((s: string) => s === "down");
-
-    if (!allUp && !allDown) {
-      const html = `
-        <h3>⚠️ Partial Tunnel Failure</h3>
-        <p><b>System IP:</b> ${systemIp}</p>
-        <p><b>Hostname:</b> ${hostname}</p>
-        <ul>
-          ${tunnels
-          .map(
-            (t: any) =>
-              `<li>${t.tunnelName} — ${t.uptime} — <b>${t.state}</b></li>`
-          )
-          .join("")}
-        </ul>
-      `;
-      await sendAlertMail(`PARTIAL DOWN — ${hostname}`, html);
-      continue;
     }
 
-    if (allDown) {
-      const html = `
-        <h3>🚨 ALL TUNNELS DOWN</h3>
-        <p><b>Hostname:</b> ${hostname}</p>
-        <p><b>System IP:</b> ${systemIp}</p>
-      `;
-      await sendAlertMail(`ALL DOWN — ${hostname}`, html);
-    }
+    saveAlertState(alertState);
+
+    return NextResponse.json({
+      ...json,
+
+      // ✅ you wanted generatedAt in API response
+      generatedAt: new Date().toISOString(),
+
+      alertSummary: {
+        downTriggered: downCount,
+        partialTriggered: partialCount,
+        totalTriggered: downCount + partialCount,
+      },
+
+      mailSummary: {
+        totalAttempted: mailAttempted,
+        sent: mailSent,
+        failed: mailFailed,
+        results: mailResults,
+
+        // ✅ ADDED extra info
+        mailSendingStopped: stopMailSending,
+        stopReason: stopReason || null,
+        delayMs: MAIL_DELAY_MS,
+      },
+    });
+  } catch (err: any) {
+    console.error("API ERROR:", err);
+    return NextResponse.json(
+      { error: "Failed", details: err.message },
+      { status: 500 }
+    );
   }
-
-  return {
-    success: true,
-    totalEdges: systemIps.length,
-    devices: deviceWiseTunnels,
-  };
-}
-
-/* =====================================================
-   API HANDLER (CACHE + LOCK)
-   ===================================================== */
-export async function POST() {
-  const now = Date.now();
-
-  // ✅ Serve cached response
-  if (SERVER_CACHE && now - LAST_FETCH < CACHE_TTL) {
-    return NextResponse.json(SERVER_CACHE);
-  }
-
-  // ✅ Prevent parallel Cisco hits
-  if (!IN_PROGRESS) {
-    IN_PROGRESS = fetchFromCiscoAndProcess()
-      .then((data) => {
-        SERVER_CACHE = data;
-        LAST_FETCH = Date.now();
-        IN_PROGRESS = null;
-        return data;
-      })
-      .catch((err) => {
-        IN_PROGRESS = null;
-        throw err;
-      });
-  }
-
-  const data = await IN_PROGRESS;
-  return NextResponse.json(data);
 }

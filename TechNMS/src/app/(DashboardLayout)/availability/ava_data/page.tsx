@@ -1,20 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Table, Button, Modal } from "antd";
+import { Table, Button, Modal, Card, Select } from "antd";
 import branches from "../data/data";
 import { ISP_BRANCHES } from "../data/data";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { loadTunnels } from "@/utils/loadTunnels";
+
+/* ===================== TYPES ===================== */
+
+type Tunnel = {
+  tunnelName: string;
+  localSystemIp: string;
+  remoteSystemIp: string;
+  localColor: string;
+  remoteColor: string;
+  state: "up" | "down";
+  uptime: string;
+  hostname: string;
+};
 
 type IpRow = {
   hostname: string;
   systemIp: string;
   branchName: string;
-  tunnels: any[];
+  tunnels: Tunnel[];
   rowState: "up" | "down" | "partial";
 };
+
+/* ===================== HELPERS ===================== */
 
 function getBranchNameByHostname(hostname: string) {
   if (!hostname) return "Unknown";
@@ -26,27 +40,85 @@ function getBranchNameByHostname(hostname: string) {
   return found ? found.name : "Unknown";
 }
 
-/**
- * ✅ Normalize tunnel ISP name using ISP_BRANCHES
- * Does NOT affect existing logic
- */
 function resolveIspName(text: string) {
   if (!text) return text;
 
   let result = text;
-
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
     if (result.toLowerCase().includes(type)) {
-      result = result.replace(
-        new RegExp(type, "gi"),
-        isp.name
-      );
+      result = result.replace(new RegExp(type, "gi"), isp.name);
     }
   });
 
   return result;
 }
+
+/* ✅ GET ONLY ISP_BRANCH NAME */
+function getIspNameOnly(tunnel: any) {
+  let ispName = "";
+
+  ISP_BRANCHES.forEach((isp) => {
+    const type = isp.type.toLowerCase();
+    if (tunnel.tunnelName.toLowerCase().includes(type)) {
+      ispName = isp.name;
+    }
+  });
+
+  return ispName || resolveIspName(tunnel.tunnelName);
+}
+
+function getBgForTunnel(tunnel: any) {
+  if (!tunnel) return "#ffd6d6";
+  if (tunnel.state === "down") return "#ffd6d6";
+  if (tunnel.state === "up") return "#d7ffd7";
+  return "#ffe5b4";
+}
+
+const sortTunnels = (list: any[]) =>
+  [...list].sort((a, b) => {
+    if (a.state === "down" && b.state !== "down") return -1;
+    if (a.state !== "down" && b.state === "down") return 1;
+    return 0;
+  });
+
+/* ===================== JSON → TABLE TRANSFORM ===================== */
+
+function transformJsonToRows(json: any): IpRow[] {
+  const devices = json?.sites ?? {};
+  const rows: IpRow[] = [];
+
+  Object.entries(devices).forEach(([systemIp, site]: any) => {
+    const hostname = site?.hostname ?? "Unknown";
+    const tunnels = Array.isArray(site?.tunnels) ? site.tunnels : [];
+
+    let rowState: "up" | "down" | "partial" = "down";
+
+    if (tunnels.length > 0) {
+      const upCount = tunnels.filter((t: any) => t.state === "up").length;
+      const downCount = tunnels.filter((t: any) => t.state === "down").length;
+
+      if (upCount === tunnels.length) rowState = "up";
+      else if (downCount === tunnels.length) rowState = "down";
+      else rowState = "partial";
+    }
+
+    rows.push({
+      hostname,
+      systemIp,
+      branchName: getBranchNameByHostname(hostname),
+      tunnels: tunnels as Tunnel[],
+      rowState,
+    });
+  });
+
+  const order = { down: 0, partial: 1, up: 2 };
+  rows.sort((a, b) => order[a.rowState] - order[b.rowState]);
+
+  return rows;
+}
+
+/* ===================== COMPONENT ===================== */
 
 interface Props {
   mode?: "page" | "widget";
@@ -57,25 +129,18 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   const [loading, setLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 
+  // 👉 SINGLE WIDTH SOURCE (MATCHES TUNNEL DROPDOWN)
+  const TUNNEL_DROPDOWN_WIDTH = 500;
+
   async function load() {
     setLoading(true);
-
     try {
-      const tunnelRows = await loadTunnels();
-      const cached = JSON.stringify(tunnelRows);
-      if (!cached) {
-        setRows([]);
-        return;
-      }
-
-      const data: IpRow[] = JSON.parse(cached);
-
-      const order = { down: 0, partial: 1, up: 2 };
-      data.sort((a, b) => order[a.rowState] - order[b.rowState]);
-
+      const res = await fetch("/api/sdwan/tunnels");
+      const json = await res.json();
+      const data = transformJsonToRows(json);
       setRows(data);
     } catch (e) {
-      console.error("FRONTEND ERROR:", e);
+      console.error("JSON LOAD ERROR:", e);
       setRows([]);
     } finally {
       setLoading(false);
@@ -85,21 +150,6 @@ export default function TunnelsTable({ mode = "page" }: Props) {
   useEffect(() => {
     load();
   }, []);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(async () => {
-      const res = await loadTunnels();
-      localStorage.setItem(
-        "preloaded_tunnels",
-        JSON.stringify(res)
-      );
-    }, 180000);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-
-
 
   function handleExport() {
     setShowPreview(true);
@@ -113,7 +163,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     autoTable(doc, {
       startY: 22,
       head: [["Branch Name", "Hostname", "System IP", "Tunnels"]],
-      body: rows.map((r: any) => [
+      body: rows.map((r) => [
         getBranchNameByHostname(r.hostname),
         r.hostname,
         r.systemIp,
@@ -124,27 +174,18 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     doc.save("sdwan_report.pdf");
   }
 
-  const columns: any = [
+  /* ===================== BASE COLUMNS ===================== */
+  const baseColumns: any = [
     {
       title: "Branch",
-      key: "branchName",
+      width: 130,
       render: (_: any, row: IpRow) => {
-        let bg = "#ddd";
-        let color = "#000";
-
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-        if (row.rowState === "partial") {
-          bg = "#ffe5b4";
-          color = "orange";
-        }
-
+        const map: any = {
+          up: ["#d7ffd7", "green"],
+          down: ["#ffd6d6", "red"],
+          partial: ["#ffe5b4", "orange"],
+        };
+        const [bg, color] = map[row.rowState];
         return (
           <span
             style={{
@@ -160,47 +201,90 @@ export default function TunnelsTable({ mode = "page" }: Props) {
         );
       },
     },
-    { title: "Hostname", dataIndex: "hostname" },
-    { title: "System IP", dataIndex: "systemIp" },
     {
-      title: "Tunnels (Name + Uptime)",
-      key: "tunnelInfo",
-      render: (_: any, row: IpRow) => (
-        <select style={{ padding: 4 }}>
-          {row.tunnels.map((t: any, i: number) => (
-            <option
-              key={i}
-              style={{
-                color: t.state === "down" ? "red" : "black",
-                fontWeight: t.state === "down" ? 700 : 400,
-              }}
-            >
-              {resolveIspName(t.tunnelName)} — {t.uptime}
-            </option>
-          ))}
-        </select>
+      title: "Hostname",
+      dataIndex: "hostname",
+      width: 150,
+
+      ellipsis: true,   // prevents overflow
+      render: (text: string) => (
+        <span style={{ fontWeight: 700 }}>
+          {text}
+        </span>
       ),
     },
     {
-      title: "State",
-      key: "state",
+      title: "System IP",
+      dataIndex: "systemIp",
+      width: 135,
+      render: (text: string) => (
+        <span style={{ fontWeight: 700 }}>{text}</span>
+      ),
+    },
+    {
+      title: "Tunnels (Name + Uptime)",
+      width: TUNNEL_DROPDOWN_WIDTH,
+      ellipsis: true,
       render: (_: any, row: IpRow) => {
-        let bg = "#ccc";
-        let color = "black";
+        const sortedTunnels =
+          row.tunnels.length > 0 ? sortTunnels(row.tunnels) : [];
 
-        if (row.rowState === "up") {
-          bg = "#d7ffd7";
-          color = "green";
-        }
-        if (row.rowState === "down") {
-          bg = "#ffd6d6";
-          color = "red";
-        }
-        if (row.rowState === "partial") {
-          bg = "#ffe5b4";
-          color = "orange";
+        const selectedTunnel = sortedTunnels[0];
+        const bg =
+          row.tunnels.length === 0 || selectedTunnel?.state === "down"
+            ? "#ffd6d6"
+            : "#d7ffd7";
+
+        if (row.tunnels.length === 0) {
+          return (
+            <Select
+              style={{
+                width: "100%",
+                backgroundColor: "#ffd6d6",
+                border: "1px solid #000",
+                fontWeight: 700,
+              }}
+              value="NA"
+            >
+              <Select.Option value="NA">NA</Select.Option>
+            </Select>
+          );
         }
 
+        return (
+          <Select
+            style={{
+              width: "100%",
+              backgroundColor: bg,
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
+            value={sortedTunnels[0].tunnelName}
+          >
+            {sortedTunnels.map((t: any, i: number) => (
+              <Select.Option
+                key={i}
+                value={t.tunnelName}
+                style={{ backgroundColor: getBgForTunnel(t) }}
+              >
+                {resolveIspName(t.tunnelName)} — {t.uptime}
+              </Select.Option>
+            ))}
+          </Select>
+        );
+      },
+    },
+    {
+      title: "State",
+      width: 90,
+      ellipsis: true,
+      render: (_: any, row: IpRow) => {
+        const map: any = {
+          up: ["#d7ffd7", "green"],
+          down: ["#ffd6d6", "red"],
+          partial: ["#ffe5b4", "orange"],
+        };
+        const [bg, color] = map[row.rowState];
         return (
           <span
             style={{
@@ -218,29 +302,248 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     },
   ];
 
+  const primaryColumn: any = {
+    title: "Primary",
+    width: TUNNEL_DROPDOWN_WIDTH,
+    ellipsis: true, // ✅ ENABLED
+
+    render: (_: any, row: IpRow) => {
+      if (row.tunnels.length === 0) {
+        return (
+          <Select
+            style={{
+              width: "100%",
+              backgroundColor: "#ffd6d6",
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
+            value="NA"
+          >
+            <Select.Option value="NA">NA</Select.Option>
+          </Select>
+        );
+      }
+
+      const colorCounts: Record<string, number> = {};
+      row.tunnels.forEach((t: any) => {
+        colorCounts[t.localColor] =
+          (colorCounts[t.localColor] || 0) + 1;
+      });
+
+      const primaryColor = Object.entries(colorCounts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+
+      const primaryList = sortTunnels(
+        row.tunnels.filter((t: any) => t.localColor === primaryColor)
+      );
+
+      const first = primaryList[0];
+
+      return (
+        <Select
+          style={{
+            width: "100%",
+            backgroundColor: getBgForTunnel(first),
+            border: "1px solid #000",
+            fontWeight: 700,
+          }}
+          value={getIspNameOnly(first)}
+          optionLabelProp="label" // ✅ important for tooltip + ellipsis behavior
+        >
+          {primaryList.map((t: any, i: number) => {
+            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+
+            return (
+              <Select.Option
+                key={i}
+                value={t.tunnelName}
+                label={text} // used when collapsed
+                style={{
+                  backgroundColor: getBgForTunnel(t),
+                }}
+              >
+                <span
+                  title={text} // ✅ Native browser tooltip on hover
+                  style={{
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {text}
+                </span>
+              </Select.Option>
+            );
+          })}
+        </Select>
+      );
+    },
+  };
+  const secondaryColumn: any = {
+    title: "Secondary",
+    width: TUNNEL_DROPDOWN_WIDTH,
+    ellipsis: true, // ✅ SAME AS PRIMARY
+
+    render: (_: any, row: IpRow) => {
+      if (row.tunnels.length === 0) {
+        return (
+          <Select
+            style={{
+              width: "100%",
+              backgroundColor: "#ffd6d6",
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
+            value="NA"
+          >
+            <Select.Option value="NA">NA</Select.Option>
+          </Select>
+        );
+      }
+
+      const colorCounts: Record<string, number> = {};
+      row.tunnels.forEach((t: any) => {
+        colorCounts[t.localColor] =
+          (colorCounts[t.localColor] || 0) + 1;
+      });
+
+      const primaryColor = Object.entries(colorCounts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+
+      const secondaryList = sortTunnels(
+        row.tunnels.filter((t: any) => t.localColor !== primaryColor)
+      );
+
+      if (secondaryList.length === 0) {
+        return (
+          <Select
+            style={{
+              width: "100%",
+              backgroundColor: "#ffffff",
+              border: "1px solid #000",
+              fontWeight: 700,
+            }}
+          />
+        );
+      }
+
+      const first = secondaryList[0];
+
+      return (
+        <Select
+          style={{
+            width: "100%",
+            backgroundColor: getBgForTunnel(first),
+            border: "1px solid #000",
+            fontWeight: 700,
+          }}
+          value={getIspNameOnly(first)}
+          optionLabelProp="label" // ✅ IMPORTANT (same as primary)
+        >
+          {secondaryList.map((t: any, i: number) => {
+            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+
+            return (
+              <Select.Option
+                key={i}
+                value={t.tunnelName}
+                label={text} // used when collapsed
+                style={{
+                  backgroundColor: getBgForTunnel(t),
+                }}
+              >
+                <span
+                  title={text} // ✅ Tooltip on hover
+                  style={{
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {text}
+                </span>
+              </Select.Option>
+            );
+          })}
+        </Select>
+      );
+    },
+  };
+
+  /* ============ SPLIT INTO TWO TABLES ============ */
+  const FIXED_FIRST_TABLE_IPS = [
+    "192.168.222.1",
+    "192.168.222.2",
+    "192.168.222.3",
+    "192.168.222.4",
+  ];
+
+  const table1Rows = rows.filter((r) =>
+    FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
+  );
+
+  const table2Rows = rows.filter(
+    (r) => !FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
+  );
+
+  const table1Columns = baseColumns;
+
+  const table2Columns = [
+    // First three base columns (Branch, Hostname, System IP)
+    ...baseColumns.filter(
+      (col: any) =>
+        col.title !== "Tunnels (Name + Uptime)" &&
+        col.title !== "State"
+    ),
+
+    // Then Primary & Secondary
+    primaryColumn,
+    secondaryColumn,
+
+    // Finally add State at the very last position
+    baseColumns.find((col: any) => col.title === "State"),
+  ];
+
   return (
-    <div>
+    <div >
       {mode === "page" && (
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4" style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
           <h1 className="text-xl font-bold">
             SD-WAN — Tunnel Status by IP
           </h1>
-
           <Button type="primary" onClick={handleExport}>
             Export / Preview
           </Button>
         </div>
       )}
 
-      <Table
-        loading={loading}
-        columns={columns}
-        dataSource={rows}
-        bordered
-        pagination={false}
-        rowKey={(r) => r.systemIp}
-        size={mode === "widget" ? "small" : "middle"}
-      />
+      <Card title="SD-WAN IPsec Tunnels" style={{marginBottom:"2%"}}>
+        <Table
+          loading={loading}
+          columns={table1Columns}
+          dataSource={table1Rows}
+          bordered
+          pagination={false}
+          rowKey={(r) => r.systemIp}
+          size={mode === "widget" ? "small" : "middle"}
+        />
+      </Card>
+
+      {table2Rows.length > 0 && (
+        <Card title="SD-WAN IPsec Tunnels" style={{ marginBottom: 20 }}>
+          <Table
+            loading={loading}
+            columns={table2Columns}
+            dataSource={table2Rows}
+            bordered
+            pagination={false}
+            rowKey={(r) => r.systemIp}
+            size={mode === "widget" ? "small" : "middle"}
+          />
+        </Card>
+      )}
 
       {mode === "page" && (
         <Modal

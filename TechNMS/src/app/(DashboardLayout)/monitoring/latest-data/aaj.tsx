@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import React, { useMemo } from "react";
 import { Table, Button, Space } from "antd";
@@ -7,6 +7,7 @@ import type { ColumnsType } from "antd/es/table";
 type RowType = {
   key: string;
   host: string;
+  branch: string;   // ✅ NEW
   name: string;
   lastCheck: string;
   lastValue: string | number;
@@ -20,7 +21,10 @@ interface LatestDataTableProps {
   loading?: boolean;
 }
 
-export default function LatestDataTable({ data = [], loading = false }: LatestDataTableProps) {
+export default function LatestDataTable({
+  data = [],
+  loading = false,
+}: LatestDataTableProps) {
   const columns: ColumnsType<RowType> = useMemo(
     () => [
       {
@@ -28,14 +32,24 @@ export default function LatestDataTable({ data = [], loading = false }: LatestDa
         dataIndex: "host",
         key: "host",
         width: 120,
-        sorter: (a, b) => String(a.host || "").localeCompare(String(b.host || "")),
+        sorter: (a, b) =>
+          String(a.host || "").localeCompare(String(b.host || "")),
+      },
+      {
+        title: "Branch",          // ✅ NEW COLUMN
+        dataIndex: "branch",
+        key: "branch",
+        width: 140,
+        sorter: (a, b) =>
+          String(a.branch || "").localeCompare(String(b.branch || "")),
       },
       {
         title: "Name",
         dataIndex: "name",
         key: "name",
         width: 150,
-        sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || "")),
+        sorter: (a, b) =>
+          String(a.name || "").localeCompare(String(b.name || "")),
       },
       {
         title: "Last check",
@@ -48,7 +62,8 @@ export default function LatestDataTable({ data = [], loading = false }: LatestDa
         dataIndex: "lastValue",
         key: "lastValue",
         width: 120,
-        sorter: (a, b) => Number(a.lastValue ?? 0) - Number(b.lastValue ?? 0),
+        sorter: (a, b) =>
+          Number(a.lastValue ?? 0) - Number(b.lastValue ?? 0),
       },
       {
         title: "Change",
@@ -107,16 +122,28 @@ export default function LatestDataTable({ data = [], loading = false }: LatestDa
         columns={columns}
         dataSource={data}
         loading={loading}
-        pagination={data.length > 0 ? {
-          pageSize: 50,
-          showSizeChanger: true,
-          pageSizeOptions: ['10', '20', '50', '100', '200'],
-          showTotal: (total, range) => `Displaying ${range[0]} to ${range[1]} of ${total}${total >= 1000 ? '+ found' : ''}`,
-        } : false}
+        pagination={
+          data.length > 0
+            ? {
+                pageSize: 50,
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "50", "100", "200"],
+                showTotal: (total, range) =>
+                  `Displaying ${range[0]} to ${range[1]} of ${total}${
+                    total >= 1000 ? "+ found" : ""
+                  }`,
+              }
+            : false
+        }
         rowKey="key"
         size="small"
         bordered
-        locale={{ emptyText: data.length === 0 ? "Apply filter to view results" : "No data" }}
+        locale={{
+          emptyText:
+            data.length === 0
+              ? "Apply filter to view results"
+              : "No data",
+        }}
       />
     </div>
   );
