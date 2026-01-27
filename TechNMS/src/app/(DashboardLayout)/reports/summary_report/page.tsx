@@ -45,6 +45,8 @@ interface RowData {
   speed: number | string;
   unit: string;
   rawSpeed: number | string;
+  primarySpeed: number | string;
+  secondarySpeed: number | string;
 }
 
 interface ChartPoint {
@@ -255,6 +257,10 @@ const SummaryReport: React.FC = () => {
             speed: normalized.value,
             unit: normalized.unit,
             rawSpeed: r.speed,
+
+            // ✅ set both speeds from API result
+            primarySpeed: r.primarySpeed ?? "-",
+            secondarySpeed: r.secondarySpeed ?? "-",
           };
         })
       );
@@ -557,82 +563,100 @@ const SummaryReport: React.FC = () => {
             ),
           },
           { title: "Branch", dataIndex: "branch" },
-          {
-            title: "Speed",
-            align: "center",
-            render: (_: any, r: RowData) =>
-              r.rawSpeed !== "-" ? r.rawSpeed + " Mbps" : "-",
-          },
+
+          // ✅ PRIMARY GROUP COLUMN
           {
             title: "Primary",
-            align: "center",
-            render: (_: any, row: RowData) => (
-              <Button
-                size="middle"
-                onClick={() => handleGenerateClick("primary", row)}
-                style={{
-                  background: "linear-gradient(135deg, #ffa940, #ff7a45)",
-                  border: "none",
-                  color: "#000",
-                  fontWeight: 600,
-                  padding: "6px 18px",
-                  borderRadius: "6px",
-                  boxShadow: "0 0 0 rgba(255,122,69,0.6)",
-                  animation: "pulseGlowOrange 1.8s infinite",
-                  transition: "all 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 14px rgba(255,122,69,0.9)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 0 rgba(255,122,69,0.6)";
-                }}
-              >
-                Generate
-              </Button>
-
-
-            ),
+            children: [
+              {
+                title: "Speed",
+                align: "center",
+                render: (_: any, r: RowData) =>
+                  r.primarySpeed !== "-" ? r.primarySpeed + " Mbps" : "-",
+              },
+              {
+                title: "Utilization",
+                align: "center",
+                render: (_: any, row: RowData) => (
+                  <Button
+                    size="middle"
+                    onClick={() => handleGenerateClick("primary", row)}
+                    style={{
+                      background: "linear-gradient(135deg, #ffa940, #ff7a45)",
+                      border: "none",
+                      color: "#000",
+                      fontWeight: 600,
+                      padding: "6px 18px",
+                      borderRadius: "6px",
+                      boxShadow: "0 0 0 rgba(255,122,69,0.6)",
+                      animation: "pulseGlowOrange 1.8s infinite",
+                      transition: "all 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.1)";
+                      e.currentTarget.style.boxShadow =
+                        "0 0 14px rgba(255,122,69,0.9)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow =
+                        "0 0 0 rgba(255,122,69,0.6)";
+                    }}
+                  >
+                    Generate
+                  </Button>
+                ),
+              },
+            ],
           },
+
+          // ✅ SECONDARY GROUP COLUMN
           {
             title: "Secondary",
-            align: "center",
-            render: (_: any, row: RowData) => (
-              <Button
-                size="middle"
-                onClick={() => handleGenerateClick("secondary", row)}
-                style={{
-                  background: "linear-gradient(135deg, #ffa940, #ff7a45)",
-                  border: "none",
-                  color: "#000",
-                  fontWeight: 600,
-                  padding: "6px 18px",
-                  borderRadius: "6px",
-                  boxShadow: "0 0 0 rgba(255,122,69,0.6)",
-                  animation: "pulseGlowOrange 1.8s infinite",
-                  transition: "all 0.3s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 14px rgba(255,122,69,0.9)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 0 rgba(255,122,69,0.6)";
-                }}
-              >
-                Generate
-              </Button>
-
-            ),
+            children: [
+              {
+                title: "Speed",
+                align: "center",
+                render: (_: any, r: RowData) =>
+                  r.secondarySpeed !== "-" ? r.secondarySpeed + " Mbps" : "-",
+              },
+              {
+                title: "Utilization",
+                align: "center",
+                render: (_: any, row: RowData) => (
+                  <Button
+                    size="middle"
+                    onClick={() => handleGenerateClick("secondary", row)}
+                    style={{
+                      background: "linear-gradient(135deg, #ffa940, #ff7a45)",
+                      border: "none",
+                      color: "#000",
+                      fontWeight: 600,
+                      padding: "6px 18px",
+                      borderRadius: "6px",
+                      boxShadow: "0 0 0 rgba(255,122,69,0.6)",
+                      animation: "pulseGlowOrange 1.8s infinite",
+                      transition: "all 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.1)";
+                      e.currentTarget.style.boxShadow =
+                        "0 0 14px rgba(255,122,69,0.9)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow =
+                        "0 0 0 rgba(255,122,69,0.6)";
+                    }}
+                  >
+                    Generate
+                  </Button>
+                ),
+              },
+            ],
           },
         ]}
+
         dataSource={rows}
       />
 

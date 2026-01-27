@@ -6,8 +6,10 @@ import https from "https";
    SPEED ITEM ONLY
 ===================== */
 
-const SPEED_ITEM_NAME =
-  'Interface ["GigabitEthernet0/0/0"]: Speed';
+const SPEED_ITEM_NAME = [
+  'Interface ["GigabitEthernet0/0/0"]: Speed',
+  'Interface ["GigabitEthernet0/0/1"]: Speed',
+];
 
 /* =====================
    HELPERS
@@ -34,17 +36,11 @@ export async function POST(req: Request) {
     const { auth, groupids } = await req.json();
 
     if (!auth) {
-      return NextResponse.json(
-        { error: "Missing auth token" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing auth token" }, { status: 400 });
     }
 
     if (!groupids) {
-      return NextResponse.json(
-        { error: "Missing groupids" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing groupids" }, { status: 400 });
     }
 
     const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL as string;
@@ -59,7 +55,7 @@ export async function POST(req: Request) {
         search: { name: SPEED_ITEM_NAME },
         searchByAny: true,
         searchWildcardsEnabled: true,
-        selectHosts: ["hostid", "name"], // ✅ REQUIRED
+        selectHosts: ["hostid", "name"],
       },
       id: 1,
     };
@@ -74,18 +70,46 @@ export async function POST(req: Request) {
 
     const result = res.data?.result ?? [];
 
-    const formatted = result.map((item: any) => {
+    // ✅ group host wise and map primary/secondary speed properly
+    const grouped: Record<
+      string,
+      {
+        hostid: string;
+        hostname: string;
+        primarySpeed: number | string;
+        secondarySpeed: number | string;
+      }
+    > = {};
+
+    result.forEach((item: any) => {
+      const hostid = item.hostid;
+      const hostname = item.hosts?.[0]?.name ?? "Unknown";
+
+      if (!grouped[hostid]) {
+        grouped[hostid] = {
+          hostid,
+          hostname,
+          primarySpeed: "-",
+          secondarySpeed: "-",
+        };
+      }
+
       const normalized = normalizeSpeedMbps(item.lastvalue);
 
-      return {
-        hostid: item.hostid,                        // ✅ SEND HOST ID
-        hostname: item.hosts?.[0]?.name ?? "Unknown",
-        speed: normalized.value,
-        unit: normalized.unit,
-      };
+      // ✅ Primary speed
+      if (String(item.name).includes('GigabitEthernet0/0/0')) {
+        grouped[hostid].primarySpeed = normalized.value;
+      }
+
+      // ✅ Secondary speed
+      if (String(item.name).includes('GigabitEthernet0/0/1')) {
+        grouped[hostid].secondarySpeed = normalized.value;
+      }
     });
 
-    return NextResponse.json({ result: formatted });
+    return NextResponse.json({
+      result: Object.values(grouped),
+    });
   } catch (e: any) {
     console.error("Speed API error:", e?.message);
     return NextResponse.json(

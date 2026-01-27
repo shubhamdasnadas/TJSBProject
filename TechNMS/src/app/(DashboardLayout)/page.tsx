@@ -73,6 +73,21 @@ const WIDGETS = [
     w: 12,
     h: 6,
   },
+    {
+    id: "top_host3",
+    title: "Top Host",
+    component: (props: any) => (
+      <TopHost
+        mode="preview"
+        topHostName={["host3"]}
+        // showPreviewData={true}
+      />
+    ),
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 6,
+  },
   {
     id: "problems-table",
     title: "Active Problems",

@@ -7,9 +7,9 @@ import branches from "../../../(DashboardLayout)/availability/data/data";
 
 /* ===================== CONFIG ===================== */
 
-const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
 // const DATA_FILE = "C:\\Users\\shaila\\OneDrive\\Desktop\\sdwan_tunnels.json";
-// const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
 
 // Alert state persistence
 const ALERT_STATE_FILE = path.join(process.cwd(), "alert_state.json");
@@ -267,8 +267,8 @@ export async function GET() {
           if (!stopMailSending) {
             mailResp = await sendMail(
               currentState === "down"
-                ? `🚨 TEST TUNNEL DOWN — ${hostname}`
-                : `⚠️ TEST PARTIAL TUNNEL ISSUE — ${hostname}`,
+                ? `🚨  TUNNEL DOWN — ${hostname}`
+                : `⚠️  PARTIAL TUNNEL ISSUE — ${hostname}`,
               `
                 <h3>${currentState === "down" ? "🚨 DOWN" : "⚠️ PARTIAL"} ALERT</h3>
                 <table border="1" cellpadding="6" cellspacing="0">

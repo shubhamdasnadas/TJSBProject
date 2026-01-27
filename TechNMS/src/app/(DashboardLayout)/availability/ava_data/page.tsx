@@ -15,9 +15,12 @@ type Tunnel = {
   remoteSystemIp: string;
   localColor: string;
   remoteColor: string;
-  state: "up" | "down";
+  state: "up" | "down" | "partial";
   uptime: string;
   hostname: string;
+
+  // ✅ used in primary/secondary logic
+  downtimeSec?: number;
 };
 
 type IpRow = {
@@ -26,6 +29,10 @@ type IpRow = {
   branchName: string;
   tunnels: Tunnel[];
   rowState: "up" | "down" | "partial";
+
+  // ✅ ADD THESE (same as dashboard)
+  siteState?: "UP" | "DOWN";
+  downtimeSec?: number;
 };
 
 /* ===================== HELPERS ===================== */
@@ -55,17 +62,23 @@ function resolveIspName(text: string) {
 }
 
 /* ✅ GET ONLY ISP_BRANCH NAME */
-function getIspNameOnly(tunnel: any) {
+function getIspNameOnly(
+  tunnel: any,
+  suffix?: string // ✅ downtime / uptime text
+) {
   let ispName = "";
 
   ISP_BRANCHES.forEach((isp) => {
     const type = isp.type.toLowerCase();
-    if (tunnel.tunnelName.toLowerCase().includes(type)) {
+    if (tunnel?.tunnelName?.toLowerCase().includes(type)) {
       ispName = isp.name;
     }
   });
 
-  return ispName || resolveIspName(tunnel.tunnelName);
+  const finalName = ispName || resolveIspName(tunnel.tunnelName);
+
+  // ✅ append only if suffix is provided
+  return suffix ? `${finalName} — ${suffix}` : finalName;
 }
 
 function getBgForTunnel(tunnel: any) {
@@ -109,6 +122,10 @@ function transformJsonToRows(json: any): IpRow[] {
       branchName: getBranchNameByHostname(hostname),
       tunnels: tunnels as Tunnel[],
       rowState,
+
+      // ✅ ADDED same fields (for primary/secondary NA DOWN)
+      siteState: site?.siteState,
+      downtimeSec: site?.downtimeSec,
     });
   });
 
@@ -131,6 +148,42 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
   // 👉 SINGLE WIDTH SOURCE (MATCHES TUNNEL DROPDOWN)
   const TUNNEL_DROPDOWN_WIDTH = 500;
+
+  const formatDowntime = (seconds?: number) => {
+    if (!seconds || seconds <= 0) return "NA";
+
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
+  const getPartialDowntime = (current: any, list: any[]) => {
+    if (!current || !Array.isArray(list)) return "NA";
+
+    // Get ISP name of current tunnel
+    const currentIsp = resolveIspName(current.tunnelName);
+
+    // Filter tunnels of same ISP that are DOWN
+    const sameIspDownTunnels = list.filter(
+      (t) =>
+        resolveIspName(t.tunnelName) === currentIsp &&
+        t.state === "down" &&
+        typeof t.downtimeSec === "number"
+    );
+
+    if (!sameIspDownTunnels.length) return "NA";
+
+    // Find maximum downtime
+    const maxDowntime = Math.max(
+      ...sameIspDownTunnels.map((t) => t.downtimeSec)
+    );
+
+    return formatDowntime(maxDowntime);
+  };
 
   async function load() {
     setLoading(true);
@@ -206,20 +259,14 @@ export default function TunnelsTable({ mode = "page" }: Props) {
       dataIndex: "hostname",
       width: 150,
 
-      ellipsis: true,   // prevents overflow
-      render: (text: string) => (
-        <span style={{ fontWeight: 700 }}>
-          {text}
-        </span>
-      ),
+      ellipsis: true,
+      render: (text: string) => <span style={{ fontWeight: 700 }}>{text}</span>,
     },
     {
       title: "System IP",
       dataIndex: "systemIp",
       width: 135,
-      render: (text: string) => (
-        <span style={{ fontWeight: 700 }}>{text}</span>
-      ),
+      render: (text: string) => <span style={{ fontWeight: 700 }}>{text}</span>,
     },
     {
       title: "Tunnels (Name + Uptime)",
@@ -302,13 +349,20 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     },
   ];
 
+  /* ===================== PRIMARY / SECONDARY (COPIED FROM DASHBOARD STYLE) ===================== */
+
   const primaryColumn: any = {
     title: "Primary",
     width: TUNNEL_DROPDOWN_WIDTH,
-    ellipsis: true, // ✅ ENABLED
+    ellipsis: true,
 
     render: (_: any, row: IpRow) => {
       if (row.tunnels.length === 0) {
+        const isDown = row.siteState === "DOWN";
+        const downtimeText = isDown
+          ? `DOWN — ${formatDowntime(row.downtimeSec)}`
+          : "NA";
+
         return (
           <Select
             style={{
@@ -317,27 +371,46 @@ export default function TunnelsTable({ mode = "page" }: Props) {
               border: "1px solid #000",
               fontWeight: 700,
             }}
-            value="NA"
+            value={downtimeText}
           >
-            <Select.Option value="NA">NA</Select.Option>
+            <Select.Option value={downtimeText}>
+              <span
+                title={downtimeText}
+                style={{
+                  display: "block",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {downtimeText}
+              </span>
+            </Select.Option>
           </Select>
         );
       }
 
       const colorCounts: Record<string, number> = {};
       row.tunnels.forEach((t: any) => {
-        colorCounts[t.localColor] =
-          (colorCounts[t.localColor] || 0) + 1;
+        colorCounts[t.localColor] = (colorCounts[t.localColor] || 0) + 1;
       });
 
-      const primaryColor = Object.entries(colorCounts)
-        .sort((a, b) => b[1] - a[1])[0][0];
+      const primaryColor = Object.entries(colorCounts).sort(
+        (a, b) => b[1] - a[1]
+      )[0][0];
 
       const primaryList = sortTunnels(
         row.tunnels.filter((t: any) => t.localColor === primaryColor)
       );
 
       const first = primaryList[0];
+
+      const firstStatusText =
+        first.state === "down"
+          ? formatDowntime(first.downtimeSec)
+          : first.state === "partial"
+          ? getPartialDowntime(first, primaryList)
+          : first.uptime;
 
       return (
         <Select
@@ -347,23 +420,30 @@ export default function TunnelsTable({ mode = "page" }: Props) {
             border: "1px solid #000",
             fontWeight: 700,
           }}
-          value={getIspNameOnly(first)}
-          optionLabelProp="label" // ✅ important for tooltip + ellipsis behavior
+          value={getIspNameOnly(first, firstStatusText)}
+          optionLabelProp="label"
         >
           {primaryList.map((t: any, i: number) => {
-            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+            const statusText =
+              t.state === "down"
+                ? formatDowntime(t.downtimeSec)
+                : t.state === "partial"
+                ? getPartialDowntime(t, primaryList)
+                : t.uptime;
+
+            const text = `${resolveIspName(t.tunnelName)} — ${statusText}`;
 
             return (
               <Select.Option
                 key={i}
                 value={t.tunnelName}
-                label={text} // used when collapsed
+                label={text}
                 style={{
                   backgroundColor: getBgForTunnel(t),
                 }}
               >
                 <span
-                  title={text} // ✅ Native browser tooltip on hover
+                  title={text}
                   style={{
                     display: "block",
                     whiteSpace: "nowrap",
@@ -380,13 +460,19 @@ export default function TunnelsTable({ mode = "page" }: Props) {
       );
     },
   };
+
   const secondaryColumn: any = {
     title: "Secondary",
     width: TUNNEL_DROPDOWN_WIDTH,
-    ellipsis: true, // ✅ SAME AS PRIMARY
+    ellipsis: true,
 
     render: (_: any, row: IpRow) => {
       if (row.tunnels.length === 0) {
+        const isDown = row.siteState === "DOWN";
+        const downtimeText = isDown
+          ? `DOWN — ${formatDowntime(row.downtimeSec)}`
+          : "NA";
+
         return (
           <Select
             style={{
@@ -395,21 +481,33 @@ export default function TunnelsTable({ mode = "page" }: Props) {
               border: "1px solid #000",
               fontWeight: 700,
             }}
-            value="NA"
+            value={downtimeText}
           >
-            <Select.Option value="NA">NA</Select.Option>
+            <Select.Option value={downtimeText}>
+              <span
+                title={downtimeText}
+                style={{
+                  display: "block",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {downtimeText}
+              </span>
+            </Select.Option>
           </Select>
         );
       }
 
       const colorCounts: Record<string, number> = {};
       row.tunnels.forEach((t: any) => {
-        colorCounts[t.localColor] =
-          (colorCounts[t.localColor] || 0) + 1;
+        colorCounts[t.localColor] = (colorCounts[t.localColor] || 0) + 1;
       });
 
-      const primaryColor = Object.entries(colorCounts)
-        .sort((a, b) => b[1] - a[1])[0][0];
+      const primaryColor = Object.entries(colorCounts).sort(
+        (a, b) => b[1] - a[1]
+      )[0][0];
 
       const secondaryList = sortTunnels(
         row.tunnels.filter((t: any) => t.localColor !== primaryColor)
@@ -430,6 +528,13 @@ export default function TunnelsTable({ mode = "page" }: Props) {
 
       const first = secondaryList[0];
 
+      const firstStatusText =
+        first.state === "down"
+          ? formatDowntime(first.downtimeSec)
+          : first.state === "partial"
+          ? getPartialDowntime(first, secondaryList)
+          : first.uptime;
+
       return (
         <Select
           style={{
@@ -438,23 +543,30 @@ export default function TunnelsTable({ mode = "page" }: Props) {
             border: "1px solid #000",
             fontWeight: 700,
           }}
-          value={getIspNameOnly(first)}
-          optionLabelProp="label" // ✅ IMPORTANT (same as primary)
+          value={getIspNameOnly(first, firstStatusText)}
+          optionLabelProp="label"
         >
           {secondaryList.map((t: any, i: number) => {
-            const text = `${resolveIspName(t.tunnelName)} — ${t.uptime}`;
+            const statusText =
+              t.state === "down"
+                ? formatDowntime(t.downtimeSec)
+                : t.state === "partial"
+                ? getPartialDowntime(t, secondaryList)
+                : t.uptime;
+
+            const text = `${resolveIspName(t.tunnelName)} — ${statusText}`;
 
             return (
               <Select.Option
                 key={i}
                 value={t.tunnelName}
-                label={text} // used when collapsed
+                label={text}
                 style={{
                   backgroundColor: getBgForTunnel(t),
                 }}
               >
                 <span
-                  title={text} // ✅ Tooltip on hover
+                  title={text}
                   style={{
                     display: "block",
                     whiteSpace: "nowrap",
@@ -484,42 +596,39 @@ export default function TunnelsTable({ mode = "page" }: Props) {
     FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
   );
 
-  const table2Rows = rows.filter(
-    (r) => !FIXED_FIRST_TABLE_IPS.includes(r.systemIp)
-  );
+  const table2Rows = rows.filter((r) => !FIXED_FIRST_TABLE_IPS.includes(r.systemIp));
 
   const table1Columns = baseColumns;
 
   const table2Columns = [
-    // First three base columns (Branch, Hostname, System IP)
     ...baseColumns.filter(
       (col: any) =>
-        col.title !== "Tunnels (Name + Uptime)" &&
-        col.title !== "State"
+        col.title !== "Tunnels (Name + Uptime)" && col.title !== "State"
     ),
-
-    // Then Primary & Secondary
     primaryColumn,
     secondaryColumn,
-
-    // Finally add State at the very last position
     baseColumns.find((col: any) => col.title === "State"),
   ];
 
   return (
-    <div >
+    <div>
       {mode === "page" && (
-        <div className="mb-4" style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-          <h1 className="text-xl font-bold">
-            SD-WAN — Tunnel Status by IP
-          </h1>
+        <div
+          className="mb-4"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <h1 className="text-xl font-bold">SD-WAN — Tunnel Status by IP</h1>
           <Button type="primary" onClick={handleExport}>
             Export / Preview
           </Button>
         </div>
       )}
 
-      <Card title="SD-WAN IPsec Tunnels" style={{marginBottom:"2%"}}>
+      <Card title="SD-WAN IPsec Tunnels" style={{ marginBottom: "2%" }}>
         <Table
           loading={loading}
           columns={table1Columns}
@@ -564,8 +673,7 @@ export default function TunnelsTable({ mode = "page" }: Props) {
             columns={[
               {
                 title: "Branch",
-                render: (_: any, r: any) =>
-                  getBranchNameByHostname(r.hostname),
+                render: (_: any, r: any) => getBranchNameByHostname(r.hostname),
               },
               { title: "Hostname", dataIndex: "hostname" },
               { title: "System IP", dataIndex: "systemIp" },

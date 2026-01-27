@@ -15,10 +15,10 @@ interface TopHostProps {
   mode?: "preview" | "widget";
   onConfigChange?: (config: any) => void;
   initialConfig?: any;
-  topHostName?: ("host1" | "host2")[];
+  topHostName?: ("host1" | "host2" | "host3")[];
 }
 
-const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
+const HOST_ITEM_MAP: Record<"host1" | "host2" | "host3", string[]> = {
   host1: [
     'Interface ["GigabitEthernet0/0/0"]: Operational status',
     'Interface ["GigabitEthernet0/0/1"]: Operational status',
@@ -30,6 +30,11 @@ const HOST_ITEM_MAP: Record<"host1" | "host2", string[]> = {
     "Memory utilization",
     "CPU utilization",
     "Certificate validity",
+  ],
+  host3: [
+    'Interface ["GigabitEthernet0/0/1"]: Bits sent',
+    'Interface ["GigabitEthernet0/0/1"]: Bits received',
+    'Interface ["GigabitEthernet0/0/1"]: Speed',
   ],
 };
 
@@ -49,10 +54,21 @@ const COLUMN_HEADER_MAP_HOST2: Record<string, string> = {
   "Certificate validity": "Certificate",
 };
 
+const COLUMN_HEADER_MAP_HOST3: Record<string, string> = {
+  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Primary Bits Received",
+  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Primary Bits Sent",
+  'Interface ["GigabitEthernet0/0/1"]: Speed': "Speed",
+};
+
 const getColumnTitle = (itemName: string) => {
   if (HOST_ITEM_MAP.host1.includes(itemName)) {
     return COLUMN_HEADER_MAP_HOST1[itemName] ?? itemName;
   }
+
+  if (HOST_ITEM_MAP.host3.includes(itemName)) {
+    return COLUMN_HEADER_MAP_HOST3[itemName] ?? itemName;
+  }
+
   return COLUMN_HEADER_MAP_HOST2[itemName] ?? itemName;
 };
 
@@ -62,6 +78,45 @@ const HOST2_TRAFFIC_ITEMS = [
   'Interface ["GigabitEthernet0/0/0"]: Bits received',
   'Interface ["GigabitEthernet0/0/0"]: Speed',
 ];
+
+const HOST3_TRAFFIC_ITEMS = [
+  'Interface ["GigabitEthernet0/0/1"]: Bits sent',
+  'Interface ["GigabitEthernet0/0/1"]: Bits received',
+  'Interface ["GigabitEthernet0/0/1"]: Speed',
+];
+
+/* ✅ NEW: CONVERT VALUES PROPERLY (BITS → kbps/Mbps/Gbps) */
+const normalizeNetworkValue = (value: any, units?: string) => {
+  const num = Number(value);
+  if (isNaN(num)) return { value: "-", unit: "" };
+
+  // If Zabbix says units "Bps" or "bps" or empty, treat it as bits/sec (your current data looks like bits/sec)
+  const isBits =
+    !units ||
+    units === "bps" ||
+    units === "Bps" ||
+    units === "bit/s" ||
+    units === "bits";
+
+  // ✅ Convert bits/sec → kbps/mbps/gbps
+  if (isBits) {
+    const kbps = num / 1000;
+    const mbps = kbps / 1000;
+    const gbps = mbps / 1000;
+
+    if (gbps >= 1) return { value: gbps.toFixed(2), unit: "Gbps" };
+    if (mbps >= 1) return { value: mbps.toFixed(2), unit: "Mbps" };
+    if (kbps >= 1) return { value: kbps.toFixed(2), unit: "kbps" };
+
+    return { value: num.toFixed(0), unit: "bps" };
+  }
+
+  // ✅ If already has K / M (your old mapping), keep same style
+  if (units === "M") return { value: num.toFixed(2), unit: "Mbps" };
+  if (units === "K") return { value: num.toFixed(2), unit: "kbps" };
+
+  return { value: num.toFixed(2), unit: units };
+};
 
 const TopHost: React.FC<TopHostProps> = ({
   mode = "widget",
@@ -94,9 +149,7 @@ const TopHost: React.FC<TopHostProps> = ({
           )
         );
 
-        const apiResult = responses.flatMap(
-          (res) => res.data?.result ?? []
-        );
+        const apiResult = responses.flatMap((res) => res.data?.result ?? []);
 
         const updated: ColumnConfig[] = [];
 
@@ -173,7 +226,10 @@ const TopHost: React.FC<TopHostProps> = ({
       };
     }
 
-    if (HOST2_TRAFFIC_ITEMS.includes(c.name!)) {
+    if (
+      HOST2_TRAFFIC_ITEMS.includes(c.name!) ||
+      HOST3_TRAFFIC_ITEMS.includes(c.name!)
+    ) {
       hostsMap[c.hostName!][c.name!] = {
         value: api?.lastvalue ?? 0,
         units: api?.units,
@@ -220,29 +276,45 @@ const TopHost: React.FC<TopHostProps> = ({
     return 0;
   });
 
+  if (topHostName?.includes("host2")) {
+    const bitsRecvCol = 'Interface ["GigabitEthernet0/0/0"]: Bits received';
+
+    tableRows = [...tableRows].sort((a, b) => {
+      const aVal = Number(a?.[bitsRecvCol]?.value ?? 0);
+      const bVal = Number(b?.[bitsRecvCol]?.value ?? 0);
+      // return bVal - aVal;
+      return aVal - bVal;
+    });
+  }
+
+  if (topHostName?.includes("host3")) {
+    const bitsRecvCol = 'Interface ["GigabitEthernet0/0/1"]: Bits received';
+
+    tableRows = [...tableRows].sort((a, b) => {
+      const aVal = Number(a?.[bitsRecvCol]?.value ?? 0);
+      const bVal = Number(b?.[bitsRecvCol]?.value ?? 0);
+      return bVal - aVal;
+    });
+  }
+
+
+
   const dynamicColumns = uniqueColumns.map((c) => ({
     title: getColumnTitle(c.name!),
     dataIndex: c.name!,
     render: (cell: any) => {
       if (cell && typeof cell === "object" && "units" in cell) {
-        const unit =
-          cell.units === "M"
-            ? "Mbps"
-            : cell.units === "K"
-            ? "kbps"
-            : "";
+        // ✅ UPDATED: convert to kbps/Mbps/Gbps properly
+        const normalized = normalizeNetworkValue(cell.value, cell.units);
 
         return (
           <span style={{ fontWeight: 600 }}>
-            {cell.value} {unit}
+            {normalized.value} {normalized.unit}
           </span>
         );
       }
 
-      if (
-        c.name === "CPU utilization" ||
-        c.name === "Memory utilization"
-      ) {
+      if (c.name === "CPU utilization" || c.name === "Memory utilization") {
         if (!cell) return "-";
 
         const value = Number(cell.value);
@@ -252,10 +324,10 @@ const TopHost: React.FC<TopHostProps> = ({
           color === "green"
             ? "#00b050"
             : color === "orange"
-            ? "#ffa500"
-            : color === "red"
-            ? "#ff0000"
-            : undefined;
+              ? "#ffa500"
+              : color === "red"
+                ? "#ff0000"
+                : undefined;
 
         return (
           <span
@@ -320,10 +392,10 @@ const TopHost: React.FC<TopHostProps> = ({
     }
 
     if (topHostName?.includes("host2")) {
-      return "Branch - Health";
+      return "Branch - Health - Primary Port";
     }
 
-    return "Top Hosts — Live Status";
+    return "Branch - Health - Secondary Port";
   };
 
   const tableWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -350,8 +422,8 @@ const TopHost: React.FC<TopHostProps> = ({
             pagination={false}
             dataSource={tableRows}
             columns={[
-              { title: "Host", dataIndex: "host" },
               { title: "Branch", dataIndex: "branch" },
+              { title: "Host", dataIndex: "host" },
               ...dynamicColumns,
             ]}
           />
@@ -366,7 +438,7 @@ const TopHost: React.FC<TopHostProps> = ({
         existingColumns={columnsConfig}
         onHostChange={(h) => fetchZabbixData("item", [h])}
         onCancel={() => setOpen(false)}
-        onSubmit={() => {}}
+        onSubmit={() => { }}
         selectedHostGroups={selectedGroups}
       />
     </>
