@@ -279,7 +279,7 @@ export default function ZabbixTopProblemsPage() {
 
   return (
     <Card title="Top Problems (Occurrence Count)">
-      <Row gutter={16} align="middle">
+      <Row gutter={16} align="middle" style={{ width: "100%" }}>
         <Col span={6}>
           <Select
             mode="multiple"
@@ -316,17 +316,25 @@ export default function ZabbixTopProblemsPage() {
           </Select>
         </Col>
 
-        <Col span={6}>
-          <RangePickerWithPresets
-            onRangeChange={({ from, to }) => {
-              setTimeFrom(from);
-              setTimeTill(to);
-            }}
-          />
-        </Col>
-
-        <Col span={4}>
-          <Button type="primary" onClick={loadTable} loading={loading}>
+ 
+ <Col flex="400px">
+  <div
+    style={{
+      width: '2',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+    }}
+  >
+    <RangePickerWithPresets
+      onRangeChange={({ from, to }) => {
+        setTimeFrom(from);
+        setTimeTill(to);
+      }}
+    />
+  </div>
+</Col>
+        <Col span={1} >
+          <Button type="primary"  onClick={loadTable} loading={loading}  >
             Apply
           </Button>
         </Col>
