@@ -26,11 +26,7 @@
       "y": 25,
       "w": 12,
       "h": 8,
-<<<<<<< HEAD
-      "id": "top_host2"
-=======
       "id": "top_host1"
->>>>>>> e86596f96b2a314bfcf944d9102d1f6dd5c43bc8
     }
   ],
   "dynamicWidgets": [],

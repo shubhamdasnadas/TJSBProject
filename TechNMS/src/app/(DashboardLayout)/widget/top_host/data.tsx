@@ -55,8 +55,8 @@ const COLUMN_HEADER_MAP_HOST2: Record<string, string> = {
 };
 
 const COLUMN_HEADER_MAP_HOST3: Record<string, string> = {
-  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Primary Bits Received",
-  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Primary Bits Sent",
+  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Secondary Bits Received",
+  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Secondary Bits Sent",
   'Interface ["GigabitEthernet0/0/1"]: Speed': "Speed",
 };
 

@@ -7,9 +7,9 @@ import branches from "../../../(DashboardLayout)/availability/data/data";
 
 /* ===================== CONFIG ===================== */
 
-const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
 // const DATA_FILE = "C:\\Users\\shaila\\OneDrive\\Desktop\\sdwan_tunnels.json";
-// const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
 
 // Alert state persistence
 const ALERT_STATE_FILE = path.join(process.cwd(), "alert_state.json");

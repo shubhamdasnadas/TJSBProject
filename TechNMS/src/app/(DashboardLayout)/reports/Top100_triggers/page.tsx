@@ -6,10 +6,14 @@ import { Card, Select, Table, Button, Row, Col, message, Tooltip, Space } from "
 import { DownOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { DatePicker, Dropdown } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-
+import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import { ExportOutlined } from '@ant-design/icons';
+import branches from "../../availability/data/data";
 const { RangePicker } = DatePicker;
 const { Option } = Select;
-
+const TECHSEC_LOGO = "/images/logos/techsec-logo_name.svg";  // ← adjust path if needed
 const axiosCfg = {
   headers: {
     "Content-Type": "application/json",
@@ -40,6 +44,246 @@ const presetOptions = [
   },
 ];
 
+// ────────────────────────────────────────────────
+// BRANCH HELPER FUNCTION
+// ────────────────────────────────────────────────
+function getBranchNameByHostname(hostname: string) {
+  if (!hostname) return "Unknown";
+  const found = branches.find((b: any) =>
+    hostname.toLowerCase().includes(b.code?.toLowerCase())
+  );
+  return found ? found.name : "Unknown";
+}
+
+// ────────────────────────────────────────────────
+// PDF HELPERS (reused from history report)
+// ────────────────────────────────────────────────
+
+const loadSvgAsPng = async (url: string): Promise<string> => {
+  const svgText = await fetch(url).then((r) => r.text());
+  const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+  const svgUrl = URL.createObjectURL(svgBlob);
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * 3;
+      canvas.height = img.height * 3;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(svgUrl);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.src = svgUrl;
+  });
+};
+
+const drawPageBorder = (doc: jsPDF) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1.5);
+  doc.rect(margin, margin, w - margin * 2, h - margin * 2);
+};
+
+const drawWatermark = (doc: jsPDF, png: string, pageNumber: number) => {
+  if (pageNumber <= 1) return; // no watermark on cover
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  (doc as any).setGState(new (doc as any).GState({ opacity: 0.06 }));
+  doc.addImage(png, "PNG", w / 2 - 110, h / 2 - 130, 220, 140);
+  (doc as any).setGState(new (doc as any).GState({ opacity: 1 }));
+};
+
+//export pdf  history 
+const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: number, groupids: string[], hostids: string[],  hosts: any[]  // Add this parameter
+) => {
+  if (!data || data.length === 0) {
+    message.warning("No data to export");
+    return;
+  }
+
+  const doc = new jsPDF("p", "pt", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const MARGIN_X = 45;  // Increased left margin
+  const MARGIN_Y = 40;
+  const BORDER_MARGIN = 20;  // Border margin
+  const CONTENT_WIDTH = pageWidth - MARGIN_X * 2;
+  const centerX = pageWidth / 2;
+
+  let logoPng: string;
+  try {
+    logoPng = await loadSvgAsPng(TECHSEC_LOGO);
+  } catch (err) {
+    console.error("Failed to load logo", err);
+    message.warning("Could not load logo – exporting without it");
+    logoPng = "";
+  }
+
+  // ─── Cover Page (page 1) ─────────────────────────────────────
+  if (logoPng) {
+    doc.addImage(logoPng, "PNG", centerX - 120, 70, 240, 150);
+  }
+
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.text("Techsec NMS – Top Problems Report", centerX, 260, { align: "center" });
+
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80, 80, 80);
+
+  const formatDateSafe = (timestamp: number) => {
+    try {
+      return dayjs.unix(timestamp).format("YYYY-MM-DD HH:mm");
+    } catch (e) {
+      return "—";
+    }
+  };
+
+  const rangeText = `Period: ${formatDateSafe(timeFrom)} – ${formatDateSafe(timeTill)}`;
+ 
+  doc.text(rangeText, centerX, 320, { align: "center" });
+  
+  // ─── BRANCH LOGIC - Extract branches from selected hosts ─────
+  const selectedHosts = hosts.filter((h: any) => hostids.includes(h.hostid));
+  const branchNames = selectedHosts.map((h: any) => getBranchNameByHostname(h.name));
+  const uniqueBranches = Array.from(new Set(branchNames)).filter(b => b !== "Unknown");
+
+  // Display branches on cover page
+  if (uniqueBranches.length > 0) {
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    const branchText = uniqueBranches.length === 1 
+      ? `Branch: ${uniqueBranches[0]}` 
+      : `Branches: ${uniqueBranches.join(', ')}`;
+    doc.text(branchText, centerX, 400, { align: "center" });
+  }
+
+  // Display host names below branches
+  const hostNames = selectedHosts.map((h: any) => h.name).join(', ');
+  if (hostNames) {
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
+    
+    // Split long host names into multiple lines if needed
+    const maxWidth = pageWidth - 100;
+    const lines = doc.splitTextToSize(`Hosts: ${hostNames}`, maxWidth);
+    
+    let yPosition = 425;
+    lines.forEach((line: string) => {
+      doc.text(line, centerX, yPosition, { align: "center" });
+      yPosition += 18;
+    });
+    
+    // Adjust generated timestamp position based on number of lines
+    doc.setFontSize(13);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`, centerX, yPosition + 10, { align: "center" });
+  } else {
+    doc.setFontSize(13);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`, centerX, 425, { align: "center" });
+  }
+
+  drawPageBorder(doc);
+
+  // ─── Data Page(s) ────────────────────────────────────────────
+  doc.addPage();
+  
+  // Draw header on first data page
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0);
+  doc.text("Top Problem Triggers by Occurrence Count", centerX, 60, { align: "center" });
+
+  autoTable(doc, {
+    startY: 85,
+    margin: { 
+      left: MARGIN_X, 
+      right: MARGIN_X, 
+      top: BORDER_MARGIN + 20, 
+      bottom: BORDER_MARGIN + 20 
+    },
+    head: [["Host", "Trigger", "Severity", "Occurrences"]],
+    body: data.map((row: any) => [
+      row.host || "—",
+      row.trigger || "—",
+      row.severity || "Unknown",
+      row.count ?? 0,
+    ]),
+    theme: 'grid',
+    styles: {
+      fontSize: 9,
+      cellPadding: 5,
+      overflow: 'linebreak',
+      lineColor: [44, 62, 80],
+      lineWidth: 0.4,
+      textColor: [33, 33, 33],
+      font: 'helvetica',
+      minCellHeight: 20,
+    },
+    headStyles: {
+      fillColor: [26, 46, 78],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      lineWidth: 0.6,
+      halign: 'center',
+      minCellHeight: 25,
+    },
+    columnStyles: {
+      0: { cellWidth: 105, halign: 'left' },    // Host
+      1: { cellWidth: 265, halign: 'left' },    // Trigger
+      2: { cellWidth: 85, halign: 'center' },   // Severity
+      3: { cellWidth: 70, halign: 'center', fontStyle: 'bold' }, // Occurrences
+    },
+    didParseCell(data) {
+      if (data.section === 'body' && data.column.index === 2) {
+        const severity = (data.cell.text?.[0] || '').trim();
+        const color = getSeverityColor(severity);
+        data.cell.styles.textColor = color;
+        data.cell.styles.fontStyle = 'bold';
+        
+        // Light backgrounds for severity
+        if (severity === 'Disaster') data.cell.styles.fillColor = [255, 235, 238];
+        if (severity === 'High') data.cell.styles.fillColor = [255, 241, 235];
+        if (severity === 'Average') data.cell.styles.fillColor = [255, 249, 230];
+        if (severity === 'Warning') data.cell.styles.fillColor = [255, 252, 240];
+        if (severity === 'Information') data.cell.styles.fillColor = [240, 248, 255];
+      }
+    },
+    didDrawPage: (hookData) => {
+      const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber;
+      
+      // Apply watermark and border to all pages except cover (page 1)
+      if (currentPage > 1) {
+        if (logoPng) drawWatermark(doc, logoPng, currentPage);
+        drawPageBorder(doc);
+        
+        // Add page number footer
+        doc.setFontSize(9);
+        doc.setTextColor(120);
+        doc.text(
+          `Page ${currentPage - 1} | Techsec Digital`,
+          centerX,
+          pageHeight - 25,
+          { align: 'center' }
+        );
+      }
+    },
+  });
+
+  // Save
+  const filename = `techsec_top_problems_${dayjs().format("YYYY-MM-DD_HH-mm")}.pdf`;
+  doc.save(filename);
+
+  message.success("PDF exported successfully");
+};
 /* =======================
    Range Picker Component (embedded version)
 ======================= */
@@ -339,35 +583,72 @@ export default function ZabbixTopProblemsPage() {
           </Button>
         </Col>
       </Row>
+      <Row gutter={16} align="middle" style={{ width: "100%", marginTop: 16 }}>
+  <Col>
+    <Button
+      type="default"
+      icon={<ExportOutlined />}
+      
+      onClick={() => exportTopProblemsToPDF(data, timeFrom, timeTill, groupids, hostids, hosts)}
+      disabled={loading || !data.length}
+      
+    >
+      Export to PDF
+    </Button>
+  </Col>
+</Row>
 
-      <Table
-        style={{ marginTop: 24 }}
-        bordered
-        loading={loading}
-        rowKey="key"
-        dataSource={data}
-        pagination={{ pageSize: 15 }}
-        columns={[
-          { title: "Host", dataIndex: "host", width: 180 },
-          { title: "Trigger", dataIndex: "trigger" },
-          {
-            title: "Severity",
-            dataIndex: "severity",
-            width: 140,
-            render: (text: string) => (
-              <span style={{ color: getSeverityColor(text) }}>{text}</span>
-            ),
-          },
-          {
-            title: "Occurrences",
-            dataIndex: "count",
-            width: 140,
-            sorter: (a: any, b: any) => a.count - b.count,
-            defaultSortOrder: "descend",
-          },
-        ]}
-      />
-    </Card>
+<Table
+  style={{ marginTop: 24 }}
+  bordered
+  loading={loading}
+  rowKey="key"
+  dataSource={data}
+  pagination={{ pageSize: 15 }}
+  columns={[
+    { title: "Host", dataIndex: "host", width: 180 },
+    { title: "Trigger", dataIndex: "trigger" },
+    {
+      title: "Severity",
+      dataIndex: "severity",
+      width: 140,
+      render: (text: string) => {
+        // Determine background color based on severity
+        let bgColor = '#f5f5f5';  // default gray
+        
+        if (text === 'Disaster') bgColor = '#d32029';      // light red
+        if (text === 'High') bgColor = '#f53d3d';          // light orange
+        if (text === 'Average') bgColor = '#fa8c16';       // light yellow
+        if (text === 'Warning') bgColor = '#fae900';       // very light yellow
+        if (text === 'Information') bgColor = '#69c0ff';   // light blue
+        
+        return (
+          <span 
+            style={{ 
+              color: getSeverityColor(text),
+              fontWeight: 'bold',
+              backgroundColor: bgColor,
+              padding: '4px 12px',
+              borderRadius: '4px',
+              display: 'inline-block',
+              width: '100%',
+              textAlign: 'center'
+            }}
+          >
+            {text}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Occurrences",
+      dataIndex: "count",
+      width: 140,
+      sorter: (a: any, b: any) => a.count - b.count,
+      defaultSortOrder: "descend",
+    },
+  ]}
+/>    </Card>
   );
 }
 
@@ -377,9 +658,10 @@ function getSeverityColor(severity: string): string {
     Disaster: "#d32029",
     High: "#f53d3d",
     Average: "#fa8c16",
-    Warning: "#fadb14",
+    Warning: "#fddc04",
     Information: "#69c0ff",
     "Not classified": "#d9d9d9",
   };
-  return colors[severity] || "#d9d9d9";
+  return colors[severity] || "#a97bff";
 }
+ 
