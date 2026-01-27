@@ -99,8 +99,8 @@ const Host1Count = () => {
 
           // ✅ PROPER downInfo
           const downInfo: DownInfo = {
-            branch:  "UNKNOWN-BRANCH",
-            hostname:host || "UNKNOWN-HOST",
+            branch: "UNKNOWN-BRANCH",
+            hostname: host || "UNKNOWN-HOST",
             metricText: `Cisco SD-WAN: ${item.name}`,
           };
 
@@ -182,7 +182,7 @@ const Host1Count = () => {
      TOOLTIP UI
   ===================== */
 
-    const getBranchName = (host?: string) => {
+  const getBranchName = (host?: string) => {
     if (!host) return "-";
     const match = branches.find(
       (b: any) =>
@@ -219,8 +219,8 @@ const Host1Count = () => {
               {d.hostname}
             </div> */}
             <div style={{ fontWeight: 600 }}>
-            {getBranchName(d.hostname)}
-          </div>
+              {getBranchName(d.hostname)} - {d.hostname}
+            </div>
           </div>
         ))
       ) : (

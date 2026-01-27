@@ -172,7 +172,7 @@ const Vmanage = () => {
       {details[type].map((s, i) => (
         <div key={i} style={{ marginBottom: 10 }}>
           <div style={{ fontWeight: 600 }}>
-            {getBranchName(s.host)}
+            {getBranchName(s.host)} - {s.host}
           </div>
           <div style={{ fontSize: 12, opacity: 0.85 }}>{s.ip}</div>
         </div>

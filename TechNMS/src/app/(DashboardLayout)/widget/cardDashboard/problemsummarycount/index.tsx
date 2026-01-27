@@ -190,7 +190,7 @@ export default function ProblemsSummaryTable() {
                     >
                         {/* ✅ HOSTNAME IN BOLD */}
                         <div style={{ fontWeight: 600 }}>
-                            {getBranchName(hostName)}
+                            {getBranchName(hostName)} - {hostName}
                         </div>
 
                         {/* ✅ PROBLEM NAME ON NEW LINE */}

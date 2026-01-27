@@ -25,14 +25,14 @@ export async function POST(req: Request) {
     const response = await axios.post(ZABBIX_URL, payload, {
       headers: {
         "Content-Type": "application/json-rpc",
-      
+
         Authorization: `Bearer ${auth}`,
       },
       httpsAgent,
       timeout: 10000,
     });
 
-    console.log("templategroup.get response:", response.data);
+    // console.log("templategroup.get response:", response.data);
 
     if (response.data?.result) {
       return NextResponse.json({ result: response.data.result });

@@ -27,7 +27,6 @@ import {
 } from "recharts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import * as Papa from "papaparse";
 
 
 const { Title, Text } = Typography;
@@ -454,26 +453,49 @@ const SummaryReport: React.FC = () => {
   const handleExportCSV = () => {
     if (!chartData.length) return;
 
-    const csv = Papa.unparse(
-      chartData.map((r) => ({
-        Time: r.time,
-        "Bits Received":
-          r["Bits Received"] !== undefined
-            ? `${normalizeBitsValue(r["Bits Received"]).value}${normalizeBitsValue(r["Bits Received"]).unit}`
-            : "-",
-        "Bits Sent":
-          r["Bits Sent"] !== undefined
-            ? `${normalizeBitsValue(r["Bits Sent"]).value}${normalizeBitsValue(r["Bits Sent"]).unit}`
-            : "-",
-      }))
-    );
+    const headers = ["Time", "Bits Received", "Bits Sent"];
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const rows = chartData.map((r) => {
+      const bitsReceived =
+        r["Bits Received"] !== undefined
+          ? `${normalizeBitsValue(r["Bits Received"]).value}${normalizeBitsValue(
+            r["Bits Received"]
+          ).unit}`
+          : "-";
+
+      const bitsSent =
+        r["Bits Sent"] !== undefined
+          ? `${normalizeBitsValue(r["Bits Sent"]).value}${normalizeBitsValue(
+            r["Bits Sent"]
+          ).unit}`
+          : "-";
+
+      return [r.time, bitsReceived, bitsSent];
+    });
+
+    // ✅ escape CSV values safely
+    const escapeCSV = (value: any) => {
+      const str = String(value ?? "");
+      if (str.includes(",") || str.includes("\n") || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCSV).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "history-table.csv";
     link.click();
+
+    URL.revokeObjectURL(link.href);
   };
+
   <style jsx global>{`
   @keyframes pulseGlowOrange {
     0% {
