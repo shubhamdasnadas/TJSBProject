@@ -5,7 +5,7 @@ import { Select, Table, Checkbox, Button, message, Spin, Alert, Tag, Card, Space
 import { UserOutlined, ReloadOutlined, SafetyCertificateOutlined, FolderOpenOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import type { TableColumnsType } from 'antd';
 import type { SynoUser, Permission, PermissionType } from '../permissions/types';
-// import '../permissions/permissions.css';
+import '../styles/permissions.css';
 
 const { Option } = Select;
 
