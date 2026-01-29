@@ -1,18 +1,16 @@
-// app/api/synology-users/route.ts
+// app/api/synology-apps/route.ts
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
     const SYNOLOGY_URL = 'http://192.168.1.247:5654/webapi/entry.cgi';
-    const API_PARAMS = new URLSearchParams({
-      api: 'SYNO.Core.User',
-      version: '1',
-      method: 'list',
-      additional: '["email","description","expired"]'
-    });
-
-    // Your session cookie
     const SESSION_COOKIE = '7YWSmNSTKwV0GtyIwR3lOrjAaQ5BZWQgcfAEP0gfeGwKRTqxfewWi19qyeTdvYGkifVG4BRtX8WPcGzgpbzOpA';
+
+    const API_PARAMS = new URLSearchParams({
+      api: 'SYNO.Core.Package',
+      version: '2',
+      method: 'list'
+    });
 
     const response = await fetch(`${SYNOLOGY_URL}?${API_PARAMS}`, {
       method: 'GET',
@@ -24,7 +22,6 @@ export async function GET() {
 
     const data = await response.json();
 
-    // Return the data with CORS headers
     return NextResponse.json(data, {
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -34,7 +31,7 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Error fetching Synology users:', error);
+    console.error('Error fetching applications:', error);
     return NextResponse.json(
       { 
         success: false, 
@@ -48,7 +45,6 @@ export async function GET() {
   }
 }
 
-// Handle OPTIONS request for CORS preflight
 export async function OPTIONS() {
   return new NextResponse(null, {
     headers: {
