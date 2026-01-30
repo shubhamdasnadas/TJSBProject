@@ -38,6 +38,7 @@ const Menuitems = [
       { title: "Problems", href: "/monitoring/problems", icon: <AlertOutlined /> },
       { title: "Hosts", href: "/monitoring/hosts", icon: <DeploymentUnitOutlined /> },
       { title: "Latest Data", href: "/monitoring/latest-data", icon: <DatabaseOutlined /> },
+      { title: "Link Record", href: "/monitoring/link-record", icon: <DatabaseOutlined /> },
       // { title: "Maps", href: "/monitoring/maps", icon: <ApartmentOutlined /> },
       // { title: "Discovery", href: "/monitoring/discovery", icon: <CloudDownloadOutlined /> },
     ],
