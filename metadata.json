@@ -1,0 +1,5 @@
+{
+  "name": "Niyojan Inventory & Secrets",
+  "description": "A comprehensive inventory management system for Hardware, Software, and Secrets, featuring AI-assisted categorization and Postgres schema generation.",
+  "requestFramePermissions": []
+}
