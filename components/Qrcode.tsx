@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-// Import from the defined importmap in index.html
 import { QRCodeCanvas } from 'qrcode.react';
 import { QrCode, X, Printer, Maximize2 } from 'lucide-react';
 
 interface QrcodeProps {
   value: string;
   label?: string;
+  subLabel?: string; // e.g. Assigned User
+  variant?: 'table' | 'preview';
 }
 
-export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
+export const Qrcode: React.FC<QrcodeProps> = ({ value, label, subLabel, variant = 'table' }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handlePrint = () => {
@@ -28,31 +29,42 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
               align-items: center; 
               justify-content: center; 
               height: 100vh; 
-              font-family: 'Inter', sans-serif; 
+              font-family: 'Inter', system-ui, -apple-system, sans-serif; 
               margin: 0; 
               background: white;
             }
             .label-container { 
-              border: 1.5px solid #000; 
-              padding: 16px; 
+              border: 2px solid #000; 
+              padding: 20px; 
               text-align: center; 
               width: fit-content;
-              border-radius: 4px;
+              border-radius: 8px;
             }
-            .qr-img { width: 160px; height: 160px; }
+            .qr-img { width: 180px; height: 180px; }
             .asset-name { 
-              margin-top: 12px; 
-              font-weight: 800; 
-              font-size: 16px; 
+              margin-top: 15px; 
+              font-weight: 900; 
+              font-size: 18px; 
               text-transform: uppercase;
-              letter-spacing: -0.02em;
+              letter-spacing: -0.01em;
+              color: #000;
+            }
+            .user-name {
+              font-size: 14px;
+              font-weight: 700;
+              margin-top: 4px;
+              color: #333;
+              background: #f0f0f0;
+              padding: 2px 8px;
+              border-radius: 4px;
+              display: inline-block;
             }
             .serial-no { 
-              font-family: monospace; 
-              font-size: 12px; 
-              margin-top: 4px; 
-              color: #444; 
-              font-weight: bold;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
+              font-size: 11px; 
+              margin-top: 8px; 
+              color: #666; 
+              text-transform: uppercase;
             }
           </style>
         </head>
@@ -60,7 +72,8 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
           <div class="label-container">
             <img src="${canvas.toDataURL()}" class="qr-img" />
             <div class="asset-name">${label || 'Asset Unit'}</div>
-            <div class="serial-no">SN: ${value}</div>
+            ${subLabel ? `<div class="user-name">User: ${subLabel}</div>` : ''}
+            <div class="serial-no">S/N: ${value}</div>
           </div>
           <script>
             window.onload = () => { 
@@ -71,7 +84,7 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
         </body>
       </html>
     `;
-    const printWindow = window.open('', '_blank', 'width=500,height=500');
+    const printWindow = window.open('', '_blank', 'width=600,height=600');
     printWindow?.document.write(windowContent);
     printWindow?.document.close();
   };
@@ -82,9 +95,35 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
     </div>
   );
 
+  if (variant === 'preview') {
+    return (
+      <div className="flex flex-col items-center p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-inner group">
+        <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 mb-3 relative overflow-hidden">
+          <QRCodeCanvas 
+            id={`qr-canvas-full-${value}`}
+            value={value} 
+            size={120} 
+            level="H" 
+            includeMargin={true}
+          />
+          <button 
+            onClick={handlePrint}
+            className="absolute inset-0 bg-blue-600/0 hover:bg-blue-600/10 flex items-center justify-center transition-all opacity-0 hover:opacity-100"
+          >
+            <Printer size={24} className="text-blue-600 drop-shadow-sm" />
+          </button>
+        </div>
+        <div className="text-center">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Live Label Preview</div>
+          <div className="text-sm font-bold text-slate-800 truncate max-w-[150px] leading-tight">{label}</div>
+          {subLabel && <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 mt-1 inline-block">{subLabel}</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Table Row UI: Thumbnail + Label */}
       <div className="flex items-center gap-3 group/qr cursor-pointer" onClick={() => setIsOpen(true)}>
         <div 
           className="relative shrink-0 p-1 bg-white border border-slate-200 rounded-md shadow-sm group-hover/qr:border-blue-400 group-hover/qr:shadow transition-all overflow-hidden"
@@ -111,11 +150,9 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
         </div>
       </div>
 
-      {/* Modal View */}
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -131,9 +168,8 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-8 flex flex-col items-center justify-center bg-white">
-              <div className="p-4 bg-white border-4 border-slate-50 rounded-2xl shadow-inner mb-6">
+              <div className="p-4 bg-white border-4 border-slate-50 rounded-2xl shadow-inner mb-6 relative group">
                 <QRCodeCanvas 
                   id={`qr-canvas-full-${value}`}
                   value={value} 
@@ -144,14 +180,20 @@ export const Qrcode: React.FC<QrcodeProps> = ({ value, label }) => {
               </div>
               
               <div className="text-center space-y-1">
-                <div className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">{label || 'Asset Unit'}</div>
-                <div className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full border border-slate-200 inline-block">
-                  SN: {value}
+                <div className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase mb-1">{label || 'Asset Unit'}</div>
+                {subLabel && (
+                  <div className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 inline-block mb-2">
+                    User: {subLabel}
+                  </div>
+                )}
+                <div className="block">
+                  <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full border border-slate-200 inline-block">
+                    SN: {value}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex gap-3">
               <button 
                 onClick={(e) => { e.stopPropagation(); handlePrint(); }}
