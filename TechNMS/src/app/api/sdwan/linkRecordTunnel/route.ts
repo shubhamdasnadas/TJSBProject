@@ -6,9 +6,9 @@ import branches from "../../../(DashboardLayout)/availability/data/data";
 
 /* ===================== CONFIG ===================== */
 
-// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
 // const DATA_FILE = "C:\\Users\\shaila\\OneDrive\\Desktop\\sdwan_tunnels.json";
-const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+// const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
 const DATA_DIR = path.join(process.cwd(), "data");
 const ALERT_STATE_FILE = path.join(DATA_DIR, "alert_state.json");
 
@@ -282,7 +282,7 @@ export async function GET() {
                 continue;
             }
 
-          
+
 
             /* ✅ NEW CONDITION 2: all tunnels are DOWN */
             const allDown =
