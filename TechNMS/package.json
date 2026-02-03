@@ -33,11 +33,12 @@
     "dotenv": "^17.2.3",
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.3",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.23.26",
     "gridstack": "^12.4.1",
     "html2canvas": "^1.4.1",
     "immutability-helper": "^3.1.1",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
     "lodash": "^4.17.21",
     "lucide-react": "^0.562.0",
@@ -64,7 +65,8 @@
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/lodash": "4.17.20",

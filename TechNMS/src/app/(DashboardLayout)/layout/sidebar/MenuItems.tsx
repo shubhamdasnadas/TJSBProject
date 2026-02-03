@@ -84,7 +84,7 @@ const Menuitems = [
     children: [
       // { title: "System Information", href: "/reports/SysInfo", icon: <AuditOutlined /> },
       { title: "System Reports", href: "/reports/SysReport", icon: <AuditOutlined /> },
-      // { title: "System Report Data", href: "/reports/systemReportData", icon: <DatabaseOutlined /> },
+      { title: "System Report Data", href: "/reports/systemReportData", icon: <DatabaseOutlined /> },
       { title: "Link Utilization", href: "/reports/summary_report", icon: <CloudDownloadOutlined /> },
       // { title: "Monthly Report", href: "/reports/report_data", icon: <FileTextOutlined /> },
       // { title: "Availability Reports", href: "/reports/Availability_Reports", icon: <ClockCircleOutlined /> },
