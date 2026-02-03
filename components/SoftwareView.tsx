@@ -469,6 +469,8 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                                             </div>
                                         </div>
 
+<div><label className="block text-xs font-bold text-slate-500 mb-1">Assigned Date</label><input type="date" max={today} className="border p-2 rounded-lg w-40" value={selectedDateToAdd} onChange={e => setSelectedDateToAdd(e.target.value)}/></div>
+
                                         <div className="flex justify-between items-center pt-2">
                                             <div className="flex gap-4">
                                                 <div className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border">
