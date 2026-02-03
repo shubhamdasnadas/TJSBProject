@@ -94,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
 
   // --- CHART DATA PREPARATION ---
 
-  // 1. Asset Value Over Time (Cumulative Growth)
+  // 1. Asset Value Over Time
   const timelineData = useMemo(() => {
       const points: Record<string, { date: string, Hardware: number, Software: number, Network: number }> = {};
       const processItem = (date: string | undefined, cost: number, type: 'Hardware'|'Software'|'Network') => {
@@ -107,7 +107,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
       hardware.forEach(h => processItem(h.purchaseDate, h.purchaseCost || 0, 'Hardware'));
       network.forEach(n => processItem(n.purchaseDate, n.purchaseCost || 0, 'Network'));
       
-      // Dynamic Software Value: Base Cost + (Enabled Add-on Costs)
+      // Reflect Software Changes (AMC, Cloud, Training) in growth chart
       software.forEach(s => {
           const base = (s.seatCount || 0) * (s.costPerSeat || 0);
           const addOns = (s.amcEnabled ? (s.amcCost || 0) : 0) + 
@@ -127,7 +127,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
       });
   }, [hardware, software, network]);
 
-  // 2. Department Allocation
+  // 2. Summary Values
+  const totalHardwareCost = hardware.reduce((acc, item) => acc + (item.purchaseCost || 0), 0);
+  const totalSoftwareCost = software.reduce((acc, s) => {
+    const base = (s.seatCount || 0) * (s.costPerSeat || 0);
+    const addOns = (s.amcEnabled ? (s.amcCost || 0) : 0) + 
+                   (s.cloudEnabled ? (s.cloudCost || 0) : 0) + 
+                   (s.trainingEnabled ? (s.trainingCost || 0) : 0);
+    return acc + base + addOns;
+  }, 0);
+
+  const formatCurrency = (val: number) => {
+      if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+      return `₹${val.toLocaleString('en-IN')}`;
+  };
+
+  const categoryStats = hardware.reduce((acc, item) => {
+    const cat = item.category || 'Uncategorized';
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const categoryData = Object.keys(categoryStats).map(key => ({ name: key, value: categoryStats[key] }));
+
   const deptData = useMemo(() => {
       const depts: Record<string, { name: string, Hardware: number, Software: number }> = {};
       hardware.forEach(h => { 
@@ -144,30 +165,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
       });
       return Object.values(depts).filter(d => d.Hardware + d.Software > 0);
   }, [hardware, software]);
-
-  // 3. Category Distribution (Hardware)
-  const categoryStats = hardware.reduce((acc, item) => {
-    const cat = item.category || 'Uncategorized';
-    acc[cat] = (acc[cat] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const categoryData = Object.keys(categoryStats).map(key => ({ name: key, value: categoryStats[key] }));
-
-  // Total Summary Values
-  const totalHardwareCost = hardware.reduce((acc, item) => acc + (item.purchaseCost || 0), 0);
-  const totalSoftwareCost = software.reduce((acc, s) => {
-    const base = (s.seatCount || 0) * (s.costPerSeat || 0);
-    const addOns = (s.amcEnabled ? (s.amcCost || 0) : 0) + 
-                   (s.cloudEnabled ? (s.cloudCost || 0) : 0) + 
-                   (s.trainingEnabled ? (s.trainingCost || 0) : 0);
-    return acc + base + addOns;
-  }, 0);
-
-  const formatCurrency = (val: number) => {
-      if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
-      if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
-      return `₹${val.toLocaleString('en-IN')}`;
-  };
   
   return (
     <div className="space-y-8 pb-10">
@@ -256,7 +253,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
         </div>
       </div>
 
-      {/* CUMULATIVE ASSET VALUE GROWTH */}
+      {/* ASSET VALUE GROWTH */}
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="text-lg font-bold text-slate-800 mb-8 flex items-center gap-2">
             <TrendingUp size={20} className="text-emerald-500"/>
@@ -266,23 +263,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timelineData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#94a3b8', fontSize: 11 }} 
-                        dy={10}
-                    />
-                    <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#94a3b8', fontSize: 11 }} 
-                        tickFormatter={(value) => `₹${(value/100000).toFixed(1)}L`}
-                    />
-                    <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        formatter={(value: number) => [`₹${value.toLocaleString('en-IN')}`, '']}
-                    />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v) => `₹${(v/100000).toFixed(1)}L`} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} formatter={(v: number) => [`₹${v.toLocaleString('en-IN')}`, '']} />
                     <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                     <Line type="monotone" dataKey="Software" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
                     <Line type="monotone" dataKey="Hardware" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} activeDot={{ r: 6 }} />
@@ -292,8 +275,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
           </div>
       </div>
 
+      {/* ADDITIONAL CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Categories Distribution */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
               <Activity size={20} className="text-slate-400"/> Hardware Distribution
@@ -304,14 +287,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
                 <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
                     {categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                <Tooltip contentStyle={{borderRadius: '12px', border: 'none'}} />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '11px'}} />
                 </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Allocation by Department */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                 <Building2 size={20} className="text-orange-500"/> Allocation by Department
@@ -322,7 +304,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
                         <XAxis type="number" hide />
                         <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                        <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                        <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none'}} />
                         <Legend iconType="circle" wrapperStyle={{fontSize: '10px'}} />
                         <Bar dataKey="Hardware" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
                         <Bar dataKey="Software" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
@@ -330,6 +312,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
                 </ResponsiveContainer>
             </div>
         </div>
+      </div>
+
+      {/* RECENT ACTIVITY FEED */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+             <h3 className="font-bold text-lg text-slate-800">Recent Lifecycle Activity</h3>
+             <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">Live Feed</span>
+         </div>
+         <div className="divide-y divide-slate-100">
+            {lifecycle.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 italic bg-white flex flex-col items-center gap-2">
+                    <Activity size={32} className="opacity-20" />
+                    <p className="text-sm">No activity recorded yet.</p>
+                </div>
+            ) : (
+                lifecycle.slice(0, 5).map(event => (
+                    <div key={event.id} className="p-5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${event.eventType === 'CREATED' ? 'bg-green-500' : event.eventType === 'DELETED' ? 'bg-red-500' : event.eventType === 'ASSIGNED' ? 'bg-purple-500' : 'bg-blue-500'}`}/>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold text-slate-900">
+                                {event.description} <span className="text-slate-400 font-normal mx-2">•</span> <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-tight">{event.assetType}</span>
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1"><Clock size={12}/> {new Date(event.timestamp).toLocaleString()}</p>
+                        </div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{event.eventType}</div>
+                    </div>
+                ))
+            )}
+         </div>
       </div>
     </div>
   );

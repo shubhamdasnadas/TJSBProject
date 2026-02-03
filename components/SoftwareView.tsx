@@ -1,7 +1,6 @@
-// Complete SoftwareView component to manage software licenses and assignments
 import React, { useState, useEffect } from 'react';
 import { SoftwareItem, SoftwareType, UserItem, LifecycleEvent, DepartmentItem, SoftwareAssignment } from '../types';
-import { Plus, Trash2, Edit2, Calendar, User, Users, X, History, IndianRupee, AlertCircle, Building, Briefcase, Calculator, Cloud, GraduationCap, Wrench, ChevronLeft, ChevronRight, Eye, EyeOff, Layout, List, LayoutGrid, Tag } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar, Users, X, History, IndianRupee, Layout, List, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LifecycleView } from './LifecycleView';
 
 interface SoftwareViewProps {
@@ -16,9 +15,7 @@ interface SoftwareViewProps {
 export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, departments, lifecycle, onSave, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SoftwareItem | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
-  
   const [formData, setFormData] = useState<Partial<SoftwareItem>>({});
   
   // Assignment UI State
@@ -26,18 +23,13 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
   const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
   const [selectedDateToAdd, setSelectedDateToAdd] = useState(new Date().toISOString().split('T')[0]);
   
-  // Pagination State for Assignments
   const [assignmentPage, setAssignmentPage] = useState(1);
   const ASSIGNMENT_PAGE_SIZE = 20;
-
-  // Lifecycle Visibility State
   const [showLifecycle, setShowLifecycle] = useState(true);
 
-  // Date Limits
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    // Reset page when modal opens or item changes
     if (isModalOpen) {
       setAssignmentPage(1);
       setSelectedDeptForAssignment('');
@@ -48,133 +40,50 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
   const handleAddNew = () => {
     setEditingItem(null);
     setFormData({ 
-      type: SoftwareType.SUBSCRIPTION, 
-      seatCount: 1, 
-      assignedTo: [], 
-      purchaseDate: today,
-      issuedDate: today,
-      amcEnabled: false,
-      cloudEnabled: false,
-      trainingEnabled: false,
-      amcCost: 0,
-      cloudCost: 0,
-      trainingCost: 0,
-      costPerSeat: 0
+      type: SoftwareType.SUBSCRIPTION, seatCount: 1, assignedTo: [], purchaseDate: today, issuedDate: today, amcCost: 0, cloudCost: 0, trainingCost: 0, costPerSeat: 0
     });
-    // Trigger auto-calc for default today
-    const exp = calculateExpiry(today);
-    setFormData(prev => ({ ...prev, expiryDate: exp }));
-    
-    setValidationError(null);
     setIsModalOpen(true);
-    setShowLifecycle(false); // No lifecycle for new items
+    setShowLifecycle(false);
   };
 
   const handleEdit = (item: SoftwareItem) => {
     setEditingItem(item);
-    setFormData({
-      ...item,
-      assignedTo: item.assignedTo || []
-    });
-    setValidationError(null);
+    setFormData({ ...item, assignedTo: item.assignedTo || [] });
     setIsModalOpen(true);
     setShowLifecycle(true);
   };
 
-  // Helper to calculate expiry: (Issue Date + 1 Year) - 1 Day
-  const calculateExpiry = (issueDateStr: string): string => {
-      if (!issueDateStr) return '';
-      const date = new Date(issueDateStr);
-      date.setFullYear(date.getFullYear() + 1);
-      date.setDate(date.getDate() - 1);
-      return date.toISOString().split('T')[0];
-  };
-
-  const handleIssuedDateChange = (val: string) => {
-      let updates: Partial<SoftwareItem> = { issuedDate: val };
-      if (formData.type === SoftwareType.SUBSCRIPTION && val) {
-          updates.expiryDate = calculateExpiry(val);
-      }
-      setFormData({ ...formData, ...updates });
-  };
-
   const handleTypeChange = (val: SoftwareType) => {
-      let updates: Partial<SoftwareItem> = { type: val };
-      if (val === SoftwareType.SUBSCRIPTION && formData.issuedDate) {
-          updates.expiryDate = calculateExpiry(formData.issuedDate);
-      } else if (val === SoftwareType.PERPETUAL) {
-          updates.expiryDate = '';
-      }
-      setFormData({ ...formData, ...updates });
+      setFormData({ ...formData, type: val, expiryDate: val === SoftwareType.PERPETUAL ? '' : formData.expiryDate });
   };
 
   const handleCostChange = (field: keyof SoftwareItem, value: string) => {
-      const rawValue = value.replace(/,/g, '');
-      const numValue = parseFloat(rawValue);
-      if (isNaN(numValue) && rawValue !== '') return;
-      setFormData({ ...formData, [field]: rawValue === '' ? undefined : numValue });
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      if (!isNaN(numValue) || value === '') setFormData({ ...formData, [field]: value === '' ? undefined : numValue });
   };
 
-  const formatCostDisplay = (val: number | undefined): string => {
-      if (val === undefined || val === null) return '';
-      return val.toLocaleString('en-IN');
-  };
-
-  const validateDates = (): boolean => {
-    const { purchaseDate, invoiceDate, expiryDate } = formData;
-    if (!purchaseDate) return true; 
-    if (invoiceDate && invoiceDate < purchaseDate) {
-        const msg = "Invoice Date cannot be earlier than Purchase Date.";
-        setValidationError(msg);
-        alert(msg);
-        return false;
-    }
-    if (expiryDate && expiryDate < purchaseDate) {
-        const msg = "Expiry Date cannot be earlier than Purchase Date.";
-        setValidationError(msg);
-        alert(msg);
-        return false;
-    }
-    if (expiryDate && invoiceDate && expiryDate < invoiceDate) {
-        const msg = "Expiry Date cannot be earlier than Invoice Date.";
-        setValidationError(msg);
-        alert(msg);
-        return false;
-    }
-    setValidationError(null);
-    return true;
-  };
+  const formatCostDisplay = (val: number | undefined): string => val !== undefined && val !== null ? val.toLocaleString('en-IN') : '';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateDates()) return;
-
     const newItem: SoftwareItem = {
       id: editingItem ? editingItem.id : Date.now().toString(),
       name: formData.name || 'Unknown Software',
       version: formData.version || '1.0',
       licenseKey: formData.licenseKey || '',
       type: formData.type as SoftwareType,
-      seatCount: formData.seatCount !== undefined ? Number(formData.seatCount) : 0,
-      costPerSeat: formData.costPerSeat !== undefined ? Number(formData.costPerSeat) : 0,
+      seatCount: Number(formData.seatCount) || 0,
+      costPerSeat: Number(formData.costPerSeat) || 0,
       expiryDate: formData.type === SoftwareType.PERPETUAL ? '' : formData.expiryDate, 
       purchaseDate: formData.purchaseDate,
-      invoiceDate: formData.invoiceDate,
-      poNumber: formData.poNumber,
       issuedDate: formData.issuedDate,
-      supportCoverage: formData.supportCoverage,
-      department: formData.department,
-      hod: formData.hod,
       assignedTo: formData.assignedTo || [],
-      vendorName: formData.vendorName,
-      vendorSpoc: formData.vendorSpoc,
-      vendorContact: formData.vendorContact,
-      amcEnabled: formData.type === SoftwareType.PERPETUAL ? false : formData.amcEnabled,
-      amcCost: (formData.type !== SoftwareType.PERPETUAL && formData.amcEnabled) ? (formData.amcCost || 0) : 0,
-      cloudEnabled: formData.type === SoftwareType.PERPETUAL ? false : formData.cloudEnabled,
-      cloudCost: (formData.type !== SoftwareType.PERPETUAL && formData.cloudEnabled) ? (formData.cloudCost || 0) : 0,
-      trainingEnabled: formData.type === SoftwareType.PERPETUAL ? false : formData.trainingEnabled,
-      trainingCost: (formData.type !== SoftwareType.PERPETUAL && formData.trainingEnabled) ? (formData.trainingCost || 0) : 0,
+      amcEnabled: formData.amcEnabled,
+      amcCost: formData.amcEnabled ? (formData.amcCost || 0) : 0,
+      cloudEnabled: formData.cloudEnabled,
+      cloudCost: formData.cloudEnabled ? (formData.cloudCost || 0) : 0,
+      trainingEnabled: formData.trainingEnabled,
+      trainingCost: formData.trainingEnabled ? (formData.trainingCost || 0) : 0,
     };
     onSave(newItem);
     setIsModalOpen(false);
@@ -182,48 +91,24 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
 
   const handleAddUser = () => {
     if (!selectedUserToAdd) return;
-    if (selectedDateToAdd > today) {
-        alert("Assignment date cannot be in the future.");
-        return;
-    }
     const currentAssignments = formData.assignedTo || [];
     if (!currentAssignments.some(a => a.username === selectedUserToAdd)) {
-        const newAssignment: SoftwareAssignment = {
-            username: selectedUserToAdd,
-            assignedDate: selectedDateToAdd || today
-        };
-        setFormData({ ...formData, assignedTo: [...currentAssignments, newAssignment] });
+        setFormData({ ...formData, assignedTo: [...currentAssignments, { username: selectedUserToAdd, assignedDate: selectedDateToAdd || today }] });
     }
     setSelectedUserToAdd('');
   };
 
   const handleRemoveUser = (userName: string) => {
-    const currentAssignments = formData.assignedTo || [];
-    setFormData({ ...formData, assignedTo: currentAssignments.filter(u => u.username !== userName) });
+    setFormData({ ...formData, assignedTo: (formData.assignedTo || []).filter(u => u.username !== userName) });
   };
 
   const isPerpetual = formData.type === SoftwareType.PERPETUAL;
-
-  const formTotalCost = 
-    ((formData.seatCount || 0) * (formData.costPerSeat || 0)) +
+  const formTotalCost = ((formData.seatCount || 0) * (formData.costPerSeat || 0)) +
     (!isPerpetual && formData.amcEnabled ? (formData.amcCost || 0) : 0) +
     (!isPerpetual && formData.cloudEnabled ? (formData.cloudCost || 0) : 0) +
     (!isPerpetual && formData.trainingEnabled ? (formData.trainingCost || 0) : 0);
 
-  const allAssignments = formData.assignedTo || [];
-  const totalPages = Math.ceil(allAssignments.length / ASSIGNMENT_PAGE_SIZE);
-  const currentAssignments = allAssignments.slice((assignmentPage - 1) * ASSIGNMENT_PAGE_SIZE, assignmentPage * ASSIGNMENT_PAGE_SIZE);
-
-  const kanbanGroups = {
-      [SoftwareType.SUBSCRIPTION]: items.filter(i => i.type === SoftwareType.SUBSCRIPTION),
-      [SoftwareType.PERPETUAL]: items.filter(i => i.type === SoftwareType.PERPETUAL),
-      [SoftwareType.OPEN_SOURCE]: items.filter(i => i.type === SoftwareType.OPEN_SOURCE)
-  };
-
-  const filteredUsersForAssignment = users.filter(u => 
-    u.status === 'Active' && 
-    (!selectedDeptForAssignment || u.department === selectedDeptForAssignment)
-  );
+  const filteredUsersForAssignment = users.filter(u => u.status === 'Active' && (!selectedDeptForAssignment || u.department === selectedDeptForAssignment));
 
   return (
     <div className="space-y-6">
@@ -231,51 +116,37 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
         <h2 className="text-2xl font-bold text-slate-800">Software Inventory</h2>
         <div className="flex gap-3">
             <div className="flex bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
-                <button onClick={() => setViewMode('list')} className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}><List size={18} /></button>
-                <button onClick={() => setViewMode('kanban')} className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutGrid size={18} /></button>
+                <button onClick={() => setViewMode('list')} className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400'}`}><List size={18} /></button>
+                <button onClick={() => setViewMode('kanban')} className={`p-2 rounded-md ${viewMode === 'kanban' ? 'bg-blue-100 text-blue-600' : 'text-slate-400'}`}><LayoutGrid size={18} /></button>
             </div>
-            <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm font-medium"><Plus size={18} />Add License</button>
+            <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm"><Plus size={18} />Add License</button>
         </div>
       </div>
 
       {viewMode === 'list' ? (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
+                        <tr className="bg-slate-50 border-b">
                             <th className="p-4 font-semibold text-slate-600 text-sm">Software</th>
-                            <th className="p-4 font-semibold text-slate-600 text-sm">Type & Expiry</th>
                             <th className="p-4 font-semibold text-slate-600 text-sm text-center">Seats</th>
-                            <th className="p-4 font-semibold text-slate-600 text-sm text-right">Cost</th>
+                            <th className="p-4 font-semibold text-slate-600 text-sm text-right">Total Cost</th>
                             <th className="p-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y">
                         {items.map(item => {
                             const totalVal = ((item.seatCount || 0) * (item.costPerSeat || 0)) + (item.amcCost || 0) + (item.cloudCost || 0) + (item.trainingCost || 0);
                             return (
-                                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-4">
-                                        <div className="font-bold text-slate-900">{item.name}</div>
-                                        <div className="text-xs text-slate-500">v{item.version}</div>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${item.type === SoftwareType.SUBSCRIPTION ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{item.type}</span>
-                                        {item.expiryDate && <div className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Calendar size={12}/> {item.expiryDate}</div>}
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <div className="text-sm font-bold text-slate-700">{(item.assignedTo?.length || 0)} / {item.seatCount}</div>
-                                        <div className="text-[10px] text-slate-400 uppercase font-black">Seats Used</div>
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <div className="text-sm font-bold text-slate-700">₹{totalVal.toLocaleString('en-IN')}</div>
-                                        <div className="text-[10px] text-slate-400 uppercase font-bold">Total Cost</div>
-                                    </td>
+                                <tr key={item.id} className="hover:bg-slate-50">
+                                    <td className="p-4 font-bold text-slate-900">{item.name} <span className="text-xs text-slate-400 font-normal ml-2">v{item.version}</span></td>
+                                    <td className="p-4 text-center text-sm">{(item.assignedTo?.length || 0)} / {item.seatCount}</td>
+                                    <td className="p-4 text-right font-bold">₹{totalVal.toLocaleString('en-IN')}</td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => handleEdit(item)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
-                                            <button onClick={() => onDelete(item.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                                            <button onClick={() => handleEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600"><Edit2 size={16}/></button>
+                                            <button onClick={() => onDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 size={16}/></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -286,43 +157,34 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
             </div>
           </div>
       ) : (
-          <div className="flex overflow-x-auto pb-4 gap-6 animate-in fade-in duration-300">
-              {Object.values(SoftwareType).map(type => {
-                  const itemsInGroup = kanbanGroups[type] || [];
-                  return (
-                      <div key={type} className="flex-none w-80 flex flex-col">
-                          <div className={`p-3 rounded-t-xl border-t border-x bg-white border-slate-200 font-bold text-slate-700 flex justify-between items-center shadow-sm`}>
-                              {type}
-                              <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full">{itemsInGroup.length}</span>
-                          </div>
-                          <div className={`bg-slate-50/50 p-2 rounded-b-xl border-x border-b border-slate-200 min-h-[200px] space-y-2`}>
-                              {itemsInGroup.map(item => (
-                                  <div key={item.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md cursor-pointer group relative" onClick={() => handleEdit(item)}>
-                                      <div className="font-bold text-sm text-slate-800">{item.name}</div>
-                                      <div className="text-xs text-slate-500 mb-2">v{item.version}</div>
-                                      <div className="flex justify-between items-center text-xs mt-2 pt-2 border-t border-slate-100">
-                                          <span className="text-slate-400">Seats: {item.assignedTo?.length || 0}/{item.seatCount}</span>
-                                          {item.expiryDate && <span className="text-blue-600 font-medium">{item.expiryDate}</span>}
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
+          <div className="flex gap-6 overflow-x-auto pb-4">
+              {Object.values(SoftwareType).map(type => (
+                  <div key={type} className="w-80 shrink-0">
+                      <div className="p-3 bg-white border border-b-0 rounded-t-xl font-bold flex justify-between">
+                          {type} <span className="bg-slate-100 px-2 rounded-full text-xs">{items.filter(i => i.type === type).length}</span>
                       </div>
-                  );
-              })}
+                      <div className="bg-slate-50/50 p-2 border rounded-b-xl min-h-[200px] space-y-2">
+                          {items.filter(i => i.type === type).map(item => (
+                              <div key={item.id} onClick={() => handleEdit(item)} className="bg-white p-3 rounded-lg border shadow-sm cursor-pointer hover:shadow-md">
+                                  <div className="font-bold text-sm">{item.name}</div>
+                                  <div className="text-xs text-slate-400">Seats: {item.assignedTo?.length || 0}/{item.seatCount}</div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              ))}
           </div>
       )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
-             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white z-10 shrink-0">
-                <h3 className="text-xl font-bold text-slate-900">{editingItem ? 'Edit License' : 'New License'}</h3>
+             <div className="p-6 border-b flex justify-between items-center bg-white shrink-0">
+                <h3 className="text-xl font-bold">{editingItem ? 'Edit License' : 'New License'}</h3>
                 <div className="flex items-center gap-3">
                     {editingItem && (
                         <button onClick={() => setShowLifecycle(!showLifecycle)} className="text-sm font-medium text-slate-500 hover:text-blue-600 flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">
-                            {showLifecycle ? <Layout size={16} /> : <History size={16} />}
-                            {showLifecycle ? 'Hide History' : 'Show History'}
+                            {showLifecycle ? <Layout size={16} /> : <History size={16} />} {showLifecycle ? 'Hide History' : 'Show History'}
                         </button>
                     )}
                     <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
@@ -331,144 +193,64 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
 
              <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                 <div className="grid grid-cols-1 lg:grid-cols-3 h-full min-h-0">
-                    <div className={`${showLifecycle && editingItem ? 'lg:col-span-2' : 'lg:col-span-3'} flex flex-col h-full min-h-0 border-r border-slate-100`}>
+                    <div className={`${showLifecycle && editingItem ? 'lg:col-span-2' : 'lg:col-span-3'} flex flex-col h-full min-h-0 border-r`}>
                         <div className="flex-1 overflow-y-auto p-6">
                             <form id="software-form" onSubmit={handleSubmit} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Software Name</label><input required className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Version</label><input className="w-full border p-2.5 rounded-lg" value={formData.version || ''} onChange={e => setFormData({...formData, version: e.target.value})} /></div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">License Key</label><input className="w-full border p-2.5 rounded-lg font-mono" value={formData.licenseKey || ''} onChange={e => setFormData({...formData, licenseKey: e.target.value})} /></div>
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Type</label><select className="w-full border p-2.5 rounded-lg bg-white" value={formData.type} onChange={e => handleTypeChange(e.target.value as SoftwareType)}><option value={SoftwareType.SUBSCRIPTION}>Subscription</option><option value={SoftwareType.PERPETUAL}>Perpetual</option><option value={SoftwareType.OPEN_SOURCE}>Open Source</option></select></div>
+                                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Software Name</label><input required className="w-full border p-2.5 rounded-lg" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Version</label><input className="w-full border p-2.5 rounded-lg" value={formData.version || ''} onChange={e => setFormData({...formData, version: e.target.value})} /></div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Seat Count</label><input type="number" className="w-full border p-2.5 rounded-lg" value={formData.seatCount || 0} onChange={e => setFormData({...formData, seatCount: parseInt(e.target.value)})} /></div>
-                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Cost Per Seat</label><input type="text" className="w-full border p-2.5 rounded-lg" value={formatCostDisplay(formData.costPerSeat)} onChange={e => handleCostChange('costPerSeat', e.target.value)} /></div>
-                                    {!isPerpetual && (
-                                        <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Expiry Date</label><input type="date" className="w-full border p-2.5 rounded-lg" value={formData.expiryDate || ''} onChange={e => setFormData({...formData, expiryDate: e.target.value})} /></div>
-                                    )}
+                                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Type</label><select className="w-full border p-2.5 rounded-lg bg-white" value={formData.type} onChange={e => handleTypeChange(e.target.value as SoftwareType)}><option value={SoftwareType.SUBSCRIPTION}>Subscription</option><option value={SoftwareType.PERPETUAL}>Perpetual</option><option value={SoftwareType.OPEN_SOURCE}>Open Source</option></select></div>
+                                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Seats</label><input type="number" className="w-full border p-2.5 rounded-lg" value={formData.seatCount || 0} onChange={e => setFormData({...formData, seatCount: parseInt(e.target.value)})} /></div>
+                                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Cost / Seat</label><input type="text" className="w-full border p-2.5 rounded-lg" value={formatCostDisplay(formData.costPerSeat)} onChange={e => handleCostChange('costPerSeat', e.target.value)} /></div>
                                 </div>
 
                                 {/* ADDITIONAL COSTS SECTION */}
-                                <div className={`space-y-4 pt-4 border-t border-slate-100 ${isPerpetual ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Additional Costs</h4>
+                                <div className={`space-y-4 pt-4 border-t ${isPerpetual ? 'opacity-40 pointer-events-none' : ''}`}>
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Additional Costs</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm">
-                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.amcEnabled || false} onChange={e => setFormData({...formData, amcEnabled: e.target.checked})} />
-                                                AMC
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm mb-3">
+                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.amcEnabled || false} onChange={e => setFormData({...formData, amcEnabled: e.target.checked})} /> AMC
                                             </label>
-                                            {formData.amcEnabled && <input type="text" placeholder="AMC Cost" className="w-full border p-2 rounded text-sm font-bold bg-white" value={formatCostDisplay(formData.amcCost)} onChange={e => handleCostChange('amcCost', e.target.value)} />}
+                                            {formData.amcEnabled && <input type="text" placeholder="Cost" className="w-full border p-2 rounded text-sm bg-white" value={formatCostDisplay(formData.amcCost)} onChange={e => handleCostChange('amcCost', e.target.value)} />}
                                         </div>
-                                        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm">
-                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.cloudEnabled || false} onChange={e => setFormData({...formData, cloudEnabled: e.target.checked})} />
-                                                Cloud
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm mb-3">
+                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.cloudEnabled || false} onChange={e => setFormData({...formData, cloudEnabled: e.target.checked})} /> Cloud
                                             </label>
-                                            {formData.cloudEnabled && <input type="text" placeholder="Cloud Cost" className="w-full border p-2 rounded text-sm font-bold bg-white" value={formatCostDisplay(formData.cloudCost)} onChange={e => handleCostChange('cloudCost', e.target.value)} />}
+                                            {formData.cloudEnabled && <input type="text" placeholder="Cost" className="w-full border p-2 rounded text-sm bg-white" value={formatCostDisplay(formData.cloudCost)} onChange={e => handleCostChange('cloudCost', e.target.value)} />}
                                         </div>
-                                        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm">
-                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.trainingEnabled || false} onChange={e => setFormData({...formData, trainingEnabled: e.target.checked})} />
-                                                Training
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm mb-3">
+                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.trainingEnabled || false} onChange={e => setFormData({...formData, trainingEnabled: e.target.checked})} /> Training
                                             </label>
-                                            {formData.trainingEnabled && <input type="text" placeholder="Training Cost" className="w-full border p-2 rounded text-sm font-bold bg-white" value={formatCostDisplay(formData.trainingCost)} onChange={e => handleCostChange('trainingCost', e.target.value)} />}
+                                            {formData.trainingEnabled && <input type="text" placeholder="Cost" className="w-full border p-2 rounded text-sm bg-white" value={formatCostDisplay(formData.trainingCost)} onChange={e => handleCostChange('trainingCost', e.target.value)} />}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* USER ASSIGNMENT SECTION */}
-                                <div className="pt-6 border-t border-slate-100">
-                                    <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-wider text-slate-400"><Users size={18}/> License Assignments</h4>
-                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-4 space-y-6">
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase">1. Select Department</label>
-                                                <select className="w-full border p-2.5 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500" value={selectedDeptForAssignment} onChange={e => { setSelectedDeptForAssignment(e.target.value); setSelectedUserToAdd(''); }}>
-                                                    <option value="">All Departments</option>
-                                                    {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase">2. Select User</label>
-                                                <select className="w-full border p-2.5 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500" value={selectedUserToAdd} onChange={e => setSelectedUserToAdd(e.target.value)}>
-                                                    <option value="">Choose Employee...</option>
-                                                    {filteredUsersForAssignment.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase">3. Assignment Date</label>
-                                                <input type="date" max={today} className="w-full border p-2.5 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500" value={selectedDateToAdd} onChange={e => setSelectedDateToAdd(e.target.value)} />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-between items-center pt-2">
-                                            <div className="flex gap-4">
-                                                <div className="text-[10px] font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm uppercase tracking-tighter">DEPARTMENTS: {departments.length}</div>
-                                                <div className="text-[10px] font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm uppercase tracking-tighter">USERS FOUND: {filteredUsersForAssignment.length}</div>
-                                            </div>
-                                            <button type="button" onClick={handleAddUser} disabled={!selectedUserToAdd} className="bg-blue-600 text-white px-8 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50">Assign Seat</button>
-                                        </div>
-                                    </div>
-
-                                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-slate-50">
-                                                <tr className="text-[10px] font-black uppercase text-slate-400 border-b">
-                                                    <th className="px-6 py-3 text-left">Employee</th>
-                                                    <th className="px-6 py-3 text-left">Assigned On</th>
-                                                    <th className="px-6 py-3 text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {currentAssignments.map(a => (
-                                                    <tr key={a.username} className="hover:bg-slate-50">
-                                                        <td className="px-6 py-4 font-bold text-slate-700">{a.username}</td>
-                                                        <td className="px-6 py-4 text-slate-500 text-xs">{a.assignedDate}</td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <button type="button" onClick={() => handleRemoveUser(a.username)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={16}/></button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {allAssignments.length === 0 && <tr><td colSpan={3} className="px-6 py-12 text-center text-slate-400 italic">No users currently assigned to this license.</td></tr>}
-                                            </tbody>
-                                        </table>
-                                        {totalPages > 1 && (
-                                            <div className="p-3 bg-slate-50 border-t flex items-center justify-between text-xs">
-                                                <span className="text-slate-500">Page {assignmentPage} of {totalPages}</span>
-                                                <div className="flex gap-1">
-                                                    <button onClick={() => setAssignmentPage(p => Math.max(1, p-1))} className="p-1 border rounded bg-white"><ChevronLeft size={14}/></button>
-                                                    <button onClick={() => setAssignmentPage(p => Math.min(totalPages, p+1))} className="p-1 border rounded bg-white"><ChevronRight size={14}/></button>
-                                                </div>
-                                            </div>
-                                        )}
+                                {/* ASSIGNMENT SECTION */}
+                                <div className="pt-6 border-t">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Users size={14}/> License Assignments</h4>
+                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div className="space-y-1"><label className="text-[9px] font-bold text-slate-400 uppercase">1. Dept</label><select className="w-full border p-2 rounded-lg bg-white" value={selectedDeptForAssignment} onChange={e => setSelectedDeptForAssignment(e.target.value)}><option value="">All</option>{departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}</select></div>
+                                        <div className="space-y-1"><label className="text-[9px] font-bold text-slate-400 uppercase">2. Employee</label><select className="w-full border p-2 rounded-lg bg-white" value={selectedUserToAdd} onChange={e => setSelectedUserToAdd(e.target.value)}><option value="">Select...</option>{filteredUsersForAssignment.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}</select></div>
+                                        <div className="flex items-end gap-2"><input type="date" className="flex-1 border p-2 rounded-lg bg-white" value={selectedDateToAdd} onChange={e => setSelectedDateToAdd(e.target.value)} /><button type="button" onClick={handleAddUser} disabled={!selectedUserToAdd} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50">Assign</button></div>
                                     </div>
                                 </div>
                             </form>
                         </div>
-                        <div className="p-4 border-t border-slate-100 bg-white flex justify-between items-center shrink-0">
-                            <div className="flex flex-col">
-                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Asset Value</div>
-                                <div className="text-lg font-black text-blue-600">₹{formTotalCost.toLocaleString('en-IN')}</div>
-                            </div>
-                            <div className="flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors font-bold">Cancel</button>
-                                <button type="submit" form="software-form" className="px-8 py-2 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Save License</button>
-                            </div>
+                        <div className="p-4 border-t bg-white flex justify-between items-center shrink-0">
+                            <div><div className="text-[10px] font-black text-slate-400 uppercase">Asset Value</div><div className="text-xl font-black text-blue-600">₹{formTotalCost.toLocaleString('en-IN')}</div></div>
+                            <div className="flex gap-3"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2 font-bold text-slate-600">Cancel</button><button type="submit" form="software-form" className="px-8 py-2 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-100">Save License</button></div>
                         </div>
                     </div>
                     {editingItem && showLifecycle && (
-                        <div className="bg-slate-50 border-l border-slate-200 flex flex-col h-full min-h-0 lg:col-span-1 animate-in slide-in-from-right-4 duration-300">
-                             <div className="p-4 border-b border-slate-200 bg-slate-50 shrink-0">
-                                <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                                    <History size={18} className="text-blue-600"/>
-                                    License Lifecycle
-                                </h4>
-                            </div>
-                            <div className="overflow-y-auto flex-1 p-4 min-h-0">
-                                <LifecycleView events={lifecycle.filter(e => e.assetId === editingItem.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())} compact={true} />
-                            </div>
+                        <div className="bg-slate-50 border-l flex flex-col lg:col-span-1 min-h-0">
+                            <div className="p-4 border-b bg-slate-50 flex items-center gap-2 font-bold text-slate-800"><History size={18} className="text-blue-600"/> History</div>
+                            <div className="overflow-y-auto flex-1 p-4"><LifecycleView events={lifecycle.filter(e => e.assetId === editingItem.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())} compact={true} /></div>
                         </div>
                     )}
                 </div>
