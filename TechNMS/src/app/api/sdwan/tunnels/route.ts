@@ -108,6 +108,43 @@ function isDailyLimitError(msg: string) {
   );
 }
 
+/* ✅ UPDATED: Only return TIME (HH-MM-SS) */
+function formatGeneratedAt(input: any) {
+  try {
+    if (!input) return "";
+
+    // ✅ if string like: "2026-01-23 14:57:52 IST"
+    if (typeof input === "string") {
+      const match = input.trim().match(
+        /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/
+      );
+
+      if (match) {
+        const hh = match[4];
+        const min = match[5];
+        const ss = match[6];
+
+        // ✅ REQUIRED FORMAT: HH-MM-SS
+        return `${hh}-${min}-${ss}`;
+      }
+
+      return input;
+    }
+
+    // ✅ fallback for Date/number values
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return "";
+
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+
+    return `${hh}-${min}-${ss}`;
+  } catch {
+    return "";
+  }
+}
+
 /* ===================== API ===================== */
 
 export async function GET() {
@@ -332,8 +369,8 @@ export async function GET() {
     return NextResponse.json({
       ...json,
 
-      // ✅ you wanted generatedAt in API response
-      generatedAt: new Date().toISOString(),
+      // ✅ FIXED: generatedAt now comes from API properly (only structure changed)
+      generatedAt: formatGeneratedAt(json?.generatedAtIST),
 
       alertSummary: {
         downTriggered: downCount,

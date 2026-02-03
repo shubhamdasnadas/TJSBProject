@@ -242,12 +242,13 @@ export default function DashboardTunnel({
       const res = await fetch("/api/sdwan/tunnels");
       const json = await res.json();
       console.log("json", json.generatedAt)
-      if (json.generatedAt) {
-        const d = new Date(json.generatedAt);
+      if (json?.generatedAt) {
+        const [hh = "00", mm = "00", ss = "00"] = String(json.generatedAt).split("-");
+
         setTime({
-          hh: String(d.getHours()).padStart(2, "0"),
-          mm: String(d.getMinutes()).padStart(2, "0"),
-          ss: String(d.getSeconds()).padStart(2, "0"),
+          hh: hh.padStart(2, "0"),
+          mm: mm.padStart(2, "0"),
+          ss: ss.padStart(2, "0"),
         });
       }
 

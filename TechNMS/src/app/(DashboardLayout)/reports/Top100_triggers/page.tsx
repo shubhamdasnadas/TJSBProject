@@ -363,6 +363,8 @@ function RangePickerWithPresets({
       ),
     },
   ];
+// Trigger name filter (applied on Apply)
+const [triggerSearch, setTriggerSearch] = useState<string>("");
 
   const displayText = dates
     ? `${dates[0].format("YYYY-MM-DD HH:mm")} → ${dates[1].format("YYYY-MM-DD HH:mm")}`
@@ -399,6 +401,7 @@ export default function ZabbixTopProblemsPage() {
   const [hostids, setHostids] = useState<string[]>([]);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [triggerSearch, setTriggerSearch] = useState<string>("");
 
   const [timeFrom, setTimeFrom] = useState<number>(Math.floor(Date.now() / 1000) - 24 * 3600);
   const [timeTill, setTimeTill] = useState<number>(Math.floor(Date.now() / 1000));
@@ -510,16 +513,28 @@ export default function ZabbixTopProblemsPage() {
         });
       });
 
+      let rows = Object.values(map);
+
+// 🔍 APPLY trigger filter ONLY when Apply is pressed
+if (triggerSearch.trim()) {
+  const q = triggerSearch.toLowerCase();
+  rows = rows.filter((r: any) =>
+    r.trigger?.toLowerCase().includes(q)
+  );
+}
+
+// Sort by occurrence count DESC
+const sorted = rows.sort((a: any, b: any) => b.count - a.count);
+setData(sorted);
+
       // Sort by count descending
-      const sorted = Object.values(map).sort((a: any, b: any) => b.count - a.count);
-      setData(sorted);
-    } catch (err) {
+     } catch (err) {
       console.error("Failed to load events", err);
       message.error("Failed to load problems");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Card title="Top Problems (Occurrence Count)">
@@ -596,6 +611,21 @@ export default function ZabbixTopProblemsPage() {
       Export to PDF
     </Button>
   </Col>
+<Col span={6}>
+<Select
+  showSearch
+  allowClear
+  placeholder="Filter Trigger Name (contains)"
+  style={{ width: "100%" }}
+  value={triggerSearch || undefined}
+  onChange={(val) => setTriggerSearch(val || "")}
+  options={Array.from(new Set(data.map(d => d.trigger))).map(t => ({
+    label: t,
+    value: t,
+  }))}
+/>
+</Col>
+
 </Row>
 
 <Table
