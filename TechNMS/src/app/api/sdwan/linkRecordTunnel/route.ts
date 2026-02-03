@@ -6,9 +6,9 @@ import branches from "../../../(DashboardLayout)/availability/data/data";
 
 /* ===================== CONFIG ===================== */
 
-const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
+// const DATA_FILE = "/home/ec2-user/sdwan_tunnels.json";
 // const DATA_FILE = "C:\\Users\\shaila\\OneDrive\\Desktop\\sdwan_tunnels.json";
-// const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
+const DATA_FILE = "C:\\Users\\admin\\Desktop\\sdwan_tunnels.json";
 const DATA_DIR = path.join(process.cwd(), "data");
 const ALERT_STATE_FILE = path.join(DATA_DIR, "alert_state.json");
 
@@ -92,8 +92,6 @@ function formatGeneratedAt(input: any) {
         return "";
     }
 }
-
-
 
 /* ===================== ALERT STATE (TUNNEL LEVEL) ===================== */
 /**
@@ -263,7 +261,48 @@ export async function GET() {
             const branchName = getBranchName(hostname);
 
             const tunnels = Array.isArray(siteObj.tunnels) ? siteObj.tunnels : [];
-            if (tunnels.length === 0) continue;
+
+            // ✅ NEW: read siteState
+            const siteState = String(siteObj.siteState || "").toLowerCase();
+
+            /* ✅ NEW CONDITION 1: tunnels length == 0 AND siteState is DOWN */
+            if (tunnels.length === 0 && siteState === "down") {
+                const lastUpdated = Date.now();
+
+                csvNewRows.push({
+                    // "Last Updated": formatDateTime(lastUpdated),
+                    Branch: branchName,
+                    "System IP": systemIp,
+                    Hostname: hostname,
+                    Tunnel: "-",
+                    State: "DOWN",
+                    Type: "SITE_DOWN_NO_TUNNELS",
+                });
+
+                continue;
+            }
+
+          
+
+            /* ✅ NEW CONDITION 2: all tunnels are DOWN */
+            const allDown =
+                tunnels.length > 0 &&
+                tunnels.every((t: any) => String(t?.state || "").toLowerCase() === "down");
+
+            if (allDown) {
+                const lastUpdated =
+                    Number(tunnels?.[0]?.lastUpdated) > 0 ? Number(tunnels?.[0]?.lastUpdated) : Date.now();
+
+                csvNewRows.push({
+                    "Last Updated": formatDateTime(lastUpdated),
+                    Branch: branchName,
+                    "System IP": systemIp,
+                    Hostname: hostname,
+                    Tunnel: "ALL_TUNNELS",
+                    State: "DOWN",
+                    Type: "ALL_DOWN",
+                });
+            }
 
             for (const t of tunnels) {
                 const tunnelName = String(t?.tunnelName || "");
@@ -288,7 +327,7 @@ export async function GET() {
                             Hostname: hostname,
                             Tunnel: replaceISPNames(tunnelName),
                             State: newState.toUpperCase(),
-                            Type: "INITIAL",
+                            Type: "On Going",
                         });
                     }
                 }
@@ -326,6 +365,7 @@ export async function GET() {
                 alertState[tunnelKey] = newState;
             }
         }
+
 
         saveAlertState(alertState);
 

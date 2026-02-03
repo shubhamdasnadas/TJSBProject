@@ -19,7 +19,7 @@ export default function LinkRecord() {
             const res = await fetch("/api/sdwan/linkRecordTunnel", { cache: "no-store" });
             const json = await res.json();
             setGeneratedAt(json?.generatedAt || "-");
-
+            console.log("log", json)
             // ✅ now frontend reads only CSV rows
             const csvRes = await fetch(`/api/sdwan/readCsv?t=${Date.now()}`, {
                 cache: "no-store",
