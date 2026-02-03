@@ -1,4 +1,3 @@
- 
 // Complete SoftwareView component to manage software licenses and assignments
 import React, { useState, useEffect } from 'react';
 import { SoftwareItem, SoftwareType, UserItem, LifecycleEvent, DepartmentItem, SoftwareAssignment } from '../types';
@@ -82,30 +81,17 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
     setShowLifecycle(true);
   };
 
-  const handleDepartmentChange = (deptName: string) => {
-    const dept = departments.find(d => d.name === deptName);
-    setFormData({
-        ...formData,
-        department: deptName,
-        hod: dept?.hodName || ''
-    });
-  };
-
   // Helper to calculate expiry: (Issue Date + 1 Year) - 1 Day
   const calculateExpiry = (issueDateStr: string): string => {
       if (!issueDateStr) return '';
       const date = new Date(issueDateStr);
-      // Add 1 Year
       date.setFullYear(date.getFullYear() + 1);
-      // Subtract 1 Day
       date.setDate(date.getDate() - 1);
       return date.toISOString().split('T')[0];
   };
 
   const handleIssuedDateChange = (val: string) => {
       let updates: Partial<SoftwareItem> = { issuedDate: val };
-      
-      // Auto-calculate expiry if Subscription
       if (formData.type === SoftwareType.SUBSCRIPTION && val) {
           updates.expiryDate = calculateExpiry(val);
       }
@@ -114,8 +100,6 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
 
   const handleTypeChange = (val: SoftwareType) => {
       let updates: Partial<SoftwareItem> = { type: val };
-      
-      // Recalculate if switching TO Subscription
       if (val === SoftwareType.SUBSCRIPTION && formData.issuedDate) {
           updates.expiryDate = calculateExpiry(formData.issuedDate);
       } else if (val === SoftwareType.PERPETUAL) {
@@ -124,18 +108,11 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
       setFormData({ ...formData, ...updates });
   };
 
-  // Helper for thousands separator input
   const handleCostChange = (field: keyof SoftwareItem, value: string) => {
-      // Remove existing commas to get raw number
       const rawValue = value.replace(/,/g, '');
       const numValue = parseFloat(rawValue);
-      
-      if (isNaN(numValue) && rawValue !== '') return; // Invalid input
-      
-      setFormData({
-          ...formData,
-          [field]: rawValue === '' ? undefined : numValue
-      });
+      if (isNaN(numValue) && rawValue !== '') return;
+      setFormData({ ...formData, [field]: rawValue === '' ? undefined : numValue });
   };
 
   const formatCostDisplay = (val: number | undefined): string => {
@@ -225,20 +202,14 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
     setFormData({ ...formData, assignedTo: currentAssignments.filter(u => u.username !== userName) });
   };
 
-  const itemEvents = editingItem 
-  ? lifecycle.filter(e => e.assetId === editingItem.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  : [];
-
   const isPerpetual = formData.type === SoftwareType.PERPETUAL;
 
-  // Real-time calculation logic including optional costs
   const formTotalCost = 
     ((formData.seatCount || 0) * (formData.costPerSeat || 0)) +
     (!isPerpetual && formData.amcEnabled ? (formData.amcCost || 0) : 0) +
     (!isPerpetual && formData.cloudEnabled ? (formData.cloudCost || 0) : 0) +
     (!isPerpetual && formData.trainingEnabled ? (formData.trainingCost || 0) : 0);
 
-  // Pagination Logic
   const allAssignments = formData.assignedTo || [];
   const totalPages = Math.ceil(allAssignments.length / ASSIGNMENT_PAGE_SIZE);
   const currentAssignments = allAssignments.slice((assignmentPage - 1) * ASSIGNMENT_PAGE_SIZE, assignmentPage * ASSIGNMENT_PAGE_SIZE);
@@ -249,7 +220,6 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
       [SoftwareType.OPEN_SOURCE]: items.filter(i => i.type === SoftwareType.OPEN_SOURCE)
   };
 
-  // Filtered users based on selected department for assignment
   const filteredUsersForAssignment = users.filter(u => 
     u.status === 'Active' && 
     (!selectedDeptForAssignment || u.department === selectedDeptForAssignment)
@@ -257,34 +227,17 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
 
   return (
     <div className="space-y-6">
-      {/* Header with Search and Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-800">Software Inventory</h2>
         <div className="flex gap-3">
             <div className="flex bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
-                <button 
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}
-                    title="List View"
-                >
-                    <List size={18} />
-                </button>
-                <button 
-                    onClick={() => setViewMode('kanban')}
-                    className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}
-                    title="Kanban Board"
-                >
-                    <LayoutGrid size={18} />
-                </button>
+                <button onClick={() => setViewMode('list')} className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}><List size={18} /></button>
+                <button onClick={() => setViewMode('kanban')} className={`p-2 rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-50'}`}><LayoutGrid size={18} /></button>
             </div>
-            <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm font-medium">
-                <Plus size={18} />
-                Add License
-            </button>
+            <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm font-medium"><Plus size={18} />Add License</button>
         </div>
       </div>
 
-      {/* View Content Renderer */}
       {viewMode === 'list' ? (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300">
             <div className="overflow-x-auto">
@@ -299,42 +252,35 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {items.map(item => (
-                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-4">
-                                    <div className="font-bold text-slate-900">{item.name}</div>
-                                    <div className="text-xs text-slate-500">v{item.version}</div>
-                                </td>
-                                <td className="p-4">
-                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${item.type === SoftwareType.SUBSCRIPTION ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
-                                        {item.type}
-                                    </span>
-                                    {item.expiryDate && (
-                                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                                            <Calendar size={12}/> {item.expiryDate}
+                        {items.map(item => {
+                            const totalVal = ((item.seatCount || 0) * (item.costPerSeat || 0)) + (item.amcCost || 0) + (item.cloudCost || 0) + (item.trainingCost || 0);
+                            return (
+                                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-4">
+                                        <div className="font-bold text-slate-900">{item.name}</div>
+                                        <div className="text-xs text-slate-500">v{item.version}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${item.type === SoftwareType.SUBSCRIPTION ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>{item.type}</span>
+                                        {item.expiryDate && <div className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Calendar size={12}/> {item.expiryDate}</div>}
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <div className="text-sm font-bold text-slate-700">{(item.assignedTo?.length || 0)} / {item.seatCount}</div>
+                                        <div className="text-[10px] text-slate-400 uppercase font-black">Seats Used</div>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <div className="text-sm font-bold text-slate-700">₹{totalVal.toLocaleString('en-IN')}</div>
+                                        <div className="text-[10px] text-slate-400 uppercase font-bold">Total Cost</div>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => handleEdit(item)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
+                                            <button onClick={() => onDelete(item.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                                         </div>
-                                    )}
-                                </td>
-                                <td className="p-4 text-center">
-                                    <div className="text-sm font-bold text-slate-700">{(item.assignedTo?.length || 0)} / {item.seatCount}</div>
-                                    <div className="text-[10px] text-slate-400 uppercase font-black">Seats Used</div>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <div className="text-sm font-bold text-slate-700">₹{(item.seatCount * item.costPerSeat).toLocaleString('en-IN')}</div>
-                                    <div className="text-[10px] text-slate-400">Total License Cost</div>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <button onClick={() => handleEdit(item)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button onClick={() => onDelete(item.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -367,7 +313,6 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
           </div>
       )}
 
-      {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
@@ -375,10 +320,7 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                 <h3 className="text-xl font-bold text-slate-900">{editingItem ? 'Edit License' : 'New License'}</h3>
                 <div className="flex items-center gap-3">
                     {editingItem && (
-                        <button 
-                            onClick={() => setShowLifecycle(!showLifecycle)}
-                            className="text-sm font-medium text-slate-500 hover:text-blue-600 flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
-                        >
+                        <button onClick={() => setShowLifecycle(!showLifecycle)} className="text-sm font-medium text-slate-500 hover:text-blue-600 flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">
                             {showLifecycle ? <Layout size={16} /> : <History size={16} />}
                             {showLifecycle ? 'Hide History' : 'Show History'}
                         </button>
@@ -393,101 +335,80 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                         <div className="flex-1 overflow-y-auto p-6">
                             <form id="software-form" onSubmit={handleSubmit} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Software Name</label>
-                                        <input required className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Version</label>
-                                        <input className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.version || ''} onChange={e => setFormData({...formData, version: e.target.value})} />
-                                    </div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Software Name</label><input required className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Version</label><input className="w-full border p-2.5 rounded-lg" value={formData.version || ''} onChange={e => setFormData({...formData, version: e.target.value})} /></div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">License Key</label>
-                                        <input className="w-full border p-2.5 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.licenseKey || ''} onChange={e => setFormData({...formData, licenseKey: e.target.value})} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Type</label>
-                                        <select className="w-full border p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.type} onChange={e => handleTypeChange(e.target.value as SoftwareType)}>
-                                            <option value={SoftwareType.SUBSCRIPTION}>Subscription</option>
-                                            <option value={SoftwareType.PERPETUAL}>Perpetual</option>
-                                            <option value={SoftwareType.OPEN_SOURCE}>Open Source</option>
-                                        </select>
-                                    </div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">License Key</label><input className="w-full border p-2.5 rounded-lg font-mono" value={formData.licenseKey || ''} onChange={e => setFormData({...formData, licenseKey: e.target.value})} /></div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Type</label><select className="w-full border p-2.5 rounded-lg bg-white" value={formData.type} onChange={e => handleTypeChange(e.target.value as SoftwareType)}><option value={SoftwareType.SUBSCRIPTION}>Subscription</option><option value={SoftwareType.PERPETUAL}>Perpetual</option><option value={SoftwareType.OPEN_SOURCE}>Open Source</option></select></div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Seat Count</label>
-                                        <input type="number" className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.seatCount || 0} onChange={e => setFormData({...formData, seatCount: parseInt(e.target.value)})} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Cost Per Seat</label>
-                                        <input type="text" className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formatCostDisplay(formData.costPerSeat)} onChange={e => handleCostChange('costPerSeat', e.target.value)} />
-                                    </div>
-                                    {formData.type !== SoftwareType.PERPETUAL && (
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Expiry Date</label>
-                                            <input type="date" className="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" value={formData.expiryDate || ''} onChange={e => setFormData({...formData, expiryDate: e.target.value})} />
-                                        </div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Seat Count</label><input type="number" className="w-full border p-2.5 rounded-lg" value={formData.seatCount || 0} onChange={e => setFormData({...formData, seatCount: parseInt(e.target.value)})} /></div>
+                                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Cost Per Seat</label><input type="text" className="w-full border p-2.5 rounded-lg" value={formatCostDisplay(formData.costPerSeat)} onChange={e => handleCostChange('costPerSeat', e.target.value)} /></div>
+                                    {!isPerpetual && (
+                                        <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Expiry Date</label><input type="date" className="w-full border p-2.5 rounded-lg" value={formData.expiryDate || ''} onChange={e => setFormData({...formData, expiryDate: e.target.value})} /></div>
                                     )}
                                 </div>
 
+                                {/* ADDITIONAL COSTS SECTION */}
+                                <div className={`space-y-4 pt-4 border-t border-slate-100 ${isPerpetual ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Additional Costs</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm">
+                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.amcEnabled || false} onChange={e => setFormData({...formData, amcEnabled: e.target.checked})} />
+                                                AMC
+                                            </label>
+                                            {formData.amcEnabled && <input type="text" placeholder="AMC Cost" className="w-full border p-2 rounded text-sm font-bold bg-white" value={formatCostDisplay(formData.amcCost)} onChange={e => handleCostChange('amcCost', e.target.value)} />}
+                                        </div>
+                                        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm">
+                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.cloudEnabled || false} onChange={e => setFormData({...formData, cloudEnabled: e.target.checked})} />
+                                                Cloud
+                                            </label>
+                                            {formData.cloudEnabled && <input type="text" placeholder="Cloud Cost" className="w-full border p-2 rounded text-sm font-bold bg-white" value={formatCostDisplay(formData.cloudCost)} onChange={e => handleCostChange('cloudCost', e.target.value)} />}
+                                        </div>
+                                        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-sm">
+                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.trainingEnabled || false} onChange={e => setFormData({...formData, trainingEnabled: e.target.checked})} />
+                                                Training
+                                            </label>
+                                            {formData.trainingEnabled && <input type="text" placeholder="Training Cost" className="w-full border p-2 rounded text-sm font-bold bg-white" value={formatCostDisplay(formData.trainingCost)} onChange={e => handleCostChange('trainingCost', e.target.value)} />}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* USER ASSIGNMENT SECTION */}
                                 <div className="pt-6 border-t border-slate-100">
                                     <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-wider text-slate-400"><Users size={18}/> License Assignments</h4>
-                                    
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-4 space-y-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-black text-slate-400 uppercase">1. Select Department</label>
-                                                <select 
-                                                    className="w-full border p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm font-medium"
-                                                    value={selectedDeptForAssignment}
-                                                    onChange={e => {
-                                                        setSelectedDeptForAssignment(e.target.value);
-                                                        setSelectedUserToAdd(''); // Reset user when dept changes
-                                                    }}
-                                                >
+                                                <select className="w-full border p-2.5 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500" value={selectedDeptForAssignment} onChange={e => { setSelectedDeptForAssignment(e.target.value); setSelectedUserToAdd(''); }}>
                                                     <option value="">All Departments</option>
-                                                    {departments.map(d => (
-                                                        <option key={d.id} value={d.name}>{d.name}</option>
-                                                    ))}
+                                                    {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                                                 </select>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase">2. Select User to Assign</label>
-                                                <select 
-                                                    className="w-full border p-2.5 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm font-medium disabled:bg-slate-100 disabled:cursor-not-allowed"
-                                                    value={selectedUserToAdd}
-                                                    onChange={e => setSelectedUserToAdd(e.target.value)}
-                                                >
+                                                <label className="text-[10px] font-black text-slate-400 uppercase">2. Select User</label>
+                                                <select className="w-full border p-2.5 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500" value={selectedUserToAdd} onChange={e => setSelectedUserToAdd(e.target.value)}>
                                                     <option value="">Choose Employee...</option>
-                                                    {filteredUsersForAssignment.map(u => (
-                                                        <option key={u.id} value={u.name}>{u.name}</option>
-                                                    ))}
+                                                    {filteredUsersForAssignment.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
                                                 </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase">3. Assignment Date</label>
+                                                <input type="date" max={today} className="w-full border p-2.5 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500" value={selectedDateToAdd} onChange={e => setSelectedDateToAdd(e.target.value)} />
                                             </div>
                                         </div>
 
-<div><label className="block text-xs font-bold text-slate-500 mb-1">Assigned Date</label><input type="date" max={today} className="border p-2 rounded-lg w-40" value={selectedDateToAdd} onChange={e => setSelectedDateToAdd(e.target.value)}/></div>
-
                                         <div className="flex justify-between items-center pt-2">
                                             <div className="flex gap-4">
-                                                <div className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border">
-                                                    DEPARTMENTS: {departments.length}
-                                                </div>
-                                                <div className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border">
-                                                    USERS FOUND: {filteredUsersForAssignment.length}
-                                                </div>
+                                                <div className="text-[10px] font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm uppercase tracking-tighter">DEPARTMENTS: {departments.length}</div>
+                                                <div className="text-[10px] font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm uppercase tracking-tighter">USERS FOUND: {filteredUsersForAssignment.length}</div>
                                             </div>
-                                            <button 
-                                                type="button" 
-                                                onClick={handleAddUser} 
-                                                disabled={!selectedUserToAdd}
-                                                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-                                            >
-                                                Assign
-                                            </button>
+                                            <button type="button" onClick={handleAddUser} disabled={!selectedUserToAdd} className="bg-blue-600 text-white px-8 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50">Assign Seat</button>
                                         </div>
                                     </div>
 
@@ -502,7 +423,7 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {currentAssignments.map(a => (
-                                                    <tr key={a.username} className="hover:bg-slate-50 transition-colors">
+                                                    <tr key={a.username} className="hover:bg-slate-50">
                                                         <td className="px-6 py-4 font-bold text-slate-700">{a.username}</td>
                                                         <td className="px-6 py-4 text-slate-500 text-xs">{a.assignedDate}</td>
                                                         <td className="px-6 py-4 text-right">
@@ -510,9 +431,7 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                                                         </td>
                                                     </tr>
                                                 ))}
-                                                {allAssignments.length === 0 && (
-                                                    <tr><td colSpan={3} className="px-6 py-12 text-center text-slate-400 italic">No users currently assigned to this license.</td></tr>
-                                                )}
+                                                {allAssignments.length === 0 && <tr><td colSpan={3} className="px-6 py-12 text-center text-slate-400 italic">No users currently assigned to this license.</td></tr>}
                                             </tbody>
                                         </table>
                                         {totalPages > 1 && (
@@ -529,10 +448,13 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                             </form>
                         </div>
                         <div className="p-4 border-t border-slate-100 bg-white flex justify-between items-center shrink-0">
-                            <div className="text-sm font-bold text-blue-600">Total Value: ₹{formTotalCost.toLocaleString('en-IN')}</div>
+                            <div className="flex flex-col">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Asset Value</div>
+                                <div className="text-lg font-black text-blue-600">₹{formTotalCost.toLocaleString('en-IN')}</div>
+                            </div>
                             <div className="flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">Cancel</button>
-                                <button type="submit" form="software-form" className="px-8 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">Save License</button>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors font-bold">Cancel</button>
+                                <button type="submit" form="software-form" className="px-8 py-2 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Save License</button>
                             </div>
                         </div>
                     </div>
@@ -545,7 +467,7 @@ export const SoftwareView: React.FC<SoftwareViewProps> = ({ items, users, depart
                                 </h4>
                             </div>
                             <div className="overflow-y-auto flex-1 p-4 min-h-0">
-                                <LifecycleView events={itemEvents} compact={true} />
+                                <LifecycleView events={lifecycle.filter(e => e.assetId === editingItem.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())} compact={true} />
                             </div>
                         </div>
                     )}
