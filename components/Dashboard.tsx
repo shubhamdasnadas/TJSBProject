@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 import { HardwareItem, SoftwareItem, PasswordItem, NetworkItem, LifecycleEvent, AlertDefinition, ItemStatus } from '../types';
-import { Monitor, Disc, AlertTriangle, Activity, Bell, IndianRupee, Wifi, TrendingUp, Building2, Wrench, Clock, CheckCircle2 } from 'lucide-react';
+import { Monitor, Disc, AlertTriangle, Activity, Bell, IndianRupee, Wifi, TrendingUp, Building2, Wrench, Clock, CheckCircle2, ChevronRight, Hash, ShieldAlert } from 'lucide-react';
 
 interface DashboardProps {
   hardware: HardwareItem[];
@@ -19,8 +19,9 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, network = [], passwords, lifecycle, alertDefinitions = [] }) => {
   
   const today = new Date();
+  today.setHours(0, 0, 0, 0); // Normalized for date-only comparisons
 
-  // --- EVALUATE ALERTS (Advanced Logic) ---
+  // --- EVALUATE ALERTS ---
   const activeAlerts = useMemo(() => {
       const alerts: { def: AlertDefinition, count: number, items: string[] }[] = [];
 
@@ -33,38 +34,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
               let itemVal: any = item[def.field];
               let thresholdVal: any = def.threshold;
 
-              // Handle "Available Seats" Calculation dynamically
+              // Handle seat count logic for software specifically
               if (def.module === 'Software' && def.field === 'seatCount') {
                   const used = (item as SoftwareItem).assignedTo?.length || 0;
                   itemVal = (item.seatCount || 0) - used;
               }
 
-              // Data Type Normalization
-              if (!isNaN(parseFloat(itemVal)) && !isNaN(parseFloat(thresholdVal)) && !def.field.toLowerCase().includes('date')) {
-                  itemVal = parseFloat(itemVal);
-                  thresholdVal = parseFloat(thresholdVal);
-              } else if (def.type !== 'DATE_BEFORE') {
-                  itemVal = String(itemVal).toLowerCase();
-                  thresholdVal = String(thresholdVal).toLowerCase();
+              // Normalizing types for robust comparison
+              const isNumericField = ['purchaseCost', 'costPerSeat', 'seatCount', 'fitnessYears'].includes(def.field);
+              const isDateField = def.field.toLowerCase().includes('date') || def.field.toLowerCase().includes('expiry');
+
+              if (def.type === 'DATE_BEFORE') {
+                  if (!itemVal) return false;
+                  const itemDate = new Date(itemVal);
+                  itemDate.setHours(0, 0, 0, 0);
+                  const diffTime = itemDate.getTime() - today.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return diffDays <= parseInt(def.threshold);
               }
 
+              // Standard Comparisons
+              const valA = isNumericField ? parseFloat(itemVal) : String(itemVal).toLowerCase();
+              const valB = isNumericField ? parseFloat(thresholdVal) : String(thresholdVal).toLowerCase();
+
               switch (def.type) {
-                  case 'DATE_BEFORE': {
-                      if (!item[def.field]) return false;
-                      const targetDate = new Date();
-                      targetDate.setDate(today.getDate() + parseInt(def.threshold));
-                      const itemDate = new Date(item[def.field]);
-                      return itemDate > today && itemDate <= targetDate;
-                  }
-                  case 'EQUALS': return itemVal == thresholdVal;
-                  case 'NOT_EQUALS': return itemVal != thresholdVal;
-                  case 'GREATER_THAN': return itemVal > thresholdVal;
-                  case 'LESS_THAN': return itemVal < thresholdVal;
-                  case 'GTE': return itemVal >= thresholdVal;
-                  case 'LTE': return itemVal <= thresholdVal;
-                  case 'VALUE_EQUALS': return itemVal == thresholdVal;
-                  case 'NUMBER_BELOW': return itemVal < thresholdVal;
-                  default: return false;
+                  case 'EQUALS': 
+                  case 'VALUE_EQUALS':
+                      return valA === valB;
+                  case 'NOT_EQUALS': 
+                      return valA !== valB;
+                  case 'GREATER_THAN': 
+                      return valA > valB;
+                  case 'LESS_THAN': 
+                      return valA < valB;
+                  case 'GTE': 
+                      return valA >= valB;
+                  case 'LTE': 
+                      return valA <= valB;
+                  default: 
+                      return false;
               }
           });
 
@@ -72,29 +80,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
               alerts.push({
                   def,
                   count: matchingItems.length,
-                  items: matchingItems.slice(0, 3).map((i: any) => i.name || i.serviceName)
+                  items: matchingItems.map((i: any) => i.name || i.serviceName || i.ipAddress || 'Unnamed Asset')
               });
           }
       });
-      return alerts;
-  }, [alertDefinitions, hardware, software, network]);
 
-  // --- MAINTENANCE MONITOR ---
-  const maintenanceItems = useMemo(() => {
-      const hwMaint = hardware.filter(h => h.status === ItemStatus.MAINTENANCE);
-      const nwMaint = network.filter(n => n.status === ItemStatus.MAINTENANCE);
-      
-      const allMaint = [...hwMaint, ...nwMaint].map(item => {
-          const returnDate = item.maintenanceEndDate ? new Date(item.maintenanceEndDate) : null;
-          const isOverdue = returnDate && returnDate < today;
-          return { ...item, returnDate, isOverdue };
+      // Sort by high severity first
+      return alerts.sort((a, b) => {
+        const priorityMap = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        return priorityMap[b.def.severity] - priorityMap[a.def.severity];
       });
-      return allMaint.sort((a, b) => (a.returnDate?.getTime() || 0) - (b.returnDate?.getTime() || 0));
-  }, [hardware, network]);
+  }, [alertDefinitions, hardware, software, network, today]);
 
   // --- CHART DATA PREPARATION ---
-
-  // 1. Asset Value Over Time
   const timelineData = useMemo(() => {
       const points: Record<string, { date: string, Hardware: number, Software: number, Network: number }> = {};
       const processItem = (date: string | undefined, cost: number, type: 'Hardware'|'Software'|'Network') => {
@@ -107,7 +105,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
       hardware.forEach(h => processItem(h.purchaseDate, h.purchaseCost || 0, 'Hardware'));
       network.forEach(n => processItem(n.purchaseDate, n.purchaseCost || 0, 'Network'));
       
-      // Reflect Software Changes (AMC, Cloud, Training) in growth chart
       software.forEach(s => {
           const base = (s.seatCount || 0) * (s.costPerSeat || 0);
           const addOns = (s.amcEnabled ? (s.amcCost || 0) : 0) + 
@@ -127,7 +124,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
       });
   }, [hardware, software, network]);
 
-  // 2. Summary Values
   const totalHardwareCost = hardware.reduce((acc, item) => acc + (item.purchaseCost || 0), 0);
   const totalSoftwareCost = software.reduce((acc, s) => {
     const base = (s.seatCount || 0) * (s.costPerSeat || 0);
@@ -179,74 +175,111 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
 
       {/* ALERT & MONITOR WIDGETS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Active Custom Alerts */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-64 flex flex-col">
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center gap-2 shrink-0">
-                <Bell className="text-blue-600" size={20} />
-                <h3 className="font-bold text-slate-800">Active Custom Alerts</h3>
+        {/* Active Custom Alerts Widget - REFINED LIST FORMAT */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-[400px] flex flex-col">
+            <div className="p-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                    <ShieldAlert className="text-blue-600" size={20} />
+                    <h3 className="font-bold text-slate-800">Active Custom Alerts</h3>
+                </div>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-all ${activeAlerts.length > 0 ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-200 text-slate-500'}`}>
+                  {activeAlerts.length} Active
+                </span>
             </div>
-            <div className="overflow-y-auto p-4 space-y-3 flex-1">
-                {activeAlerts.length > 0 ? activeAlerts.map((alert, idx) => (
-                    <div key={idx} className={`p-3 rounded-xl border flex gap-3 items-center ${alert.def.severity === 'High' ? 'bg-red-50 border-red-100' : alert.def.severity === 'Medium' ? 'bg-orange-50 border-orange-100' : 'bg-blue-50 border-blue-100'}`}>
-                        <AlertTriangle size={18} className={`shrink-0 ${alert.def.severity === 'High' ? 'text-red-600' : alert.def.severity === 'Medium' ? 'text-orange-600' : 'text-blue-600'}`} />
-                        <div className="flex-1 min-w-0">
-                            <h4 className={`font-bold text-sm truncate ${alert.def.severity === 'High' ? 'text-red-900' : alert.def.severity === 'Medium' ? 'text-orange-900' : 'text-blue-900'}`}>
-                                {alert.def.name} ({alert.count})
-                            </h4>
-                        </div>
+            <div className="overflow-y-auto flex-1">
+                {activeAlerts.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                        {activeAlerts.map((alert, idx) => (
+                            <div key={idx} className="p-4 hover:bg-slate-50 transition-all group relative border-l-4 border-l-transparent">
+                                {/* Color stripe for severity */}
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${alert.def.severity === 'High' ? 'bg-red-500' : alert.def.severity === 'Medium' ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className={`p-2 rounded-lg shrink-0 mt-1 ${alert.def.severity === 'High' ? 'bg-red-50 text-red-600' : alert.def.severity === 'Medium' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+                                        {alert.def.module === 'Hardware' ? <Monitor size={20} /> : alert.def.module === 'Software' ? <Disc size={20}/> : <Wifi size={20}/>}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-bold text-slate-900 truncate leading-none">{alert.def.name}</h4>
+                                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${alert.def.module === 'Hardware' ? 'bg-blue-50 text-blue-700 border-blue-100' : alert.def.module === 'Software' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
+                                                {alert.def.module}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold mb-2 uppercase tracking-tight">
+                                            Logic: <span className="font-mono text-blue-600 bg-blue-50/50 px-1 rounded">{alert.def.field} {alert.def.type === 'DATE_BEFORE' ? 'Due ≤' : alert.def.type === 'EQUALS' ? '==' : alert.def.type} {alert.def.threshold}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {alert.items.slice(0, 3).map((item, i) => (
+                                                <span key={i} className="text-[10px] bg-white text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-medium truncate max-w-[120px]">
+                                                    {item}
+                                                </span>
+                                            ))}
+                                            {alert.items.length > 3 && (
+                                                <span className="text-[10px] text-slate-400 font-bold px-1">+ {alert.items.length - 3} more</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <div className="text-xl font-black text-slate-900 leading-none">{alert.count}</div>
+                                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Matches</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                )) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                        <CheckCircle2 size={32} className="text-green-500 mb-2 opacity-50" />
-                        <p className="text-sm font-medium">System Healthy. No active alerts.</p>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8">
+                        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                            <CheckCircle2 size={32} className="text-green-500 opacity-60" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">No Alerts Active</p>
+                        <p className="text-xs mt-1 text-center">Your infrastructure is currently within all defined rule thresholds.</p>
                     </div>
                 )}
             </div>
         </div>
 
         {/* Maintenance Monitor */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-64 flex flex-col">
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-[400px] flex flex-col">
+            <div className="p-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                     <Wrench className="text-orange-600" size={20} />
                     <h3 className="font-bold text-slate-800">Maintenance Monitor</h3>
                 </div>
-                <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-bold">{maintenanceItems.length} Active</span>
             </div>
             <div className="overflow-y-auto p-0 flex-1">
-                {maintenanceItems.length > 0 ? (
+                {hardware.filter(h => h.status === ItemStatus.MAINTENANCE).length > 0 ? (
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase sticky top-0 border-b">
                             <tr>
-                                <th className="px-4 py-2">Device</th>
-                                <th className="px-4 py-2">Vendor</th>
-                                <th className="px-4 py-2 text-right">Expected Return</th>
+                                <th className="px-5 py-3">Device</th>
+                                <th className="px-5 py-3">Vendor</th>
+                                <th className="px-5 py-3 text-right">Target Date</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {maintenanceItems.map((item: any) => (
-                                <tr key={item.id} className={item.isOverdue ? 'bg-red-50' : ''}>
-                                    <td className="px-4 py-3">
+                            {hardware.filter(h => h.status === ItemStatus.MAINTENANCE).map((item) => (
+                                <tr key={item.id} className="hover:bg-slate-50">
+                                    <td className="px-5 py-4">
                                         <div className="font-bold text-slate-800">{item.name}</div>
-                                        <div className="text-[10px] text-slate-500 uppercase">{item.manufacturer}</div>
+                                        <div className="text-[10px] text-slate-500 uppercase font-medium">{item.category}</div>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs">
-                                        {item.vendorName || 'N/A'}
+                                    <td className="px-5 py-4 text-slate-600 text-xs font-medium">
+                                        {item.vendorName || 'Internal'}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className={`font-mono text-xs font-bold ${item.isOverdue ? 'text-red-600' : 'text-slate-700'}`}>
-                                            {item.maintenanceEndDate || 'No Date'}
+                                    <td className="px-5 py-4 text-right">
+                                        <div className="font-mono text-xs font-black text-orange-600 bg-orange-50 px-2 py-1 rounded inline-block">
+                                            {item.maintenanceEndDate || 'N/A'}
                                         </div>
-                                        {item.isOverdue && <div className="text-[10px] text-red-500 font-bold uppercase">Overdue</div>}
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 p-6 opacity-40">
-                        <Wrench size={40} className="mb-2" />
-                        <p className="text-sm font-medium">No items currently under maintenance.</p>
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 opacity-40">
+                        <Wrench size={48} className="mb-4" />
+                        <p className="text-sm font-bold uppercase tracking-widest">No Maintenance Pending</p>
                     </div>
                 )}
             </div>
@@ -257,7 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ hardware, software, networ
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
           <h3 className="text-lg font-bold text-slate-800 mb-8 flex items-center gap-2">
             <TrendingUp size={20} className="text-emerald-500"/>
-            Cumulative Asset Value Growth
+            Cumulative Asset Value Growth (Incl. Software Add-ons)
           </h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
