@@ -97,7 +97,6 @@ export const apiService = {
   checkHealth: async () =>
     request<{ status: string }>(`${getApiBase()}/health`),
 
-  // Required by App.tsx
   checkHealthDetailed: async (): Promise<{ status: string, message: string }> => {
     try {
         const res = await fetch(`${getApiBase()}/health`, { 
@@ -254,7 +253,6 @@ export const apiService = {
       body: JSON.stringify(payload),
     }),
 
-  // Required by PostgresHelp.tsx
   initializeDatabase: async (): Promise<{ message: string }> => 
     request<{ message: string }>(`${getApiBase()}/admin/initialize`, { method: 'POST' }),
 };
