@@ -1,0 +1,68 @@
+# .gitlab-ci.yml
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  # Define the directory where your Next.js application is located relative to the repository root.
+  # If your package.json is in the root, you can set this to '.'
+  # Based on your folder structure, it seems the Next.js app is in the root.
+  NEXTJS_APP_DIR: "."
+  NODE_VERSION: "20.x" # You can specify your desired Node.js version here
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - ${NEXTJS_APP_DIR}/node_modules/
+    - .npm/
+  policy: pull-push
+
+build_job:
+  stage: build
+  image: node:${NODE_VERSION}-slim # Use a lightweight Node.js image
+  script:
+    - cd ${NEXTJS_APP_DIR}
+    - npm ci --cache .npm --prefer-offline # Use npm ci for clean installs in CI
+    - npm run build
+  artifacts:
+    paths:
+      - ${NEXTJS_APP_DIR}/.next/ # Capture the build output
+      - ${NEXTJS_APP_DIR}/public/ # Also capture public assets if needed for deployment
+    expire_in: 1 day # Adjust as necessary
+  only:
+    - cicd # Only run this job on the 'cicd' branch
+
+# test_job:
+#   stage: test
+#   image: node:${NODE_VERSION}-slim
+#   script:
+#     - cd ${NEXTJS_APP_DIR}
+#     # You'll need to configure your test command here once you have a testing framework set up.
+#     # For example, if you use Jest:
+#     # - npm test
+#     - echo "No test command specified in package.json. Skipping test stage."
+#     - echo "Please add a 'test' script to your package.json or uncomment and modify this section."
+#   dependencies:
+#     - build_job # Ensure tests run after a successful build
+#   only:
+#     - cicd
+
+deploy_job:
+  stage: deploy
+  image: docker:latest # Or an image with AWS CLI/specific deployment tools
+  services:
+    - docker:dind
+  script:
+    - echo "--- Deployment Placeholder ---"
+    - echo "This is a placeholder for your deployment steps to Amazon Linux."
+    - echo "You will need to install AWS CLI or other necessary tools here."
+    - echo "Example: (replace with your actual deployment logic)"
+    - echo "# aws s3 sync ${NEXTJS_APP_DIR}/.next/static s3://your-s3-bucket/static --delete"
+    - echo "# aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths '/*'"
+    - echo "Remember to configure AWS credentials in GitLab CI/CD variables (e.g., AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)."
+  dependencies:
+    - build_job # Ensure deployment uses the built artifacts
+  when: manual # This job will require a manual trigger in GitLab
+  only:
+    - cicd # Only make this job available on the 'cicd' branch
