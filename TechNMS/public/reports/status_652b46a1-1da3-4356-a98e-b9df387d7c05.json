@@ -1,0 +1,1648 @@
+{
+  "jobId": "652b46a1-1da3-4356-a98e-b9df387d7c05",
+  "status": "DONE",
+  "progress": 100,
+  "fileName": "history_data_1770270061918.csv",
+  "fileUrl": "/reports/history_data_1770270061918.csv",
+  "error": null,
+  "data": [
+    {
+      "Hostname": "BR-C002-MAIN",
+      "Memory utilization": 69.49,
+      "CPU utilization": 47.07,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "77.13 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "132.69 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "308.20 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "75.17 Kbps"
+    },
+    {
+      "Hostname": "BR-C003-NPADA",
+      "Memory utilization": 52.84,
+      "CPU utilization": 50.51,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "194.68 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "505.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "2.42 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "421.49 Kbps"
+    },
+    {
+      "Hostname": "BR-C004-WGEST",
+      "Memory utilization": 57.35,
+      "CPU utilization": 47.84,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "100.69 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "183.14 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "287.31 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "51.13 Kbps"
+    },
+    {
+      "Hostname": "BR-C005-RABOD",
+      "Memory utilization": 69.39,
+      "CPU utilization": 45.99,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "72.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "176.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "287.73 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "65.48 Kbps"
+    },
+    {
+      "Hostname": "BR-C006-KOPRI",
+      "Memory utilization": 56.6,
+      "CPU utilization": 47.47,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "80.43 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "144.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "293.74 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "65.39 Kbps"
+    },
+    {
+      "Hostname": "BR-C007-VRTNG",
+      "Memory utilization": 53.34,
+      "CPU utilization": 46.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "90.23 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "189.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "352.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "79.44 Kbps"
+    },
+    {
+      "Hostname": "BR-C008-PCPKD",
+      "Memory utilization": 66.3,
+      "CPU utilization": 46.9,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "85.30 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "203.51 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "224.69 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "74.32 Kbps"
+    },
+    {
+      "Hostname": "BR-C009-KHOPT",
+      "Memory utilization": 69.34,
+      "CPU utilization": 48.18,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "77.86 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "138.44 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "198.53 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "65.66 Kbps"
+    },
+    {
+      "Hostname": "BR-C010-AIRLI",
+      "Memory utilization": 55.91,
+      "CPU utilization": 46.11,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "77.58 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "240.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "61.64 Kbps"
+    },
+    {
+      "Hostname": "BR-C011-SHRNG",
+      "Memory utilization": 58.34,
+      "CPU utilization": 49.99,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "62.67 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "250.43 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "261.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "212.49 Kbps"
+    },
+    {
+      "Hostname": "BR-C012-VAS17",
+      "Memory utilization": 58.6,
+      "CPU utilization": 46.04,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "0.09 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "318.65 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "98.08 Kbps"
+    },
+    {
+      "Hostname": "BR-C013-MULUW",
+      "Memory utilization": 58.88,
+      "CPU utilization": 47.26,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "44.39 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "197.94 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "99.56 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "63.05 Kbps"
+    },
+    {
+      "Hostname": "BR-C014-KALWA",
+      "Memory utilization": 65.33,
+      "CPU utilization": 47.61,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "58.92 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "118.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "101.82 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "47.71 Kbps"
+    },
+    {
+      "Hostname": "BR-C015-GKPE",
+      "Memory utilization": 59.87,
+      "CPU utilization": 47.41,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "54.83 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "103.45 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "179.50 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "82.77 Kbps"
+    },
+    {
+      "Hostname": "BR-C016-SHRPR",
+      "Memory utilization": 63.32,
+      "CPU utilization": 47.25,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "44.81 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "105.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "176.13 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "66.97 Kbps"
+    },
+    {
+      "Hostname": "BR-C017-DECAN",
+      "Memory utilization": 64.58,
+      "CPU utilization": 47.28,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "48.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "191.22 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "278.93 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "85.96 Kbps"
+    },
+    {
+      "Hostname": "BR-C018-SDPET",
+      "Memory utilization": 57.63,
+      "CPU utilization": 46.21,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.66 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "71.46 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "117.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "42.66 Kbps"
+    },
+    {
+      "Hostname": "BR-C019-VILEP",
+      "Memory utilization": 53.93,
+      "CPU utilization": 46.77,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "50.17 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "81.37 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "280.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "76.97 Kbps"
+    },
+    {
+      "Hostname": "BR-C020-DOMBE",
+      "Memory utilization": 54.53,
+      "CPU utilization": 46.53,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "51.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "179.66 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "97.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "53.90 Kbps"
+    },
+    {
+      "Hostname": "BR-C021-GANGA",
+      "Memory utilization": 54.97,
+      "CPU utilization": 46.98,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "51.10 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "84.83 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "204.32 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.70 Kbps"
+    },
+    {
+      "Hostname": "BR-C022-GHODB",
+      "Memory utilization": 68.51,
+      "CPU utilization": 47.84,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "63.90 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "111.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "259.61 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "64.74 Kbps"
+    },
+    {
+      "Hostname": "BR-C023-GOREG",
+      "Memory utilization": 70.67,
+      "CPU utilization": 46.69,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "37.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "69.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "103.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "46.15 Kbps"
+    },
+    {
+      "Hostname": "BR-C024-BORIW",
+      "Memory utilization": 54.17,
+      "CPU utilization": 47.38,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.01 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "74.45 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "114.51 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "45.25 Kbps"
+    },
+    {
+      "Hostname": "BR-C025-NARHE",
+      "Memory utilization": 70.27,
+      "CPU utilization": 47.16,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.41 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "57.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "180.72 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "36.15 Kbps"
+    },
+    {
+      "Hostname": "BR-C028-YERWD",
+      "Memory utilization": 57.54,
+      "CPU utilization": 45.55,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "70.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "87.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "32.89 Kbps"
+    },
+    {
+      "Hostname": "BR-C029-ALAND",
+      "Memory utilization": 64.81,
+      "CPU utilization": 45.6,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.42 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "77.96 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "104.89 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.88 Kbps"
+    },
+    {
+      "Hostname": "BR-C031-CHCWD",
+      "Memory utilization": 46.54,
+      "CPU utilization": 47.28,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "49.94 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "93.62 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "175.38 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "54.12 Kbps"
+    },
+    {
+      "Hostname": "BR-C032-DEHRD",
+      "Memory utilization": 51.75,
+      "CPU utilization": 47.21,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.99 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "98.94 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "116.44 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "77.02 Kbps"
+    },
+    {
+      "Hostname": "BR-C034-BHSRI",
+      "Memory utilization": 57.89,
+      "CPU utilization": 48.19,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "64.25 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "134.28 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "411.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "148.44 Kbps"
+    },
+    {
+      "Hostname": "BR-C035-PMPRI",
+      "Memory utilization": 69.82,
+      "CPU utilization": 46.75,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "92.83 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "120.91 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "54.95 Kbps"
+    },
+    {
+      "Hostname": "BR-C036-MYARD",
+      "Memory utilization": 55.87,
+      "CPU utilization": 46.81,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "46.39 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "104.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "248.04 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "64.91 Kbps"
+    },
+    {
+      "Hostname": "BR-C037-CHAKN",
+      "Memory utilization": 56.9,
+      "CPU utilization": 46.61,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "44.69 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "85.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "72.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.72 Kbps"
+    },
+    {
+      "Hostname": "BR-C038-THRGN",
+      "Memory utilization": 63.6,
+      "CPU utilization": 46.24,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "28.92 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "101.60 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "106.14 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "52.73 Kbps"
+    },
+    {
+      "Hostname": "BR-C040-NIGDI",
+      "Memory utilization": 55.51,
+      "CPU utilization": 46.09,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "54.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "115.72 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "212.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "33.87 Kbps"
+    },
+    {
+      "Hostname": "BR-C042-MSLCL",
+      "Memory utilization": 60.93,
+      "CPU utilization": 46.82,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.75 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "93.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "87.65 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.35 Kbps"
+    },
+    {
+      "Hostname": "BR-C044-SMBNG",
+      "Memory utilization": 54.75,
+      "CPU utilization": 45.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "46.73 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "141.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "143.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "46.05 Kbps"
+    },
+    {
+      "Hostname": "BR-C045-AMBAD",
+      "Memory utilization": 58.71,
+      "CPU utilization": 47.41,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "61.28 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "132.61 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "448.29 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "82.56 Kbps"
+    },
+    {
+      "Hostname": "BR-C046-POKRN",
+      "Memory utilization": 52.78,
+      "CPU utilization": 47.75,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "93.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "165.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "203.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "83.68 Kbps"
+    },
+    {
+      "Hostname": "BR-C047-BHWDI",
+      "Memory utilization": 50.85,
+      "CPU utilization": 47.49,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "66.36 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "127.61 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "133.21 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "43.36 Kbps"
+    },
+    {
+      "Hostname": "BR-C048-CHMBR",
+      "Memory utilization": 57.76,
+      "CPU utilization": 47.14,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "43.83 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "84.25 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "123.25 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "65.14 Kbps"
+    },
+    {
+      "Hostname": "BR-C049-NPNVL-NEW",
+      "Memory utilization": 52.08,
+      "CPU utilization": 44.9,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "54.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "107.29 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.90 Kbps"
+    },
+    {
+      "Hostname": "BR-C050-IDRNG",
+      "Memory utilization": 63.05,
+      "CPU utilization": 47.83,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "52.07 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "98.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "220.33 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "47.36 Kbps"
+    },
+    {
+      "Hostname": "BR-C051-CHRKP",
+      "Memory utilization": 57.53,
+      "CPU utilization": 46.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "46.25 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "183.41 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "104.23 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.16 Kbps"
+    },
+    {
+      "Hostname": "BR-C052-AMBTH",
+      "Memory utilization": 56.8,
+      "CPU utilization": 46.27,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "31.37 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "69.25 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "214.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "69.93 Kbps"
+    },
+    {
+      "Hostname": "BR-C053-BHNDP",
+      "Memory utilization": 54.67,
+      "CPU utilization": 46.53,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "52.89 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "172.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "125.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "42.02 Kbps"
+    },
+    {
+      "Hostname": "BR-C054-MIRRD",
+      "Memory utilization": 56.63,
+      "CPU utilization": 45.97,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "53.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "203.36 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "43.73 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "21.06 Kbps"
+    },
+    {
+      "Hostname": "BR-C055-SATRA",
+      "Memory utilization": 51.62,
+      "CPU utilization": 45.78,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.07 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "60.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "113.59 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "41.06 Kbps"
+    },
+    {
+      "Hostname": "BR-C056-WNWDI",
+      "Memory utilization": 70.62,
+      "CPU utilization": 46.4,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.93 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "58.58 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "208.59 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.72 Kbps"
+    },
+    {
+      "Hostname": "BR-C057-KTHRD",
+      "Memory utilization": 62.86,
+      "CPU utilization": 47.79,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "135.45 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "150.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "54.32 Kbps"
+    },
+    {
+      "Hostname": "BR-C058-KLYNR",
+      "Memory utilization": 52.84,
+      "CPU utilization": 45.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "51.58 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "105.64 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "238.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "51.74 Kbps"
+    },
+    {
+      "Hostname": "BR-C059-BDLPR",
+      "Memory utilization": 57.55,
+      "CPU utilization": 48.02,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "58.91 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "94.66 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "238.94 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "46.90 Kbps"
+    },
+    {
+      "Hostname": "BR-C070-RVKRJ",
+      "Memory utilization": 52,
+      "CPU utilization": 47.37,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.37 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "61.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "101.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "32.23 Kbps"
+    },
+    {
+      "Hostname": "BR-C071-ANDRI",
+      "Memory utilization": 52.25,
+      "CPU utilization": 46.29,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "54.12 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "91.74 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "205.66 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "75.11 Kbps"
+    },
+    {
+      "Hostname": "BR-C072-VAS12",
+      "Memory utilization": 57.38,
+      "CPU utilization": 47.17,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.09 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "54.60 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "145.97 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "46.70 Kbps"
+    },
+    {
+      "Hostname": "BR-C073-PTLPD",
+      "Memory utilization": 51.91,
+      "CPU utilization": 46.01,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "46.86 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "91.20 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "242.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "51.08 Kbps"
+    },
+    {
+      "Hostname": "BR-C074-MAPSA",
+      "Memory utilization": 53.82,
+      "CPU utilization": 46.44,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "41.22 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "70.29 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "198.57 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "49.37 Kbps"
+    },
+    {
+      "Hostname": "BR-C075-KRWDL",
+      "Memory utilization": 70.23,
+      "CPU utilization": 47.55,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.30 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "70.27 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "186.20 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "62.44 Kbps"
+    },
+    {
+      "Hostname": "BR-C076-BELGN",
+      "Memory utilization": 62.15,
+      "CPU utilization": 48.11,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "26.10 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "47.09 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "186.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "51.24 Kbps"
+    },
+    {
+      "Hostname": "BR-C077-ARGBD",
+      "Memory utilization": 57.41,
+      "CPU utilization": 45.94,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "46.91 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "56.46 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "102.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.42 Kbps"
+    },
+    {
+      "Hostname": "BR-C078-DADAR",
+      "Memory utilization": 53.93,
+      "CPU utilization": 45.77,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "54.50 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "283.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "52.53 Kbps"
+    },
+    {
+      "Hostname": "BR-C079-LATUR",
+      "Memory utilization": 70.49,
+      "CPU utilization": 47.07,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "36.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "52.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "118.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.09 Kbps"
+    },
+    {
+      "Hostname": "BR-C080-KLHPR",
+      "Memory utilization": 60.04,
+      "CPU utilization": 45.08,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.80 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "55.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "101.31 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.41 Kbps"
+    },
+    {
+      "Hostname": "BR-C081-SGDRD",
+      "Memory utilization": 69.32,
+      "CPU utilization": 45.23,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "54.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "60.58 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "29.92 Kbps"
+    },
+    {
+      "Hostname": "BR-C082-NAGPUR",
+      "Memory utilization": 59.54,
+      "CPU utilization": 48.28,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "62.89 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "99.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "248.30 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "72.66 Kbps"
+    },
+    {
+      "Hostname": "BR-C083-RABLE",
+      "Memory utilization": 56.81,
+      "CPU utilization": 45.67,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "72.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "120.05 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "60.63 Kbps"
+    },
+    {
+      "Hostname": "BR-C084-DNKWD",
+      "Memory utilization": 58.56,
+      "CPU utilization": 45.17,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.64 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "57.32 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "159.43 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "40.63 Kbps"
+    },
+    {
+      "Hostname": "BR-C085-CHPLN",
+      "Memory utilization": 58.91,
+      "CPU utilization": 47,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.43 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "57.58 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "212.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "40.32 Kbps"
+    },
+    {
+      "Hostname": "BR-C086-JALNA",
+      "Memory utilization": 68.65,
+      "CPU utilization": 45.9,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "24.96 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "47.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "90.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "38.46 Kbps"
+    },
+    {
+      "Hostname": "BR-C087-SANGL",
+      "Memory utilization": 68.18,
+      "CPU utilization": 47.18,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "32.36 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "89.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "84.67 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "37.28 Kbps"
+    },
+    {
+      "Hostname": "BR-C088-KDKPD",
+      "Memory utilization": 70.57,
+      "CPU utilization": 47.32,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "68.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "128.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "43.14 Kbps"
+    },
+    {
+      "Hostname": "BR-C089-CHDVL",
+      "Memory utilization": 51.76,
+      "CPU utilization": 45.66,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "81.46 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "199.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "58.07 Kbps"
+    },
+    {
+      "Hostname": "BR-C090-BOISR",
+      "Memory utilization": 57.04,
+      "CPU utilization": 45.58,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "31.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "53.64 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "117.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "37.92 Kbps"
+    },
+    {
+      "Hostname": "BR-C091-KUDUS",
+      "Memory utilization": 60.92,
+      "CPU utilization": 47.28,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "41.27 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "53.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "145.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "41.16 Kbps"
+    },
+    {
+      "Hostname": "BR-C092-PHNDA",
+      "Memory utilization": 58.62,
+      "CPU utilization": 47.71,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "45.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "88.75 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "205.46 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "48.14 Kbps"
+    },
+    {
+      "Hostname": "BR-C093-MDGON",
+      "Memory utilization": 54.02,
+      "CPU utilization": 45.86,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "40.13 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "170.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "93.90 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "50.49 Kbps"
+    },
+    {
+      "Hostname": "BR-C094-MHTNG",
+      "Memory utilization": 60.28,
+      "CPU utilization": 45.39,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "30.18 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "115.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "62.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "41.98 Kbps"
+    },
+    {
+      "Hostname": "BR-C095-PEN",
+      "Memory utilization": 58.5,
+      "CPU utilization": 46.06,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.27 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "58.24 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "207.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "44.59 Kbps"
+    },
+    {
+      "Hostname": "BR-C096-AKOLA",
+      "Memory utilization": 51.28,
+      "CPU utilization": 47.87,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "43.36 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "98.68 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "115.05 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "36.64 Kbps"
+    },
+    {
+      "Hostname": "BR-C097-SLPUR",
+      "Memory utilization": 58.11,
+      "CPU utilization": 46.56,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "58.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "152.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "51.04 Kbps"
+    },
+    {
+      "Hostname": "BR-C098-SURAT",
+      "Memory utilization": 65.02,
+      "CPU utilization": 47.66,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "70.64 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "157.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "185.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "75.33 Kbps"
+    },
+    {
+      "Hostname": "BR-C099-VDDRA",
+      "Memory utilization": 69.84,
+      "CPU utilization": 45.64,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "64.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "207.56 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "58.98 Kbps"
+    },
+    {
+      "Hostname": "BR-C100-AHMBD",
+      "Memory utilization": 58.76,
+      "CPU utilization": 45.43,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.15 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "44.99 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "83.21 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "31.88 Kbps"
+    },
+    {
+      "Hostname": "BR-C101-JYNGR",
+      "Memory utilization": 44.8,
+      "CPU utilization": 45.24,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "66.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "115.26 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "25.95 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "13.33 Kbps"
+    },
+    {
+      "Hostname": "BR-C103-LOSWD",
+      "Memory utilization": 53.07,
+      "CPU utilization": 49.72,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "129.53 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "401.51 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "484.17 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "85.31 Kbps"
+    },
+    {
+      "Hostname": "BR-C104-DOMBW",
+      "Memory utilization": 59.93,
+      "CPU utilization": 46.7,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "52.39 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "85.57 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "92.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.99 Kbps"
+    },
+    {
+      "Hostname": "BR-C105-SHPUR",
+      "Memory utilization": 70.2,
+      "CPU utilization": 45.38,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "30.04 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "50.82 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "116.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "38.79 Kbps"
+    },
+    {
+      "Hostname": "BR-C106-MULUE",
+      "Memory utilization": 62.28,
+      "CPU utilization": 47,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.99 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "102.68 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "196.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "66.55 Kbps"
+    },
+    {
+      "Hostname": "BR-C108-ULNGR",
+      "Memory utilization": 66.52,
+      "CPU utilization": 47.62,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "132.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "172.44 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "53.36 Kbps"
+    },
+    {
+      "Hostname": "BR-C109-HUBLI",
+      "Memory utilization": 70.33,
+      "CPU utilization": 45.33,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.56 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "67.36 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "84.17 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "38.92 Kbps"
+    },
+    {
+      "Hostname": "BR-C110-KRVNG",
+      "Memory utilization": 56.8,
+      "CPU utilization": 47.65,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.64 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "67.12 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "197.07 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "48.47 Kbps"
+    },
+    {
+      "Hostname": "BR-C111-RAJKT",
+      "Memory utilization": 70.71,
+      "CPU utilization": 46.29,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "43.68 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "128.01 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "195.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "96.53 Kbps"
+    },
+    {
+      "Hostname": "BR-C112-STRTM",
+      "Memory utilization": 69.96,
+      "CPU utilization": 47.35,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "41.80 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "61.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "106.10 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.80 Kbps"
+    },
+    {
+      "Hostname": "BR-C113-AHDNG",
+      "Memory utilization": 70.28,
+      "CPU utilization": 46.24,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "81.32 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "138.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "60.60 Kbps"
+    },
+    {
+      "Hostname": "BR-C114-NNDED",
+      "Memory utilization": 70.32,
+      "CPU utilization": 47.45,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "32.67 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "56.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "119.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "42.41 Kbps"
+    },
+    {
+      "Hostname": "BR-C115-RJJNG",
+      "Memory utilization": 58.09,
+      "CPU utilization": 45.83,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "33.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "43.39 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "87.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "30.06 Kbps"
+    },
+    {
+      "Hostname": "BR-C116-PRJNG",
+      "Memory utilization": 58.48,
+      "CPU utilization": 45.82,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "41.96 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "112.75 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "240.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "33.36 Kbps"
+    },
+    {
+      "Hostname": "BR-C117-CNAVE",
+      "Memory utilization": 65.26,
+      "CPU utilization": 47.78,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "54.42 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "196.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "50.26 Kbps"
+    },
+    {
+      "Hostname": "BR-C118-PRHNG",
+      "Memory utilization": 70.14,
+      "CPU utilization": 47.92,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.13 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "256.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "105.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "66.68 Kbps"
+    },
+    {
+      "Hostname": "BR-C119-ICLKR",
+      "Memory utilization": 57.5,
+      "CPU utilization": 46.31,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "25.72 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "52.62 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "70.13 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "43.83 Kbps"
+    },
+    {
+      "Hostname": "BR-C120-AMRVT",
+      "Memory utilization": 63.32,
+      "CPU utilization": 47.68,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "63.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "179.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "42.47 Kbps"
+    },
+    {
+      "Hostname": "BR-C121-DHKLI",
+      "Memory utilization": 70.76,
+      "CPU utilization": 46.72,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "116.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "295.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "40.43 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "12.66 Kbps"
+    },
+    {
+      "Hostname": "BR-C122-TRBPK",
+      "Memory utilization": 58.36,
+      "CPU utilization": 45.64,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "36.73 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "55.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "102.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "32.53 Kbps"
+    },
+    {
+      "Hostname": "BR-C124-VKRLI",
+      "Memory utilization": 70.61,
+      "CPU utilization": 45.84,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "88.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "121.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "208.58 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "52.19 Kbps"
+    },
+    {
+      "Hostname": "BR-C125-DHSAR",
+      "Memory utilization": 70.01,
+      "CPU utilization": 47.23,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.61 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "59.09 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "98.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "34.85 Kbps"
+    },
+    {
+      "Hostname": "BR-C126-SKWRPT",
+      "Memory utilization": 53.24,
+      "CPU utilization": 46.69,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "57.89 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "101.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "37.49 Kbps"
+    },
+    {
+      "Hostname": "BR-C127-MJLPUR",
+      "Memory utilization": 52.05,
+      "CPU utilization": 47.32,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "21.66 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "33.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "112.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "66.65 Kbps"
+    },
+    {
+      "Hostname": "BR-C128-TITWL",
+      "Memory utilization": 69.43,
+      "CPU utilization": 46.76,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "49.42 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "82.91 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "212.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "44.28 Kbps"
+    },
+    {
+      "Hostname": "BR-C129-MMBRA",
+      "Memory utilization": 57.83,
+      "CPU utilization": 47.63,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "95.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "125.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "50.20 Kbps"
+    },
+    {
+      "Hostname": "BR-C130-BELVL",
+      "Memory utilization": 69.69,
+      "CPU utilization": 46.14,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "45.41 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "68.46 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "200.92 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "40.15 Kbps"
+    },
+    {
+      "Hostname": "BR-C131-VAPI",
+      "Memory utilization": 63.63,
+      "CPU utilization": 45.41,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "37.62 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "59.72 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "168.72 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "44.82 Kbps"
+    },
+    {
+      "Hostname": "BR-C132-SINNR",
+      "Memory utilization": 53.77,
+      "CPU utilization": 47,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "30.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "51.41 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "76.42 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "38.57 Kbps"
+    },
+    {
+      "Hostname": "BR-C133-NLSPR",
+      "Memory utilization": 65.18,
+      "CPU utilization": 52.84,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "140.13 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "261.21 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "2.12 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.17 Kbps"
+    },
+    {
+      "Hostname": "BR-C134-VIRAR",
+      "Memory utilization": 58.43,
+      "CPU utilization": 45.54,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "33.38 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "62.95 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "220.72 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "57.71 Kbps"
+    },
+    {
+      "Hostname": "BR-C135-PLGHR",
+      "Memory utilization": 56.07,
+      "CPU utilization": 46.1,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "73.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "220.90 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "22.46 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "15.00 Kbps"
+    },
+    {
+      "Hostname": "BR-C136-MORBI",
+      "Memory utilization": 55.48,
+      "CPU utilization": 45.68,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "37.90 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "64.96 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "51.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "27.68 Kbps"
+    },
+    {
+      "Hostname": "BR-C137-SANPD",
+      "Memory utilization": 70.11,
+      "CPU utilization": 46.94,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "78.12 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "94.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "245.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "58.74 Kbps"
+    },
+    {
+      "Hostname": "BR-C138-SENBP",
+      "Memory utilization": 65.02,
+      "CPU utilization": 46.82,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.24 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "48.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "101.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.44 Kbps"
+    },
+    {
+      "Hostname": "BR-C139-RAVET",
+      "Memory utilization": 70.17,
+      "CPU utilization": 46.2,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.44 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "127.07 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "65.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "40.16 Kbps"
+    },
+    {
+      "Hostname": "BR-C140-VASCO",
+      "Memory utilization": 55.77,
+      "CPU utilization": 47.56,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "143.88 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "168.30 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "54.57 Kbps"
+    },
+    {
+      "Hostname": "BR-C141-KRWAR",
+      "Memory utilization": 57.56,
+      "CPU utilization": 46.78,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.32 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "135.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "96.34 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "40.45 Kbps"
+    },
+    {
+      "Hostname": "BR-C143-KMOTH",
+      "Memory utilization": 59.03,
+      "CPU utilization": 45.91,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "28.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "70.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "79.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "34.72 Kbps"
+    },
+    {
+      "Hostname": "BR-C144-PURNA",
+      "Memory utilization": 65.14,
+      "CPU utilization": 45.54,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "37.89 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "76.51 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "186.77 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "40.11 Kbps"
+    },
+    {
+      "Hostname": "BR-C146-GANDHI",
+      "Memory utilization": 53.1,
+      "CPU utilization": 46.94,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.51 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "59.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "195.27 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "44.89 Kbps"
+    },
+    {
+      "Hostname": "BR-C147-MJWAD",
+      "Memory utilization": 51.16,
+      "CPU utilization": 45.59,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "36.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "87.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "177.41 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "46.86 Kbps"
+    },
+    {
+      "Hostname": "BR-C148-NSKRD",
+      "Memory utilization": 67.53,
+      "CPU utilization": 45.24,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.27 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "63.94 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "53.31 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "32.15 Kbps"
+    },
+    {
+      "Hostname": "BR-C149-BORIE",
+      "Memory utilization": 56.33,
+      "CPU utilization": 46.44,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "41.80 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "63.41 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "199.67 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.09 Kbps"
+    },
+    {
+      "Hostname": "BR-C150-VRCRD",
+      "Memory utilization": 58.38,
+      "CPU utilization": 45.44,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "36.22 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "62.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "186.34 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "48.12 Kbps"
+    },
+    {
+      "Hostname": "BR-C151-PMPGV",
+      "Memory utilization": 54.5,
+      "CPU utilization": 47.41,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "63.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "204.05 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.09 Kbps"
+    },
+    {
+      "Hostname": "BR-C152-MURBD",
+      "Memory utilization": 52.98,
+      "CPU utilization": 47.44,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "35.81 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "112.42 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "113.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "41.71 Kbps"
+    },
+    {
+      "Hostname": "BR-C153-KARAD",
+      "Memory utilization": 64.6,
+      "CPU utilization": 46.89,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "49.50 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "110.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "184.05 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "48.30 Kbps"
+    },
+    {
+      "Hostname": "BR-C154-INDBG",
+      "Memory utilization": 59.49,
+      "CPU utilization": 45.64,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "25.38 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "39.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "151.30 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "39.45 Kbps"
+    },
+    {
+      "Hostname": "BR-C155-C83K-RMRBR",
+      "Memory utilization": 76.27,
+      "CPU utilization": 18.65,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "592.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "1.81 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.00 Kbps"
+    },
+    {
+      "Hostname": "BR-C156-INDOR",
+      "Memory utilization": 58.25,
+      "CPU utilization": 45.55,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "31.10 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "76.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "120.81 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "38.80 Kbps"
+    },
+    {
+      "Hostname": "BR-C157-YAVAT",
+      "Memory utilization": 56.2,
+      "CPU utilization": 47.82,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "60.96 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "68.33 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "95.83 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "36.20 Kbps"
+    },
+    {
+      "Hostname": "BR-C158-RD33",
+      "Memory utilization": 70.42,
+      "CPU utilization": 46.19,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "52.29 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "451.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "288.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "57.24 Kbps"
+    },
+    {
+      "Hostname": "BR-C159-MTHGN",
+      "Memory utilization": 51.77,
+      "CPU utilization": 52.65,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "56.99 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "103.53 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "0.17 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.09 Kbps"
+    },
+    {
+      "Hostname": "BR-C160-UJJAN",
+      "Memory utilization": 52.38,
+      "CPU utilization": 50.33,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "32.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "34.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "122.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "48.04 Kbps"
+    },
+    {
+      "Hostname": "BR-C161-THKRL",
+      "Memory utilization": 52.18,
+      "CPU utilization": 50.72,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "48.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "90.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "20.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "4.44 Kbps"
+    },
+    {
+      "Hostname": "BR-C162-YLHNK",
+      "Memory utilization": 55.8,
+      "CPU utilization": 47.6,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "81.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "191.45 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "0.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.09 Kbps"
+    },
+    {
+      "Hostname": "BR-C171-KARJT",
+      "Memory utilization": 59.34,
+      "CPU utilization": 45.72,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.29 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "52.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "69.22 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.12 Kbps"
+    },
+    {
+      "Hostname": "BR-C172-WALNJ",
+      "Memory utilization": 55.29,
+      "CPU utilization": 46.31,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "34.03 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "66.34 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "251.97 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "80.67 Kbps"
+    },
+    {
+      "Hostname": "BR-C173-ADNGR",
+      "Memory utilization": 57.42,
+      "CPU utilization": 47.97,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "57.09 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "260.15 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "343.87 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "83.55 Kbps"
+    },
+    {
+      "Hostname": "BR-C174-BRMTI",
+      "Memory utilization": 57.17,
+      "CPU utilization": 47.56,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "86.27 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "243.37 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "79.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "29.88 Kbps"
+    },
+    {
+      "Hostname": "BR-C175-MOSHI",
+      "Memory utilization": 57.36,
+      "CPU utilization": 46.32,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "40.26 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "67.61 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "215.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "50.43 Kbps"
+    },
+    {
+      "Hostname": "BR-C176-PRVRM",
+      "Memory utilization": 70.03,
+      "CPU utilization": 46.64,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "25.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "159.04 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "159.66 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "73.12 Kbps"
+    },
+    {
+      "Hostname": "BR-C177-WAGHL",
+      "Memory utilization": 58.34,
+      "CPU utilization": 46.55,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "41.60 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "164.82 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "187.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "84.41 Kbps"
+    },
+    {
+      "Hostname": "BR-C178-KULGV",
+      "Memory utilization": 54.34,
+      "CPU utilization": 50.64,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "43.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "64.74 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "421.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "54.28 Kbps"
+    },
+    {
+      "Hostname": "BR-C181-VASCOD",
+      "Memory utilization": 53.96,
+      "CPU utilization": 46.72,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "43.73 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "92.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "244.62 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "58.83 Kbps"
+    },
+    {
+      "Hostname": "BR-C183-AQUEM",
+      "Memory utilization": 69.54,
+      "CPU utilization": 47.88,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "42.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "84.45 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "99.39 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "43.72 Kbps"
+    },
+    {
+      "Hostname": "BR-C184-CNCONA",
+      "Memory utilization": 61.75,
+      "CPU utilization": 45.8,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "28.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "45.90 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "92.43 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "32.69 Kbps"
+    },
+    {
+      "Hostname": "BR-C185-MRGAO",
+      "Memory utilization": "N/A",
+      "CPU utilization": "N/A",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "N/A",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "N/A",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "N/A",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "N/A"
+    },
+    {
+      "Hostname": "BR-C186-PANAJI",
+      "Memory utilization": 60.7,
+      "CPU utilization": 46.62,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "70.70 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "120.95 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "225.81 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "37.50 Kbps"
+    },
+    {
+      "Hostname": "BR-C187-PONDA",
+      "Memory utilization": "N/A",
+      "CPU utilization": "N/A",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "N/A",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "N/A",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "N/A",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "N/A"
+    },
+    {
+      "Hostname": "BR-C191-SUBHO",
+      "Memory utilization": 54.93,
+      "CPU utilization": 46.09,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "39.34 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "87.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "223.44 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "52.32 Kbps"
+    },
+    {
+      "Hostname": "BR-C193-KUDAL",
+      "Memory utilization": 53.08,
+      "CPU utilization": 44.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.51 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "35.12 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "102.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "26.41 Kbps"
+    },
+    {
+      "Hostname": "BR-C194-BANDA",
+      "Memory utilization": 61.47,
+      "CPU utilization": 45,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "24.50 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "24.35 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "72.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "28.39 Kbps"
+    },
+    {
+      "Hostname": "BR-C195-DDMRG",
+      "Memory utilization": 58.32,
+      "CPU utilization": 45.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.57 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "33.63 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "82.54 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "28.14 Kbps"
+    },
+    {
+      "Hostname": "BR-C196-PDGHT",
+      "Memory utilization": 63.85,
+      "CPU utilization": 51.91,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "112.50 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "131.48 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "8.74 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.15 Kbps"
+    },
+    {
+      "Hostname": "BR-C197-KNKVL",
+      "Memory utilization": 61.59,
+      "CPU utilization": 44.88,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "20.19 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "29.86 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "54.20 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "34.97 Kbps"
+    },
+    {
+      "Hostname": "BR-C198-SHRDA",
+      "Memory utilization": 51.43,
+      "CPU utilization": 51.68,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "19.42 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "39.30 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "121.73 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "42.97 Kbps"
+    },
+    {
+      "Hostname": "BR-C199-VGRLA",
+      "Memory utilization": 61.03,
+      "CPU utilization": 45.85,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "19.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "60.50 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "42.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "34.92 Kbps"
+    },
+    {
+      "Hostname": "BR-C200-MLVAN",
+      "Memory utilization": 53.63,
+      "CPU utilization": 45.43,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "28.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "78.57 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "41.79 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "35.39 Kbps"
+    },
+    {
+      "Hostname": "DC-THANE-C83K-R1",
+      "Memory utilization": 65.13,
+      "CPU utilization": 29.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "7.43 Mbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "1.39 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "2.13 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "31.18 Mbps"
+    },
+    {
+      "Hostname": "DC-THANE-C83K-R2",
+      "Memory utilization": 65.31,
+      "CPU utilization": 27.58,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "4.60 Mbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "1.39 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "1.89 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "6.00 Mbps"
+    },
+    {
+      "Hostname": "DR-PUNE-C83K-RTR01",
+      "Memory utilization": 58.33,
+      "CPU utilization": 22.6,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "818.17 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "2.85 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "8.63 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "1.23 Mbps"
+    },
+    {
+      "Hostname": "DR-PUNE-C83K-RTR02",
+      "Memory utilization": 56.26,
+      "CPU utilization": 22.51,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "390.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "2.85 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "31.52 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "573.84 Kbps"
+    },
+    {
+      "Hostname": "OF-BWDGD-GD",
+      "Memory utilization": 38.72,
+      "CPU utilization": 48.9,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "51.85 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "258.78 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "828.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "138.22 Kbps"
+    },
+    {
+      "Hostname": "OF-C002-MNLKR",
+      "Memory utilization": 56.25,
+      "CPU utilization": 46.39,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "30.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "214.55 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "206.96 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "80.81 Kbps"
+    },
+    {
+      "Hostname": "OF-CALGT-OA",
+      "Memory utilization": 59.19,
+      "CPU utilization": 45.56,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "23.94 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "28.57 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "18.02 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "20.07 Kbps"
+    },
+    {
+      "Hostname": "OF-DDBTC-TC",
+      "Memory utilization": 55.88,
+      "CPU utilization": 44.91,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "16.28 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "15.16 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "24.18 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "25.78 Kbps"
+    },
+    {
+      "Hostname": "OF-GHKPR-RO",
+      "Memory utilization": 57.86,
+      "CPU utilization": 46.11,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "31.65 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "122.01 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "212.25 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "107.64 Kbps"
+    },
+    {
+      "Hostname": "OF-GOA-RO",
+      "Memory utilization": 59.25,
+      "CPU utilization": 47.4,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "38.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "65.56 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "185.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "69.99 Kbps"
+    },
+    {
+      "Hostname": "OF-HOUSE-C83K-CORP",
+      "Memory utilization": 79.01,
+      "CPU utilization": 19.94,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "625.44 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "3.37 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "3.06 Mbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "1.68 Mbps"
+    },
+    {
+      "Hostname": "OF-MAPSA-OA",
+      "Memory utilization": 58.95,
+      "CPU utilization": 46.75,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "21.81 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "32.22 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "18.52 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "23.42 Kbps"
+    },
+    {
+      "Hostname": "OF-MDGON-OA",
+      "Memory utilization": 58.74,
+      "CPU utilization": 46.98,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "0.09 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "1.92 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "24.71 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "33.34 Kbps"
+    },
+    {
+      "Hostname": "OF-NASHIK-RO",
+      "Memory utilization": 59.32,
+      "CPU utilization": 47.27,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "40.26 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "64.97 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "302.76 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "78.07 Kbps"
+    },
+    {
+      "Hostname": "OF-NGNCI-OA",
+      "Memory utilization": 58.29,
+      "CPU utilization": 46.92,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "29.40 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "20.84 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "0.00 Kbps"
+    },
+    {
+      "Hostname": "OF-PNJIM-OA",
+      "Memory utilization": 58.98,
+      "CPU utilization": 47.07,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "20.11 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "34.99 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "20.06 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "25.13 Kbps"
+    },
+    {
+      "Hostname": "OF-PUNE-RO",
+      "Memory utilization": 52.86,
+      "CPU utilization": 47.21,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "90.93 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "199.49 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "332.14 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "126.68 Kbps"
+    },
+    {
+      "Hostname": "BR-C165-DHRGL",
+      "Memory utilization": 50.8,
+      "CPU utilization": 44.94,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "129.38 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "75.60 Kbps"
+    },
+    {
+      "Hostname": "BR-C163-SANQM",
+      "Memory utilization": 50.53,
+      "CPU utilization": 45.35,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "159.47 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "78.46 Kbps"
+    },
+    {
+      "Hostname": "BR-C164-CURHM",
+      "Memory utilization": 47.14,
+      "CPU utilization": 46.95,
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits sent": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/0\"]: Bits received": "0.00 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits received": "160.08 Kbps",
+      "Interface [\"GigabitEthernet0/0/1\"]: Bits sent": "92.60 Kbps"
+    }
+  ]
+}
