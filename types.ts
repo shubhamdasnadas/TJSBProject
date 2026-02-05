@@ -1,4 +1,3 @@
-
 export enum ItemStatus {
   ACTIVE = 'Active',
   IN_STORAGE = 'In Storage',
@@ -13,26 +12,27 @@ export enum SoftwareType {
   OPEN_SOURCE = 'Open Source'
 }
 
+export enum CameraStatus {
+  ACTIVE = 'Active',
+  INACTIVE = 'Inactive',
+  MAINTENANCE = 'Maintenance',
+  FAULTY = 'Faulty',
+  ANGLE_MISMATCHED = 'Angle Mismatched'
+}
+
 export interface Organization {
-  id: string; // Used for DB name (derived from code)
-  name: string; // Organization/Company Name
-  code: string; // Company Code (Unique)
-  
-  // Addresses
+  id: string;
+  name: string;
+  code: string;
   registeredAddress?: string;
   communicationAddress?: string;
-  
-  // Legal
   legalEntityName?: string;
   pan?: string;
   gstin?: string;
   tan?: string;
   cin?: string;
-  
-  // Classification
   companyType?: 'PVT LTD' | 'LIMITED' | 'LLP/Partnership' | 'Prop/HUF/AOP/BOI';
   onboardingDate?: string;
-  
   createdAt: string;
 }
 
@@ -41,14 +41,14 @@ export interface LoginResponse {
   token: string;
   role: string;
   isSuperAdmin?: boolean;
-  availableOrgs?: Organization[]; // For Super Admin
-  orgId?: string; // Returned by global lookup
+  availableOrgs?: Organization[];
+  orgId?: string;
 }
 
-// "Users" in the system (Employees who own assets)
 export interface UserItem {
   id: string;
   name: string;
+  empCode?: string;
   email: string;
   department: string;
   hod?: string;
@@ -56,7 +56,6 @@ export interface UserItem {
   status: 'Active' | 'Inactive';
 }
 
-// "Admins" who log into the console
 export interface ConsoleAdmin {
   id: string;
   username: string;
@@ -77,7 +76,7 @@ export interface CategoryItem {
 
 export interface LocationItem {
   id: string;
-  orgName?: string; // Display only
+  orgName?: string;
   type: 'HO' | 'SL' | 'GD';
   name: string;
   code: string;
@@ -87,6 +86,32 @@ export interface LocationItem {
   spocPhone: string;
   address: string;
   status: 'Locked' | 'Unlocked';
+  subLocations: string[]; 
+  description?: string; 
+}
+
+export interface Camera {
+  id: string;
+  model: string;
+  serialNumber: string;
+  location: string;
+  subLocation: string;
+  installationDate: string;
+  currentStatus: CameraStatus;
+  lastChecked?: string;
+}
+
+export interface WeeklyUpdate {
+  id: string;
+  date: string;
+  location: string;
+  totalCount: number;
+  activeCount: number;
+  inactiveCount: number;
+  maintenanceCount: number;
+  faultyCount: number;
+  mismatchedCount: number;
+  notes: string;
 }
 
 export interface AlertDefinition {
@@ -108,73 +133,51 @@ export interface HardwareItem {
   manufacturer: string;
   model: string;
   category: string;
-  
-  // Assignment & Location
   status: ItemStatus;
   location?: string;
   department?: string;
   hod?: string;
   assignedTo?: string; 
   previousOwner?: string;
-
-  // Asset Dates
   issuedDate?: string;
   returnedDate?: string;
   retirementDate?: string; 
-
-  // Vendor Info
   vendorName?: string;
   vendorSpoc?: string;
   vendorContact?: string; 
-
-  // Financials
   purchaseDate: string;
   invoiceDate?: string;
   poNumber?: string;
   purchaseCost?: number;
   warrantyExpiry?: string;
   supportCoverage?: string;
-  
-  // Lifecycle / Usage
   fitnessYears?: number;
   fitnessExpiry?: string;
-
-  // Maintenance
   maintenanceType?: 'Internal' | 'External';
   maintenanceStartDate?: string;
   maintenanceEndDate?: string;
-
-  // Technical Specs
   ramConfig?: string;
   diskType?: string;
   storageCapacity?: string;
   processor?: string;
-  
-  // Peripheral Specifics
   connectionType?: 'Wired' | 'Wireless';
-
-  // TV Specifics
   resolution?: string;
   smartOs?: string;
   screenDimension?: string;
   mountType?: string;
   inputType?: string;
   powerSource?: string;
-
-  // CCTV Specifics
+  notes?: string;
   cctvType?: 'DVR' | 'NVR';
   dvrModel?: string;
   fieldView?: string;
   ipAddress?: string;
   maintenanceFrequency?: 'Weekly' | 'Monthly' | 'Quarterly';
-
-  notes?: string;
 }
 
-// NEW: Network Device Interface
 export interface NetworkItem {
   id: string;
-  name: string; // Hostname
+  name: string;
   type: 'Firewall' | 'Switch' | 'Access Point' | 'Router' | 'Modem' | 'Other';
   ipAddress: string;
   macAddress: string;
@@ -183,16 +186,11 @@ export interface NetworkItem {
   firmwareVersion: string;
   assetTag?: string;
   serialNumber?: string;
-  
-  // Specs
   ram?: string;
   cpu?: string;
-  
   status: ItemStatus;
   location?: string;
   notes?: string;
-
-  // Financials & Dates
   purchaseDate?: string;
   invoiceDate?: string;
   poNumber?: string;
@@ -200,13 +198,9 @@ export interface NetworkItem {
   warrantyExpiry?: string;
   supportCoverage?: string;
   retirementDate?: string;
-
-  // Vendor Info
   vendorName?: string;
   vendorSpoc?: string;
   vendorContact?: string;
-
-  // Maintenance
   maintenanceType?: 'Internal' | 'External';
   maintenanceStartDate?: string;
   maintenanceEndDate?: string;
@@ -226,28 +220,17 @@ export interface SoftwareItem {
   expiryDate?: string;
   seatCount: number;
   costPerSeat: number;
-  
   assignedTo?: SoftwareAssignment[];
-  
-  // Ownership
   department?: string;
   hod?: string;
-
-  // Asset Dates
   issuedDate?: string;
-
-  // Vendor Info
   vendorName?: string;
   vendorSpoc?: string;
   vendorContact?: string; 
-
-  // Financials
   purchaseDate?: string;
   invoiceDate?: string;
   poNumber?: string;
   supportCoverage?: string;
-
-  // Additional Costs
   amcEnabled?: boolean;
   amcCost?: number;
   cloudEnabled?: boolean;
@@ -261,7 +244,7 @@ export interface PasswordItem {
   serviceName: string;
   username: string;
   encryptedPassword: string;
-  url?: string;
+  url: string;
   category: string;
   lastUpdated: string;
 }
@@ -276,11 +259,4 @@ export interface LifecycleEvent {
   newValue?: string;
   timestamp: string;
   actor?: string;
-}
-
-export interface AIAnalysisResult {
-  category?: string;
-  manufacturer?: string;
-  suggestedTags?: string[];
-  securityRisk?: string;
 }

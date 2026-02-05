@@ -1,290 +1,260 @@
+import {
+  HardwareItem,
+  SoftwareItem,
+  PasswordItem,
+  UserItem,
+  LifecycleEvent,
+  DepartmentItem,
+  CategoryItem,
+  ConsoleAdmin,
+  NetworkItem,
+  AlertDefinition,
+  Organization,
+  LoginResponse,
+  LocationItem,
+} from '../types';
 
-import { HardwareItem, SoftwareItem, PasswordItem, UserItem, LifecycleEvent, DepartmentItem, CategoryItem, ConsoleAdmin, NetworkItem, AlertDefinition, Organization, LoginResponse, LocationItem } from '../types';
+/* ================= CORE CONFIG ================= */
 
-const getHost = () => {
-  const stored = localStorage.getItem('niyojan_api_host');
-  if (stored) return stored;
-  return window.location.hostname || 'localhost';
-};
+const getHost = () =>
+  localStorage.getItem('niyojan_api_host') ||
+  window.location.hostname ||
+  'localhost';
 
-const getProtocol = () => localStorage.getItem('niyojan_api_protocol') || 'http';
-const getApiBase = () => `${getProtocol()}://${getHost()}:3001/api`;
+const getProtocol = () =>
+  localStorage.getItem('niyojan_api_protocol') || 'http';
 
-// Helper to get headers with Organization context
+export const getApiBase = () =>
+  `${getProtocol()}://${getHost()}:3002/api`;
+
+/* ================= HELPERS ================= */
+
 const getHeaders = () => {
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-    };
-    const orgId = localStorage.getItem('niyojan_org_id');
-    if (orgId) {
-        headers['X-Organization-ID'] = orgId;
-    }
-    return headers;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  const token = localStorage.getItem('niyojan_token');
+  if (token) headers.Authorization = `Bearer ${token}`;
+  
+  const orgId = localStorage.getItem('niyojan_org_id') || 'pcpl';
+  headers['x-organization-id'] = orgId;
+
+  return headers;
 };
 
-const handleResponse = async (res: Response) => {
+const isNewEntity = (id?: string | number) =>
+  !id || String(id).length > 10 || String(id).includes('.');
+
+const request = async <T>(
+  url: string,
+  options: RequestInit = {}
+): Promise<T> => {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...getHeaders(), ...options.headers }
+  });
+
   if (!res.ok) {
-    let errorMessage = `HTTP Error ${res.status}`;
+    let message = `HTTP ${res.status}`;
     try {
       const json = await res.json();
-      if (json.error) errorMessage = json.error;
-    } catch (e) { }
-    throw new Error(errorMessage);
+      if (json.error) message = json.error;
+    } catch {}
+    throw new Error(message);
   }
+
   return res.json();
 };
+
+const saveEntity = <T extends { id?: string | number }>(
+  baseUrl: string,
+  item: T
+): Promise<T> => {
+  const isNew = isNewEntity(item.id);
+
+  return request<T>(
+    isNew ? baseUrl : `${baseUrl}/${item.id}`,
+    {
+      method: isNew ? 'POST' : 'PUT',
+      body: JSON.stringify(item),
+    }
+  );
+};
+
+const deleteEntity = async (url: string) => {
+  await request<void>(url, {
+    method: 'DELETE',
+  });
+};
+
+/* ================= API SERVICE ================= */
 
 export const apiService = {
   getApiBase,
 
-  checkHealth: async (): Promise<boolean> => {
-    const host = getHost();
+  /* ---------- HEALTH ---------- */
+  checkHealth: async () =>
+    request<{ status: string }>(`${getApiBase()}/health`),
+
+  // Required by App.tsx
+  checkHealthDetailed: async (): Promise<{ status: string, message: string }> => {
     try {
-        const res = await fetch(`https://${host}:3001/api/health`, { method: 'GET', signal: AbortSignal.timeout(1000) });
-        if (res.ok) { localStorage.setItem('niyojan_api_protocol', 'https'); return true; }
-    } catch (e) {}
-    try {
-        const res = await fetch(`http://${host}:3001/api/health`, { method: 'GET', signal: AbortSignal.timeout(1000) });
-        if (res.ok) { localStorage.setItem('niyojan_api_protocol', 'http'); return true; }
-    } catch (e) {}
-    return false;
+        const res = await fetch(`${getApiBase()}/health`, { 
+            method: 'GET', 
+            headers: getHeaders(),
+            signal: AbortSignal.timeout(2000) 
+        });
+        return await res.json();
+    } catch (e) {
+        return { status: 'error', message: 'API Offline' };
+    }
   },
 
-  // --- AUTH & ADMINS ---
-  login: async (username: string, password: string, orgId?: string): Promise<LoginResponse> => {
-      const res = await fetch(`${getApiBase()}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, orgId })
-      });
-      return handleResponse(res);
-  },
+  /* ---------- AUTH ---------- */
+  login: async (
+    username: string,
+    password: string
+  ): Promise<LoginResponse> =>
+    request<LoginResponse>(`${getApiBase()}/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
 
-  // --- ORGANIZATION MANAGEMENT (SUPER ADMIN) ---
-  getOrganizations: async (): Promise<Organization[]> => {
-      const res = await fetch(`${getApiBase()}/admin/organizations`, { headers: getHeaders() });
-      return handleResponse(res);
-  },
+  /* ---------- HARDWARE ---------- */
+  getHardware: () =>
+    request<HardwareItem[]>(`${getApiBase()}/hardware`),
 
-  createOrganization: async (id: string, name: string): Promise<Organization> => {
-      const res = await fetch(`${getApiBase()}/admin/organizations`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({ id, name })
-      });
-      return handleResponse(res);
-  },
+  saveHardware: (item: HardwareItem) =>
+    saveEntity<HardwareItem>(`${getApiBase()}/hardware`, item),
 
-  updateOrganization: async (id: string, data: Partial<Organization>): Promise<Organization> => {
-      const res = await fetch(`${getApiBase()}/admin/organizations/${id}`, {
-          method: 'PUT',
-          headers: getHeaders(),
-          body: JSON.stringify(data)
-      });
-      return handleResponse(res);
-  },
+  deleteHardware: (id: string) =>
+    deleteEntity(`${getApiBase()}/hardware/${id}`),
 
-  // --- STANDARD ASSETS ---
-  getHardware: async (): Promise<HardwareItem[]> => {
-    const res = await fetch(`${getApiBase()}/hardware`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
-  
-  saveHardware: async (item: HardwareItem): Promise<HardwareItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
-    const url = isNew ? `${getApiBase()}/hardware` : `${getApiBase()}/hardware/${item.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-    
-    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-    return handleResponse(res);
-  },
+  /* ---------- SOFTWARE ---------- */
+  getSoftware: () =>
+    request<SoftwareItem[]>(`${getApiBase()}/software`),
 
-  deleteHardware: async (id: string) => {
-    const res = await fetch(`${getApiBase()}/hardware/${id}`, { method: 'DELETE', headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to delete');
-  },
+  saveSoftware: (item: SoftwareItem) =>
+    saveEntity<SoftwareItem>(`${getApiBase()}/software`, item),
 
-  getNetworkDevices: async (): Promise<NetworkItem[]> => {
-      try {
-          const res = await fetch(`${getApiBase()}/network`, { headers: getHeaders() });
-          if (res.status === 404) return [];
-          return handleResponse(res);
-      } catch (e) { return []; }
-  },
+  deleteSoftware: (id: string) =>
+    deleteEntity(`${getApiBase()}/software/${id}`),
 
-  saveNetworkDevice: async (item: NetworkItem): Promise<NetworkItem> => {
-      const idStr = String(item.id);
-      const isNew = idStr.length > 10 || idStr.includes('.');
-      const url = isNew ? `${getApiBase()}/network` : `${getApiBase()}/network/${item.id}`;
-      const method = isNew ? 'POST' : 'PUT';
-      const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-      return handleResponse(res);
-  },
+  /* ---------- NETWORK ---------- */
+  getNetworkDevices: () =>
+    request<NetworkItem[]>(`${getApiBase()}/network`),
 
-  deleteNetworkDevice: async (id: string) => {
-      const res = await fetch(`${getApiBase()}/network/${id}`, { method: 'DELETE', headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to delete');
-  },
+  saveNetworkDevice: (item: NetworkItem) =>
+    saveEntity<NetworkItem>(`${getApiBase()}/network`, item),
 
-  getSoftware: async (): Promise<SoftwareItem[]> => {
-    const res = await fetch(`${getApiBase()}/software`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
+  deleteNetworkDevice: (id: string) =>
+    deleteEntity(`${getApiBase()}/network/${id}`),
 
-  saveSoftware: async (item: SoftwareItem): Promise<SoftwareItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
-    const url = isNew ? `${getApiBase()}/software` : `${getApiBase()}/software/${item.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-    return handleResponse(res);
-  },
+  /* ---------- PASSWORDS / SECRETS ---------- */
+  getPasswords: () =>
+    request<PasswordItem[]>(`${getApiBase()}/secrets`),
 
-  deleteSoftware: async (id: string) => {
-    const res = await fetch(`${getApiBase()}/software/${id}`, { method: 'DELETE', headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to delete');
-  },
+  savePassword: (item: PasswordItem) =>
+    saveEntity<PasswordItem>(`${getApiBase()}/secrets`, item),
 
-  getPasswords: async (): Promise<PasswordItem[]> => {
-    const res = await fetch(`${getApiBase()}/secrets`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
+  deletePassword: (id: string) =>
+    deleteEntity(`${getApiBase()}/secrets/${id}`),
 
-  savePassword: async (item: PasswordItem): Promise<PasswordItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
-    const url = isNew ? `${getApiBase()}/secrets` : `${getApiBase()}/secrets/${item.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-    return handleResponse(res);
-  },
+  /* ---------- USERS ---------- */
+  getUsers: () =>
+    request<UserItem[]>(`${getApiBase()}/users`),
 
-  deletePassword: async (id: string) => {
-    const res = await fetch(`${getApiBase()}/secrets/${id}`, { method: 'DELETE', headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to delete');
-  },
+  saveUser: (item: UserItem) =>
+    saveEntity<UserItem>(`${getApiBase()}/users`, item),
 
-  getUsers: async (): Promise<UserItem[]> => {
-    const res = await fetch(`${getApiBase()}/users`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
+  deleteUser: (id: string) =>
+    deleteEntity(`${getApiBase()}/users/${id}`),
 
-  saveUser: async (item: UserItem): Promise<UserItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
-    const url = isNew ? `${getApiBase()}/users` : `${getApiBase()}/users/${item.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-    return handleResponse(res);
-  },
+  /* ---------- DEPARTMENTS ---------- */
+  getDepartments: () =>
+    request<DepartmentItem[]>(`${getApiBase()}/departments`),
 
-  deleteUser: async (id: string) => {
-    const res = await fetch(`${getApiBase()}/users/${id}`, { method: 'DELETE', headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to delete');
-  },
+  saveDepartment: (item: DepartmentItem) =>
+    saveEntity<DepartmentItem>(`${getApiBase()}/departments`, item),
 
-  getDepartments: async (): Promise<DepartmentItem[]> => {
-    const res = await fetch(`${getApiBase()}/departments`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
+  deleteDepartment: (id: string) =>
+    deleteEntity(`${getApiBase()}/departments/${id}`),
 
-  saveDepartment: async (item: DepartmentItem): Promise<DepartmentItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
-    const url = isNew ? `${getApiBase()}/departments` : `${getApiBase()}/departments/${item.id}`;
-    const method = isNew ? 'POST' : 'PUT';
-    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-    return handleResponse(res);
-  },
+  /* ---------- CATEGORIES ---------- */
+  getCategories: () =>
+    request<CategoryItem[]>(`${getApiBase()}/categories`),
 
-  deleteDepartment: async (id: string) => {
-    const res = await fetch(`${getApiBase()}/departments/${id}`, { method: 'DELETE', headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to delete');
-  },
+  saveCategory: (name: string) =>
+    request<CategoryItem>(`${getApiBase()}/categories`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
 
-  getCategories: async (): Promise<CategoryItem[]> => {
-    const res = await fetch(`${getApiBase()}/categories`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
+  deleteCategory: (id: string) =>
+    deleteEntity(`${getApiBase()}/categories/${id}`),
 
-  saveCategory: async (name: string): Promise<CategoryItem> => {
-    const res = await fetch(`${getApiBase()}/categories`, { method: 'POST', headers: getHeaders(), body: JSON.stringify({ name }) });
-    return handleResponse(res);
-  },
+  /* ---------- LOCATIONS ---------- */
+  getLocations: () =>
+    request<LocationItem[]>(`${getApiBase()}/locations`),
 
-  deleteCategory: async (id: string) => {
-    const res = await fetch(`${getApiBase()}/categories/${id}`, { method: 'DELETE', headers: getHeaders() });
-    if (!res.ok) throw new Error('Failed to delete');
-  },
+  saveLocation: (item: LocationItem) =>
+    saveEntity<LocationItem>(`${getApiBase()}/locations`, item),
 
-  getLocations: async (): Promise<LocationItem[]> => {
-      const res = await fetch(`${getApiBase()}/locations`, { headers: getHeaders() });
-      return handleResponse(res);
-  },
+  deleteLocation: (id: string) =>
+    deleteEntity(`${getApiBase()}/locations/${id}`),
 
-  saveLocation: async (item: LocationItem): Promise<LocationItem> => {
-      const idStr = String(item.id);
-      // Logic update: Ensure empty IDs or long timestamp IDs are treated as NEW (POST)
-      const isNew = !item.id || idStr.length > 10 || idStr.includes('.');
-      
-      const url = isNew ? `${getApiBase()}/locations` : `${getApiBase()}/locations/${item.id}`;
-      const method = isNew ? 'POST' : 'PUT';
-      
-      const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
-      return handleResponse(res);
-  },
+  /* ---------- LIFECYCLE ---------- */
+  getLifecycle: () =>
+    request<LifecycleEvent[]>(`${getApiBase()}/lifecycle`),
 
-  deleteLocation: async (id: string) => {
-      const res = await fetch(`${getApiBase()}/locations/${id}`, { method: 'DELETE', headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to delete');
-  },
+  /* ---------- ADMINS ---------- */
+  getAdmins: () =>
+    request<ConsoleAdmin[]>(`${getApiBase()}/admins`),
 
-  getLifecycle: async (): Promise<LifecycleEvent[]> => {
-    const res = await fetch(`${getApiBase()}/lifecycle`, { headers: getHeaders() });
-    return handleResponse(res);
-  },
+  createAdmin: (admin: {
+    username: string;
+    password: string;
+    role: string;
+  }) =>
+    request<ConsoleAdmin>(`${getApiBase()}/admins`, {
+      method: 'POST',
+      body: JSON.stringify(admin),
+    }),
 
-  addLifecycleEvent: async (event: LifecycleEvent): Promise<LifecycleEvent> => {
-    const res = await fetch(`${getApiBase()}/lifecycle`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(event) });
-    return handleResponse(res);
-  },
+  deleteAdmin: (id: string | number) =>
+    deleteEntity(`${getApiBase()}/admins/${id}`),
 
-  getAdmins: async (): Promise<ConsoleAdmin[]> => {
-      const res = await fetch(`${getApiBase()}/admins`, { headers: getHeaders() });
-      return handleResponse(res);
-  },
+  /* ---------- ALERTS ---------- */
+  getAlertDefinitions: () =>
+    request<AlertDefinition[]>(`${getApiBase()}/alerts/definitions`),
 
-  createAdmin: async (admin: Partial<ConsoleAdmin> & { password: string }): Promise<ConsoleAdmin> => {
-      const res = await fetch(`${getApiBase()}/admins`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify(admin)
-      });
-      return handleResponse(res);
-  },
+  createAlertDefinition: (
+    item: Omit<AlertDefinition, 'id'>
+  ) =>
+    request<AlertDefinition>(`${getApiBase()}/alerts/definitions`, {
+      method: 'POST',
+      body: JSON.stringify(item),
+    }),
 
-  deleteAdmin: async (id: string) => {
-      const res = await fetch(`${getApiBase()}/admins/${id}`, { method: 'DELETE', headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to delete admin');
-  },
+  deleteAlertDefinition: (id: string) =>
+    deleteEntity(`${getApiBase()}/alerts/definitions/${id}`),
 
-  getAlertDefinitions: async (): Promise<AlertDefinition[]> => {
-      const res = await fetch(`${getApiBase()}/alerts/definitions`, { headers: getHeaders() });
-      return handleResponse(res);
-  },
+  /* ---------- ORGANIZATIONS (SUPER ADMIN) ---------- */
+  getOrganizations: () =>
+    request<Organization[]>(`${getApiBase()}/admin/organizations`),
 
-  createAlertDefinition: async (alert: Omit<AlertDefinition, 'id'>): Promise<AlertDefinition> => {
-      const res = await fetch(`${getApiBase()}/alerts/definitions`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify(alert)
-      });
-      return handleResponse(res);
-  },
+  createOrganization: (payload: {
+    name: string;
+    code: string;
+    [k: string]: any;
+  }) =>
+    request<Organization>(`${getApiBase()}/admin/organizations`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
-  deleteAlertDefinition: async (id: string) => {
-      const res = await fetch(`${getApiBase()}/alerts/definitions/${id}`, { method: 'DELETE', headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to delete alert');
-  },
+  // Required by PostgresHelp.tsx
+  initializeDatabase: async (): Promise<{ message: string }> => 
+    request<{ message: string }>(`${getApiBase()}/admin/initialize`, { method: 'POST' }),
 };
