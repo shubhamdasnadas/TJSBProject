@@ -22,14 +22,14 @@ const { Title } = Typography;
 const COLUMN_HEADER_MAP: Record<string, string> = {
   Hostname: "Host",
   branch: "Branch",
-  "Memory utilization": "Memory Usage (Avg)",
-  "CPU utilization": "CPU Usage (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Sent (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Received (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Speed': "Primary Speed (Avg)",
-  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Secondary Received (Avg)",
-  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Secondary Sent (Avg)",
-  'Interface ["GigabitEthernet0/0/1"]: Speed': "Secondary Speed (Avg)",
+  "Memory utilization": "Memory Usage",
+  "CPU utilization": "CPU Usage",
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Sent",
+  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Received",
+  'Interface ["GigabitEthernet0/0/0"]: Speed': "Primary Speed",
+  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Secondary Received",
+  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Secondary Sent",
+  'Interface ["GigabitEthernet0/0/1"]: Speed': "Secondary Speed",
 };
 
 const THRESHOLD = 75;

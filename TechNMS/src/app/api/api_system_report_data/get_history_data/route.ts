@@ -32,18 +32,21 @@ const METRICS: MetricDef[] = [
 
 const COLUMN_HEADER_MAP: Record<string, string> = {
   Hostname: "Host",
-  "Memory utilization": "Memory Usage (Avg)",
-  "CPU utilization": "CPU Usage (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Sent (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Received (Avg)",
-  'Interface ["GigabitEthernet0/0/0"]: Speed': "Primary Speed (Avg)",
-  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Secondary Received (Avg)",
-  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Secondary Sent (Avg)",
-  'Interface ["GigabitEthernet0/0/1"]: Speed': "Secondary Speed (Avg)",
+  "Memory utilization": "Memory Usage",
+  "CPU utilization": "CPU Usage",
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Sent",
+  'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Received",
+  'Interface ["GigabitEthernet0/0/0"]: Speed': "Primary Speed",
+  'Interface ["GigabitEthernet0/0/1"]: Bits received': "Secondary Received",
+  'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Secondary Sent",
+  'Interface ["GigabitEthernet0/0/1"]: Speed': "Secondary Speed",
 };
 
-const ITEM_BATCH_SIZE = 5;
-const HISTORY_FETCH_DELAY_MS = 800;
+/* ⚡ SPEED TUNING */
+const ITEM_BATCH_SIZE = 15;          // ⬆️ was 5
+const HISTORY_FETCH_DELAY_MS = 150;  // ⬇️ was 800
+
+const THRESHOLD = 75;
 
 /* ================= PATHS ================= */
 
@@ -218,13 +221,17 @@ async function generateCsv(auth: string, groupids: string[], ZABBIX_URL: string)
 
   const rows = Object.keys(hostMap).map((hostid) => {
     const r: any = { Hostname: hostMap[hostid] };
+
     for (const m of METRICS) {
       const s = stats[hostid]?.[m.name];
-      r[m.name] = !s
-        ? "N/A"
-        : m.historyType === 3
-        ? formatTraffic(s.sum / s.count)
-        : Number((s.sum / s.count).toFixed(2));
+      if (!s) {
+        r[m.name] = "N/A";
+      } else if (m.historyType === 3) {
+        r[m.name] = formatTraffic(s.sum / s.count);
+      } else {
+        const avg = Number((s.sum / s.count).toFixed(2));
+        r[m.name] = avg > THRESHOLD ? `${avg} (HIGH)` : avg;
+      }
     }
     return r;
   });
@@ -237,6 +244,8 @@ async function generateCsv(auth: string, groupids: string[], ZABBIX_URL: string)
   fs.writeFileSync(CSV_FILE, csv, "utf8");
   writeStatus({ status: "DONE", progress: 100 });
 }
+
+/* ================= API ================= */
 
 export async function POST(req: Request) {
   const { auth, groupids } = await req.json();
