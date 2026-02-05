@@ -32,6 +32,7 @@ const METRICS: MetricDef[] = [
 
 const COLUMN_HEADER_MAP: Record<string, string> = {
   Hostname: "Host",
+  branch: "Branch",
   "Memory utilization": "Memory Usage",
   "CPU utilization": "CPU Usage",
   'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Sent",

@@ -182,8 +182,16 @@ const SystemReportData: React.FC = () => {
   const handleExportCSV = () => {
     if (!rows.length) return;
 
-    const csvHeaders = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
-    const csvRows = rows.map((r) => headers.map((h) => r[h] ?? "-"));
+    // ✅ ADD branch explicitly for export
+    const exportHeaders = ["Hostname", "branch", ...headers.filter(h => h !== "Hostname")];
+
+    const csvHeaders = exportHeaders.map(
+      (h) => COLUMN_HEADER_MAP[h] || h
+    );
+
+    const csvRows = rows.map((r) =>
+      exportHeaders.map((h) => r[h] ?? "-")
+    );
 
     const escape = (v: any) => {
       const s = String(v ?? "");
@@ -204,6 +212,7 @@ const SystemReportData: React.FC = () => {
     link.click();
   };
 
+
   /* ===================== EXPORT PDF ===================== */
 
   const handleExportPDF = () => {
@@ -216,6 +225,11 @@ const SystemReportData: React.FC = () => {
     let y = 32;
     const rowH = 7;
 
+    // ✅ ADD branch explicitly for export
+    const exportHeaders = ["Hostname", "branch", ...headers.filter(h => h !== "Hostname")];
+    const titles = exportHeaders.map((h) => COLUMN_HEADER_MAP[h] || h);
+    const colW = (pageW - margin * 2) / titles.length;
+
     pdf.setFontSize(14);
     pdf.text(
       "Techsec NMS – System Report (30 Days Avg)",
@@ -223,9 +237,6 @@ const SystemReportData: React.FC = () => {
       20,
       { align: "center" }
     );
-
-    const titles = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
-    const colW = (pageW - margin * 2) / titles.length;
 
     const drawHeader = () => {
       pdf.setFontSize(8);
@@ -248,7 +259,8 @@ const SystemReportData: React.FC = () => {
       }
 
       let x = margin;
-      headers.forEach((h) => {
+
+      exportHeaders.forEach((h) => {
         const val = r[h] ?? "-";
         let highlight = false;
 
@@ -272,6 +284,7 @@ const SystemReportData: React.FC = () => {
 
     pdf.save("Techsec-System-Report.pdf");
   };
+
 
   /* ===================== TABLE ===================== */
 
