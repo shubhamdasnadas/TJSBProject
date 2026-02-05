@@ -68,7 +68,8 @@ function getRowColorBySecondChar(hostname?: string) {
 
 const SystemReportData: React.FC = () => {
   const [rows, setRows] = useState<any[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);          // raw keys
+  const [displayHeaders, setDisplayHeaders] = useState<string[]>([]); // mapped labels
   const [loading, setLoading] = useState(false);
 
   const findBranch = (host?: string) => {
@@ -102,27 +103,38 @@ const SystemReportData: React.FC = () => {
       }
 
       const csvRes = await axios.get("/api/api_system_report_data/readCsv");
-      setHeaders(csvRes.data.headers);
-      setRows(csvRes.data.rows.map((r: any, i: number) => ({
-        key: i,
-        Hostname: r.Hostname,
-        branch: findBranch(r.Hostname),
-        ...r,
-      })));
+
+      const rawHeaders: string[] = csvRes.data.headers || [];
+
+      setHeaders(rawHeaders);
+
+      // ✅ MAP HEADERS USING COLUMN_HEADER_MAP
+      setDisplayHeaders(
+        rawHeaders.map((h) => COLUMN_HEADER_MAP[h] || h)
+      );
+
+      setRows(
+        csvRes.data.rows.map((r: any, i: number) => ({
+          key: i,
+          Hostname: r.Hostname,
+          branch: findBranch(r.Hostname),
+          ...r,
+        }))
+      );
 
       message.success("System report ready");
+    } catch (e: any) {
+      message.error(e?.message || "Failed to load report");
     } finally {
       setLoading(false);
     }
   };
-
 
   /* ===================== EXPORT CSV ===================== */
 
   const handleExportCSV = () => {
     if (!rows.length) return;
 
-    const csvHeaders = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
     const csvRows = rows.map((r) => headers.map((h) => r[h] ?? "-"));
 
     const escape = (v: any) => {
@@ -133,7 +145,7 @@ const SystemReportData: React.FC = () => {
       return s;
     };
 
-    const csv = [csvHeaders, ...csvRows]
+    const csv = [displayHeaders, ...csvRows]
       .map((r) => r.map(escape).join(","))
       .join("\n");
 
@@ -165,13 +177,12 @@ const SystemReportData: React.FC = () => {
       { align: "center" }
     );
 
-    const titles = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
-    const colW = (pageW - margin * 2) / titles.length;
+    const colW = (pageW - margin * 2) / displayHeaders.length;
 
     const drawHeader = () => {
       pdf.setFontSize(8);
       let x = margin;
-      titles.forEach((t) => {
+      displayHeaders.forEach((t) => {
         pdf.rect(x, y, colW, rowH);
         pdf.text(t, x + 2, y + 5);
         x += colW;
@@ -223,14 +234,14 @@ const SystemReportData: React.FC = () => {
       ...headers
         .filter((h) => h !== "Hostname")
         .map((h) => ({
-          title: COLUMN_HEADER_MAP[h] || h,
+          title: displayHeaders[headers.indexOf(h)] || h,
           dataIndex: h,
           align: "center" as const,
           sorter:
             h.includes("Bits sent")
               ? (a: any, b: any) =>
-                getTrafficRankValue(b[h]) -
-                getTrafficRankValue(a[h])
+                  getTrafficRankValue(b[h]) -
+                  getTrafficRankValue(a[h])
               : undefined,
           render: (val: any) => {
             if (!val || val === "N/A") return <Tag color="red">N/A</Tag>;
@@ -252,7 +263,9 @@ const SystemReportData: React.FC = () => {
           },
         })),
     ];
-  }, [headers]);
+  }, [headers, displayHeaders]);
+
+  /* ===================== UI ===================== */
 
   return (
     <Form layout="vertical">

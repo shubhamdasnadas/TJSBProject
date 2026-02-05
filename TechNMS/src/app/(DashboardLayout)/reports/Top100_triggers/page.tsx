@@ -44,6 +44,16 @@ const presetOptions = [
   },
 ];
 
+
+const severityList: Record<number, string> = {
+  0: "Not classified",
+  1: "Information",
+  2: "Warning",
+  3: "Average",
+  4: "High",
+  5: "Disaster",
+};
+
 // ────────────────────────────────────────────────
 // BRANCH HELPER FUNCTION
 // ────────────────────────────────────────────────
@@ -407,7 +417,15 @@ export default function ZabbixTopProblemsPage() {
 
   const [timeFrom, setTimeFrom] = useState<number>(Math.floor(Date.now() / 1000) - 24 * 3600);
   const [timeTill, setTimeTill] = useState<number>(Math.floor(Date.now() / 1000));
+  const [selectedSeverities, setSelectedSeverities] = useState<number[]>([1,2,3,4,5]);
 
+  const severityOptions = Object.entries(severityList).map(
+    ([value, label]) => ({
+      label,
+      value: Number(value),
+    })
+  );
+  console.log("data", selectedSeverities)
   /* Load host groups */
   useEffect(() => {
     axios
@@ -474,6 +492,7 @@ export default function ZabbixTopProblemsPage() {
             value: 1, // PROBLEM events only
             time_from: timeFrom,
             time_till: timeTill,
+            severities: selectedSeverities || "",
             sortfield: "clock",
             sortorder: "DESC",
           },
@@ -537,6 +556,68 @@ export default function ZabbixTopProblemsPage() {
       setLoading(false);
     }
   };
+
+  const exportTopProblemsToCSV = (
+    data: any[],
+    hostids: string[],
+    hosts: any[],
+    timeFrom: number,
+    timeTill: number
+  ) => {
+    if (!data || data.length === 0) {
+      message.warning("No data to export");
+      return;
+    }
+
+    // Same columns as PDF
+    const headers = ["Host", "Branch", "Trigger", "Severity", "Occurrences"];
+
+    const escapeCSV = (value: any) => {
+      const str = String(value ?? "");
+      if (str.includes(",") || str.includes("\n") || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = data.map((row: any) => [
+      row.host || "—",
+      getBranchNameByHostname(row.host),
+      row.trigger || "—",
+      row.severity || "Unknown",
+      row.count ?? 0,
+    ]);
+
+    // Optional metadata header (nice touch)
+    const metaLines = [
+      `Report: Techsec NMS – Top Problems`,
+      `Period: ${dayjs.unix(timeFrom).format("YYYY-MM-DD HH:mm")} – ${dayjs
+        .unix(timeTill)
+        .format("YYYY-MM-DD HH:mm")}`,
+      "",
+    ];
+
+    const csvContent =
+      metaLines.join("\n") +
+      [headers, ...rows]
+        .map((r) => r.map(escapeCSV).join(","))
+        .join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `techsec_top_problems_${dayjs().format(
+      "YYYY-MM-DD_HH-mm"
+    )}.csv`;
+    link.click();
+
+    URL.revokeObjectURL(link.href);
+    message.success("CSV exported successfully");
+  };
+
 
   return (
     <Card title="Top Problems (Occurrence Count)">
@@ -613,6 +694,25 @@ export default function ZabbixTopProblemsPage() {
             Export to PDF
           </Button>
         </Col>
+
+        <Col>
+          <Button
+            type="default"
+            icon={<ExportOutlined />}
+            onClick={() =>
+              exportTopProblemsToCSV(
+                data,
+                hostids,
+                hosts,
+                timeFrom,
+                timeTill
+              )
+            }
+            disabled={loading || !data.length}
+          >
+            Export to CSV
+          </Button>
+        </Col>
         <Col span={6}>
           <Select
             showSearch
@@ -627,7 +727,17 @@ export default function ZabbixTopProblemsPage() {
             }))}
           />
         </Col>
-
+        <Col>
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Select Severity"
+            style={{ width: 280 }}
+            options={severityOptions}
+            value={selectedSeverities}
+            onChange={(values) => setSelectedSeverities(values)}
+          />
+        </Col>
       </Row>
 
       <Table
