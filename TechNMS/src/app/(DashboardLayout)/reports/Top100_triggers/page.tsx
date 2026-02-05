@@ -98,7 +98,7 @@ const drawWatermark = (doc: jsPDF, png: string, pageNumber: number) => {
 };
 
 //export pdf  history 
-const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: number, groupids: string[], hostids: string[],  hosts: any[]  // Add this parameter
+const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: number, groupids: string[], hostids: string[], hosts: any[]  // Add this parameter
 ) => {
   if (!data || data.length === 0) {
     message.warning("No data to export");
@@ -145,9 +145,9 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
   };
 
   const rangeText = `Period: ${formatDateSafe(timeFrom)} – ${formatDateSafe(timeTill)}`;
- 
+
   doc.text(rangeText, centerX, 320, { align: "center" });
-  
+
   // ─── BRANCH LOGIC - Extract branches from selected hosts ─────
   const selectedHosts = hosts.filter((h: any) => hostids.includes(h.hostid));
   const branchNames = selectedHosts.map((h: any) => getBranchNameByHostname(h.name));
@@ -158,8 +158,8 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    const branchText = uniqueBranches.length === 1 
-      ? `Branch: ${uniqueBranches[0]}` 
+    const branchText = uniqueBranches.length === 1
+      ? `Branch: ${uniqueBranches[0]}`
       : `Branches: ${uniqueBranches.join(', ')}`;
     doc.text(branchText, centerX, 400, { align: "center" });
   }
@@ -170,17 +170,17 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
     doc.setFontSize(14);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60, 60, 60);
-    
+
     // Split long host names into multiple lines if needed
     const maxWidth = pageWidth - 100;
     const lines = doc.splitTextToSize(`Hosts: ${hostNames}`, maxWidth);
-    
+
     let yPosition = 425;
     lines.forEach((line: string) => {
       doc.text(line, centerX, yPosition, { align: "center" });
       yPosition += 18;
     });
-    
+
     // Adjust generated timestamp position based on number of lines
     doc.setFontSize(13);
     doc.setTextColor(100);
@@ -195,7 +195,7 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
 
   // ─── Data Page(s) ────────────────────────────────────────────
   doc.addPage();
-  
+
   // Draw header on first data page
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
@@ -204,15 +204,16 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
 
   autoTable(doc, {
     startY: 85,
-    margin: { 
-      left: MARGIN_X, 
-      right: MARGIN_X, 
-      top: BORDER_MARGIN + 20, 
-      bottom: BORDER_MARGIN + 20 
+    margin: {
+      left: MARGIN_X,
+      right: MARGIN_X,
+      top: BORDER_MARGIN + 20,
+      bottom: BORDER_MARGIN + 20
     },
-    head: [["Host", "Trigger", "Severity", "Occurrences"]],
+    head: [["Host", "Branch", "Trigger", "Severity", "Occurrences"]],
     body: data.map((row: any) => [
       row.host || "—",
+      getBranchNameByHostname(row.host),
       row.trigger || "—",
       row.severity || "Unknown",
       row.count ?? 0,
@@ -237,10 +238,11 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
       minCellHeight: 25,
     },
     columnStyles: {
-      0: { cellWidth: 105, halign: 'left' },    // Host
-      1: { cellWidth: 265, halign: 'left' },    // Trigger
-      2: { cellWidth: 85, halign: 'center' },   // Severity
-      3: { cellWidth: 70, halign: 'center', fontStyle: 'bold' }, // Occurrences
+      0: { cellWidth: 90, halign: 'left' },    // Host
+      1: { cellWidth: 65, halign: 'left' },    // Host
+      2: { cellWidth: 245, halign: 'left' },    // Trigger
+      3: { cellWidth: 65, halign: 'center' },   // Severity
+      4: { cellWidth: 50, halign: 'center', fontStyle: 'bold' }, // Occurrences
     },
     didParseCell(data) {
       if (data.section === 'body' && data.column.index === 2) {
@@ -248,7 +250,7 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
         const color = getSeverityColor(severity);
         data.cell.styles.textColor = color;
         data.cell.styles.fontStyle = 'bold';
-        
+
         // Light backgrounds for severity
         if (severity === 'Disaster') data.cell.styles.fillColor = [255, 235, 238];
         if (severity === 'High') data.cell.styles.fillColor = [255, 241, 235];
@@ -259,12 +261,12 @@ const exportTopProblemsToPDF = async (data: any[], timeFrom: number, timeTill: n
     },
     didDrawPage: (hookData) => {
       const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber;
-      
+
       // Apply watermark and border to all pages except cover (page 1)
       if (currentPage > 1) {
         if (logoPng) drawWatermark(doc, logoPng, currentPage);
         drawPageBorder(doc);
-        
+
         // Add page number footer
         doc.setFontSize(9);
         doc.setTextColor(120);
@@ -363,8 +365,8 @@ function RangePickerWithPresets({
       ),
     },
   ];
-// Trigger name filter (applied on Apply)
-const [triggerSearch, setTriggerSearch] = useState<string>("");
+  // Trigger name filter (applied on Apply)
+  const [triggerSearch, setTriggerSearch] = useState<string>("");
 
   const displayText = dates
     ? `${dates[0].format("YYYY-MM-DD HH:mm")} → ${dates[1].format("YYYY-MM-DD HH:mm")}`
@@ -515,26 +517,26 @@ export default function ZabbixTopProblemsPage() {
 
       let rows = Object.values(map);
 
-// 🔍 APPLY trigger filter ONLY when Apply is pressed
-if (triggerSearch.trim()) {
-  const q = triggerSearch.toLowerCase();
-  rows = rows.filter((r: any) =>
-    r.trigger?.toLowerCase().includes(q)
-  );
-}
+      // 🔍 APPLY trigger filter ONLY when Apply is pressed
+      if (triggerSearch.trim()) {
+        const q = triggerSearch.toLowerCase();
+        rows = rows.filter((r: any) =>
+          r.trigger?.toLowerCase().includes(q)
+        );
+      }
 
-// Sort by occurrence count DESC
-const sorted = rows.sort((a: any, b: any) => b.count - a.count);
-setData(sorted);
+      // Sort by occurrence count DESC
+      const sorted = rows.sort((a: any, b: any) => b.count - a.count);
+      setData(sorted);
 
       // Sort by count descending
-     } catch (err) {
+    } catch (err) {
       console.error("Failed to load events", err);
       message.error("Failed to load problems");
-  } finally {
-    setLoading(false);
-  }
-};
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Card title="Top Problems (Occurrence Count)">
@@ -575,110 +577,110 @@ setData(sorted);
           </Select>
         </Col>
 
- 
- <Col flex="400px">
-  <div
-    style={{
-      width: '2',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-    }}
-  >
-    <RangePickerWithPresets
-      onRangeChange={({ from, to }) => {
-        setTimeFrom(from);
-        setTimeTill(to);
-      }}
-    />
-  </div>
-</Col>
+
+        <Col flex="400px">
+          <div
+            style={{
+              width: '2',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+            }}
+          >
+            <RangePickerWithPresets
+              onRangeChange={({ from, to }) => {
+                setTimeFrom(from);
+                setTimeTill(to);
+              }}
+            />
+          </div>
+        </Col>
         <Col span={1} >
-          <Button type="primary"  onClick={loadTable} loading={loading}  >
+          <Button type="primary" onClick={loadTable} loading={loading}  >
             Apply
           </Button>
         </Col>
       </Row>
       <Row gutter={16} align="middle" style={{ width: "100%", marginTop: 16 }}>
-  <Col>
-    <Button
-      type="default"
-      icon={<ExportOutlined />}
-      
-      onClick={() => exportTopProblemsToPDF(data, timeFrom, timeTill, groupids, hostids, hosts)}
-      disabled={loading || !data.length}
-      
-    >
-      Export to PDF
-    </Button>
-  </Col>
-<Col span={6}>
-<Select
-  showSearch
-  allowClear
-  placeholder="Filter Trigger Name (contains)"
-  style={{ width: "100%" }}
-  value={triggerSearch || undefined}
-  onChange={(val) => setTriggerSearch(val || "")}
-  options={Array.from(new Set(data.map(d => d.trigger))).map(t => ({
-    label: t,
-    value: t,
-  }))}
-/>
-</Col>
+        <Col>
+          <Button
+            type="default"
+            icon={<ExportOutlined />}
 
-</Row>
+            onClick={() => exportTopProblemsToPDF(data, timeFrom, timeTill, groupids, hostids, hosts)}
+            disabled={loading || !data.length}
 
-<Table
-  style={{ marginTop: 24 }}
-  bordered
-  loading={loading}
-  rowKey="key"
-  dataSource={data}
-  pagination={{ pageSize: 15 }}
-  columns={[
-    { title: "Host", dataIndex: "host", width: 180 },
-    { title: "Trigger", dataIndex: "trigger" },
-    {
-      title: "Severity",
-      dataIndex: "severity",
-      width: 140,
-      render: (text: string) => {
-        // Determine background color based on severity
-        let bgColor = '#f5f5f5';  // default gray
-        
-        if (text === 'Disaster') bgColor = '#d32029';      // light red
-        if (text === 'High') bgColor = '#f53d3d';          // light orange
-        if (text === 'Average') bgColor = '#fa8c16';       // light yellow
-        if (text === 'Warning') bgColor = '#fae900';       // very light yellow
-        if (text === 'Information') bgColor = '#69c0ff';   // light blue
-        
-        return (
-          <span 
-            style={{ 
-              color: getSeverityColor(text),
-              fontWeight: 'bold',
-              backgroundColor: bgColor,
-              padding: '4px 12px',
-              borderRadius: '4px',
-              display: 'inline-block',
-              width: '100%',
-              textAlign: 'center'
-            }}
           >
-            {text}
-          </span>
-        );
-      },
-    },
-    {
-      title: "Occurrences",
-      dataIndex: "count",
-      width: 140,
-      sorter: (a: any, b: any) => a.count - b.count,
-      defaultSortOrder: "descend",
-    },
-  ]}
-/>    </Card>
+            Export to PDF
+          </Button>
+        </Col>
+        <Col span={6}>
+          <Select
+            showSearch
+            allowClear
+            placeholder="Filter Trigger Name (contains)"
+            style={{ width: "100%" }}
+            value={triggerSearch || undefined}
+            onChange={(val) => setTriggerSearch(val || "")}
+            options={Array.from(new Set(data.map(d => d.trigger))).map(t => ({
+              label: t,
+              value: t,
+            }))}
+          />
+        </Col>
+
+      </Row>
+
+      <Table
+        style={{ marginTop: 24 }}
+        bordered
+        loading={loading}
+        rowKey="key"
+        dataSource={data}
+        pagination={{ pageSize: 15 }}
+        columns={[
+          { title: "Host", dataIndex: "host", width: 180 },
+          { title: "Trigger", dataIndex: "trigger" },
+          {
+            title: "Severity",
+            dataIndex: "severity",
+            width: 140,
+            render: (text: string) => {
+              // Determine background color based on severity
+              let bgColor = '#f5f5f5';  // default gray
+
+              if (text === 'Disaster') bgColor = '#d32029';      // light red
+              if (text === 'High') bgColor = '#f53d3d';          // light orange
+              if (text === 'Average') bgColor = '#fa8c16';       // light yellow
+              if (text === 'Warning') bgColor = '#fae900';       // very light yellow
+              if (text === 'Information') bgColor = '#69c0ff';   // light blue
+
+              return (
+                <span
+                  style={{
+                    color: getSeverityColor(text),
+                    fontWeight: 'bold',
+                    backgroundColor: bgColor,
+                    padding: '4px 12px',
+                    borderRadius: '4px',
+                    display: 'inline-block',
+                    width: '100%',
+                    textAlign: 'center'
+                  }}
+                >
+                  {text}
+                </span>
+              );
+            },
+          },
+          {
+            title: "Occurrences",
+            dataIndex: "count",
+            width: 140,
+            sorter: (a: any, b: any) => a.count - b.count,
+            defaultSortOrder: "descend",
+          },
+        ]}
+      />    </Card>
   );
 }
 
@@ -694,4 +696,3 @@ function getSeverityColor(severity: string): string {
   };
   return colors[severity] || "#a97bff";
 }
- 

@@ -5,10 +5,12 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+/* ================= CSV PARSER ================= */
+
 function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
+  const out: string[] = [];
   let current = "";
-  let insideQuotes = false;
+  let inQuotes = false;
 
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
@@ -20,12 +22,12 @@ function parseCsvLine(line: string): string[] {
     }
 
     if (ch === '"') {
-      insideQuotes = !insideQuotes;
+      inQuotes = !inQuotes;
       continue;
     }
 
-    if (ch === "," && !insideQuotes) {
-      result.push(current);
+    if (ch === "," && !inQuotes) {
+      out.push(current);
       current = "";
       continue;
     }
@@ -33,70 +35,61 @@ function parseCsvLine(line: string): string[] {
     current += ch;
   }
 
-  result.push(current);
-  return result.map((x) => x.trim());
+  out.push(current);
+  return out.map((x) => x.trim());
 }
 
-function csvToJson(csvText: string) {
-  const lines = csvText.split(/\r?\n/).filter(Boolean);
+function csvToJson(csv: string) {
+  const lines = csv.split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return { headers: [], rows: [] };
 
   const headers = parseCsvLine(lines[0]);
-
-  const rows = lines.slice(1).map((line) => {
-    const values = parseCsvLine(line);
+  const rows = lines.slice(1).map((l) => {
+    const values = parseCsvLine(l);
     const obj: Record<string, any> = {};
-    headers.forEach((h, idx) => {
-      obj[h] = values[idx] ?? "";
-    });
+    headers.forEach((h, i) => (obj[h] = values[i] ?? ""));
     return obj;
   });
 
   return { headers, rows };
 }
 
+/* ================= API ================= */
+
 export async function GET() {
   try {
-    const reportsDir = path.join(process.cwd(), "public", "reports");
+    const dataDir = path.join(process.cwd(), "data");
 
-    if (!fs.existsSync(reportsDir)) {
-      return NextResponse.json(
-        { ok: false, message: "reports folder not found", headers: [], rows: [] },
-        { status: 404 }
-      );
+    if (!fs.existsSync(dataDir)) {
+      return NextResponse.json({ headers: [], rows: [] });
     }
 
     const files = fs
-      .readdirSync(reportsDir)
-      .filter((f) => f.startsWith("history_data_") && f.endsWith(".csv"))
+      .readdirSync(dataDir)
+      .filter((f) => f.startsWith("history_") && f.endsWith(".csv"))
       .map((f) => ({
         name: f,
-        fullPath: path.join(reportsDir, f),
-        mtime: fs.statSync(path.join(reportsDir, f)).mtimeMs,
+        full: path.join(dataDir, f),
+        mtime: fs.statSync(path.join(dataDir, f)).mtimeMs,
       }))
       .sort((a, b) => b.mtime - a.mtime);
 
-    if (files.length === 0) {
-      return NextResponse.json(
-        { ok: false, message: "No history_data CSV found", headers: [], rows: [] },
-        { status: 404 }
-      );
+    if (!files.length) {
+      return NextResponse.json({ headers: [], rows: [] });
     }
 
-    const latest = files[0];
-    const csvText = fs.readFileSync(latest.fullPath, "utf8");
+    const csvText = fs.readFileSync(files[0].full, "utf8");
     const parsed = csvToJson(csvText);
 
     return NextResponse.json({
       ok: true,
-      fileName: latest.name,
-      fileUrl: `/reports/${latest.name}`,
+      fileName: files[0].name,
       headers: parsed.headers,
       rows: parsed.rows,
     });
-  } catch (err: any) {
+  } catch (e: any) {
     return NextResponse.json(
-      { ok: false, message: err?.message || "Server error", headers: [], rows: [] },
+      { ok: false, headers: [], rows: [], message: e?.message },
       { status: 500 }
     );
   }

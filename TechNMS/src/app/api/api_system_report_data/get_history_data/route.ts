@@ -6,12 +6,18 @@ import axios from "axios";
 import https from "https";
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
+
+/* ================= TYPES ================= */
+
+type HistoryType = 0 | 3;
+type HistoryKey = "0" | "3";
 
 type MetricDef = {
   name: string;
-  historyType: 0 | 3;
+  historyType: HistoryType;
 };
+
+/* ================= CONFIG ================= */
 
 const METRICS: MetricDef[] = [
   { name: "Memory utilization", historyType: 0 },
@@ -25,56 +31,48 @@ const METRICS: MetricDef[] = [
 const ITEM_BATCH_SIZE = 5;
 const HISTORY_FETCH_DELAY_MS = 800;
 
-async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+/* ================= PATHS ================= */
+
+const DATA_DIR = path.join(process.cwd(), "data");
+const STATUS_FILE = path.join(DATA_DIR, "system_report_status.json");
+
+/* ================= HELPERS ================= */
+
+const writeStatus = (data: any) => {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(STATUS_FILE, JSON.stringify(data, null, 2), "utf8");
+};
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
   return out;
 }
 
 function formatTraffic(bitsPerSec: number) {
   const kbps = bitsPerSec / 1000;
-  if (kbps < 1000) return `${kbps.toFixed(2)} Kbps`;
-  return `${(kbps / 1000).toFixed(2)} Mbps`;
+  return kbps < 1000
+    ? `${kbps.toFixed(2)} Kbps`
+    : `${(kbps / 1000).toFixed(2)} Mbps`;
 }
 
-function escapeCsv(value: any) {
-  const str = String(value ?? "");
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
-
-function convertToCsv(headers: string[], rows: Record<string, any>[]) {
-  const lines: string[] = [];
-  lines.push(headers.map(escapeCsv).join(","));
-  for (const row of rows) {
-    lines.push(headers.map((h) => escapeCsv(row[h])).join(","));
-  }
-  return lines.join("\n");
-}
-
-function writeJobStatus(statusPath: string, data: any) {
-  const dir = path.dirname(statusPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(statusPath, JSON.stringify(data, null, 2), "utf8");
-}
+/* ================= HISTORY ================= */
 
 async function fetchHistoryPagedAndAggregate(params: {
   ZABBIX_URL: string;
   auth: string;
   httpsAgent: https.Agent;
-  historyType: 0 | 3;
+  historyType: HistoryType;
   itemids: string[];
   timeFrom: number;
   timeTill: number;
   itemToHost: Record<string, string>;
   itemToMetric: Record<string, string>;
-  hostMetricStats: Record<string, Record<string, { sum: number; count: number }>>;
+  stats: Record<string, Record<string, { sum: number; count: number }>>;
 }) {
   const {
     ZABBIX_URL,
@@ -86,105 +84,74 @@ async function fetchHistoryPagedAndAggregate(params: {
     timeTill,
     itemToHost,
     itemToMetric,
-    hostMetricStats,
+    stats,
   } = params;
 
   let lastClock = timeFrom;
-  let safetyCounter = 0;
 
   while (true) {
-    safetyCounter += 1;
-    if (safetyCounter > 2000) break;
-
-    const historyPayload = {
-      jsonrpc: "2.0",
-      method: "history.get",
-      params: {
-        history: historyType,
-        itemids,
-        time_from: lastClock,
-        time_till: timeTill,
-        sortfield: "clock",
-        sortorder: "ASC",
-        output: ["itemid", "clock", "value"],
+    const res = await axios.post(
+      ZABBIX_URL,
+      {
+        jsonrpc: "2.0",
+        method: "history.get",
+        params: {
+          history: historyType,
+          itemids,
+          time_from: lastClock,
+          time_till: timeTill,
+          sortfield: "clock",
+          sortorder: "ASC",
+          output: ["itemid", "clock", "value"],
+        },
+        id: 1,
       },
-      id: 2,
-    };
+      {
+        headers: {
+          "Content-Type": "application/json-rpc",
+          Authorization: `Bearer ${auth}`,
+        },
+        httpsAgent,
+      }
+    );
 
-    const historyRes = await axios.post(ZABBIX_URL, historyPayload, {
-      headers: {
-        "Content-Type": "application/json-rpc",
-        Authorization: `Bearer ${auth}`,
-      },
-      httpsAgent,
-      timeout: 60000,
-    });
-
-    const history: any[] = historyRes.data?.result ?? [];
-
-    await delay(HISTORY_FETCH_DELAY_MS);
-
+    const history = res.data?.result ?? [];
     if (!history.length) break;
 
     for (const h of history) {
-      const itemid = String(h.itemid);
-      const val = Number(h.value);
-      if (Number.isNaN(val)) continue;
+      const v = Number(h.value);
+      if (Number.isNaN(v)) continue;
 
-      const hostid = itemToHost[itemid];
-      const metric = itemToMetric[itemid];
+      const host = itemToHost[h.itemid];
+      const metric = itemToMetric[h.itemid];
+      if (!host || !metric) continue;
 
-      if (!hostid || !metric) continue;
-
-      if (!hostMetricStats[hostid]) hostMetricStats[hostid] = {};
-      if (!hostMetricStats[hostid][metric]) {
-        hostMetricStats[hostid][metric] = { sum: 0, count: 0 };
-      }
-
-      hostMetricStats[hostid][metric].sum += val;
-      hostMetricStats[hostid][metric].count += 1;
+      stats[host] ??= {};
+      stats[host][metric] ??= { sum: 0, count: 0 };
+      stats[host][metric].sum += v;
+      stats[host][metric].count++;
     }
 
-    const last = history[history.length - 1];
-    const nextClock = Number(last.clock) + 1;
-
-    if (!Number.isFinite(nextClock) || nextClock <= lastClock) break;
-    lastClock = nextClock;
+    lastClock = Number(history.at(-1).clock) + 1;
+    await delay(HISTORY_FETCH_DELAY_MS);
   }
 }
 
-async function generateCsvInBackground(params: {
-  jobId: string;
-  auth: string;
-  groupids: string[];
-  ZABBIX_URL: string;
-}) {
-  const { jobId, auth, groupids, ZABBIX_URL } = params;
+/* ================= GENERATOR ================= */
 
+async function generateCsv(auth: string, groupids: string[], ZABBIX_URL: string) {
   const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-  const reportsDir = path.join(process.cwd(), "public", "reports");
-  fs.mkdirSync(reportsDir, { recursive: true });
+  writeStatus({ status: "RUNNING", progress: 0 });
 
-  const statusPath = path.join(reportsDir, `status_${jobId}.json`);
+  const timeTill = Math.floor(Date.now() / 1000);
+  const timeFrom = timeTill - 30 * 24 * 60 * 60;
 
-  try {
-    writeJobStatus(statusPath, {
-      jobId,
-      status: "RUNNING",
-      progress: 0,
-      fileName: null,
-      fileUrl: null,
-      error: null,
-      data: [],
-    });
+  const metricNames = METRICS.map((m) => m.name);
 
-    const timeTill = Math.floor(Date.now() / 1000);
-    const timeFrom = timeTill - 30 * 24 * 60 * 60;
-
-    const metricNames = METRICS.map((m) => m.name);
-
-    const itemPayload = {
+  const itemRes = await axios.post(
+    ZABBIX_URL,
+    {
       jsonrpc: "2.0",
       method: "item.get",
       params: {
@@ -195,192 +162,97 @@ async function generateCsvInBackground(params: {
         selectHosts: ["name"],
       },
       id: 1,
-    };
-
-    const itemRes = await axios.post(ZABBIX_URL, itemPayload, {
+    },
+    {
       headers: {
         "Content-Type": "application/json-rpc",
         Authorization: `Bearer ${auth}`,
       },
       httpsAgent,
-      timeout: 60000,
-    });
-
-    const items: any[] = itemRes.data?.result ?? [];
-
-    if (!items.length) {
-      writeJobStatus(statusPath, {
-        jobId,
-        status: "DONE",
-        progress: 100,
-        fileName: null,
-        fileUrl: null,
-        error: null,
-        data: [],
-      });
-      return;
     }
+  );
 
-    const hostMap: Record<string, string> = {};
-    const itemToHost: Record<string, string> = {};
-    const itemToMetric: Record<string, string> = {};
-    const itemsByHistoryType: Record<"0" | "3", string[]> = { "0": [], "3": [] };
+  const items = itemRes.data?.result ?? [];
 
-    for (const it of items) {
-      const hostid = String(it.hostid);
-      const hostname = it.hosts?.[0]?.name ?? "Unknown";
-      const itemid = String(it.itemid);
-      const itemName = String(it.name);
+  const itemsByType: Record<HistoryKey, string[]> = { "0": [], "3": [] };
+  const itemToHost: Record<string, string> = {};
+  const itemToMetric: Record<string, string> = {};
+  const hostMap: Record<string, string> = {};
 
-      hostMap[hostid] = hostname;
-      itemToHost[itemid] = hostid;
+  for (const it of items) {
+    const m = METRICS.find((x) => it.name.includes(x.name));
+    const key = String(m?.historyType ?? 0) as HistoryKey;
 
-      const matchedMetric = metricNames.find((x) => itemName.includes(x)) ?? itemName;
-      itemToMetric[itemid] = matchedMetric;
-
-      const metricConfig = METRICS.find((m) => matchedMetric === m.name);
-      const histType: 0 | 3 = metricConfig?.historyType ?? 0;
-
-      itemsByHistoryType[String(histType) as "0" | "3"].push(itemid);
-    }
-
-    const hostMetricStats: Record<string, Record<string, { sum: number; count: number }>> = {};
-
-    const allTypes: Array<0 | 3> = [0, 3];
-
-    for (const histType of allTypes) {
-      const ids = itemsByHistoryType[String(histType) as "0" | "3"];
-      if (!ids || ids.length === 0) continue;
-
-      const batches = chunkArray(ids, ITEM_BATCH_SIZE);
-
-      let batchIndex = 0;
-      for (const batch of batches) {
-        batchIndex += 1;
-
-        writeJobStatus(statusPath, {
-          jobId,
-          status: "RUNNING",
-          progress: Math.round(((batchIndex - 1) / batches.length) * 100),
-          fileName: null,
-          fileUrl: null,
-          error: null,
-          data: [],
-        });
-
-        await fetchHistoryPagedAndAggregate({
-          ZABBIX_URL,
-          auth,
-          httpsAgent,
-          historyType: histType,
-          itemids: batch,
-          timeFrom,
-          timeTill,
-          itemToHost,
-          itemToMetric,
-          hostMetricStats,
-        });
-      }
-    }
-
-    const headers = ["Hostname", ...metricNames];
-
-    const jsonRows = Object.keys(hostMap).map((hostid) => {
-      const row: Record<string, any> = {};
-      row["Hostname"] = hostMap[hostid] ?? "Unknown";
-
-      for (const metricName of metricNames) {
-        const stat = hostMetricStats?.[hostid]?.[metricName];
-
-        if (!stat || stat.count === 0) {
-          row[metricName] = "N/A";
-          continue;
-        }
-
-        const avgRaw = stat.sum / stat.count;
-
-        const metricConfig = METRICS.find((m) => m.name === metricName);
-        if (metricConfig?.historyType === 3) {
-          row[metricName] = formatTraffic(avgRaw);
-        } else {
-          row[metricName] = Number(avgRaw.toFixed(2));
-        }
-      }
-
-      return row;
-    });
-
-    const csvContent = convertToCsv(headers, jsonRows);
-
-    const fileName = `history_data_${Date.now()}.csv`;
-    const filePath = path.join(reportsDir, fileName);
-
-    fs.writeFileSync(filePath, csvContent, "utf8");
-
-    writeJobStatus(statusPath, {
-      jobId,
-      status: "DONE",
-      progress: 100,
-      fileName,
-      fileUrl: `/reports/${fileName}`,
-      error: null,
-      data: jsonRows,
-    });
-  } catch (err: any) {
-    writeJobStatus(statusPath, {
-      jobId,
-      status: "FAILED",
-      progress: 0,
-      fileName: null,
-      fileUrl: null,
-      error: err?.message || "Report generation failed",
-      data: [],
-    });
+    itemsByType[key].push(it.itemid);
+    itemToHost[it.itemid] = it.hostid;
+    itemToMetric[it.itemid] = it.name;
+    hostMap[it.hostid] = it.hosts?.[0]?.name ?? "Unknown";
   }
+
+  const stats: Record<string, Record<string, { sum: number; count: number }>> =
+    {};
+
+  let completed = 0;
+  const total =
+    chunkArray(itemsByType["0"], ITEM_BATCH_SIZE).length +
+    chunkArray(itemsByType["3"], ITEM_BATCH_SIZE).length;
+
+  for (const histType of [0, 3] as const) {
+    const batches = chunkArray(itemsByType[String(histType) as HistoryKey], ITEM_BATCH_SIZE);
+
+    for (const batch of batches) {
+      await fetchHistoryPagedAndAggregate({
+        ZABBIX_URL,
+        auth,
+        httpsAgent,
+        historyType: histType,
+        itemids: batch,
+        timeFrom,
+        timeTill,
+        itemToHost,
+        itemToMetric,
+        stats,
+      });
+
+      completed++;
+      writeStatus({
+        status: "RUNNING",
+        progress: Math.round((completed / total) * 100),
+      });
+    }
+  }
+
+  const headers = ["Hostname", ...metricNames];
+  const rows = Object.keys(hostMap).map((hostid) => {
+    const row: any = { Hostname: hostMap[hostid] };
+    for (const m of METRICS) {
+      const s = stats[hostid]?.[m.name];
+      row[m.name] = !s
+        ? "N/A"
+        : m.historyType === 3
+        ? formatTraffic(s.sum / s.count)
+        : Number((s.sum / s.count).toFixed(2));
+    }
+    return row;
+  });
+
+  const csv = [headers, ...rows.map((r) => headers.map((h) => r[h]))]
+    .map((r) => r.join(","))
+    .join("\n");
+
+  const fileName = `history_system_report.csv`;
+  fs.writeFileSync(path.join(DATA_DIR, fileName), csv);
+
+  writeStatus({ status: "DONE", progress: 100, fileName });
 }
 
+/* ================= API ================= */
+
 export async function POST(req: Request) {
-  try {
-    const { auth, groupids } = await req.json();
+  const { auth, groupids } = await req.json();
+  const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL as string;
 
-    if (!auth) {
-      return NextResponse.json({ error: "Missing auth token" }, { status: 400 });
-    }
+  setTimeout(() => generateCsv(auth, groupids, ZABBIX_URL), 0);
 
-    if (!groupids || !groupids.length) {
-      return NextResponse.json({ error: "Missing groupids" }, { status: 400 });
-    }
-
-    const ZABBIX_URL = process.env.NEXT_PUBLIC_ZABBIX_URL as string;
-    if (!ZABBIX_URL) {
-      return NextResponse.json(
-        { error: "Missing NEXT_PUBLIC_ZABBIX_URL in environment" },
-        { status: 500 }
-      );
-    }
-
-    const jobId = crypto.randomUUID();
-
-    setTimeout(() => {
-      generateCsvInBackground({
-        jobId,
-        auth,
-        groupids,
-        ZABBIX_URL,
-      }).catch((e) => console.error("Background task failed:", e));
-    }, 0);
-
-    return NextResponse.json({
-      ok: true,
-      message: "Report generation started",
-      jobId,
-      // statusUrl: `/reports/status_${jobId}.json`,
-    });
-  } catch (e: any) {
-    console.error("System report error:", e?.response?.data || e?.message);
-    return NextResponse.json(
-      { error: "Server error fetching system report" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ ok: true });
 }

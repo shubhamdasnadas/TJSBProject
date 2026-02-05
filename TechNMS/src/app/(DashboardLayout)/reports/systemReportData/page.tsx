@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Card,
   Form,
@@ -15,8 +15,7 @@ import branches from "../../availability/data/data";
 import jsPDF from "jspdf";
 import dayjs from "dayjs";
 
-
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 /* ===================== CONSTANTS ===================== */
 
@@ -34,47 +33,35 @@ const COLUMN_HEADER_MAP: Record<string, string> = {
 const THRESHOLD = 75;
 const CPU_KEY = "CPU utilization";
 const MEM_KEY = "Memory utilization";
-const PRIMARY_SENT_KEY =
-  'Interface ["GigabitEthernet0/0/0"]: Bits sent';
 
 /* ===================== HELPERS ===================== */
 
 function getNumber(val: any): number | null {
-  const num = Number(String(val).trim());
-  return Number.isNaN(num) ? null : num;
+  const n = Number(String(val).replace("%", ""));
+  return Number.isNaN(n) ? null : n;
 }
 
 function getTrafficRankValue(val: any): number {
   if (!val || val === "N/A") return -1;
-  const match = String(val).match(/^([\d.]+)\s*(Kbps|Mbps|Gbps)$/i);
-  if (!match) return -1;
+  const m = String(val).match(/^([\d.]+)\s*(Kbps|Mbps|Gbps)$/i);
+  if (!m) return -1;
 
-  const num = Number(match[1]);
-  const unit = match[2].toLowerCase();
-
-  const rank =
-    unit === "kbps" ? 1 :
-      unit === "mbps" ? 2 :
-        unit === "gbps" ? 3 : 0;
-
+  const num = Number(m[1]);
+  const unit = m[2].toLowerCase();
+  const rank = unit === "kbps" ? 1 : unit === "mbps" ? 2 : 3;
   return rank * 1_000_000_000 + num;
 }
 
-const formatCellValue = (val: any) => {
-  if (val === null || val === undefined || val === "") return "-";
-  return val;
-};
-
 function getRowColorBySecondChar(hostname?: string) {
   const second = String(hostname || "")[1]?.toUpperCase() || "X";
-  const colors: Record<string, string> = {
+  const map: Record<string, string> = {
     A: "#fff7e6",
     B: "#e6f7ff",
     C: "#f6ffed",
     D: "#fff0f6",
     E: "#f9f0ff",
   };
-  return colors[second] || "#fafafa";
+  return map[second] || "#fafafa";
 }
 
 /* ===================== COMPONENT ===================== */
@@ -83,309 +70,189 @@ const SystemReportData: React.FC = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fileName, setFileName] = useState("");
 
-  const findBranch = (hostName?: string) => {
-    const match =
-      branches.find(
-        (b: any) =>
-          hostName?.includes(b.code) ||
-          hostName?.toLowerCase() === b.name.toLowerCase()
-      ) ?? null;
-    return match ? match.name : "-";
+  const findBranch = (host?: string) => {
+    const b = branches.find(
+      (x: any) =>
+        host?.includes(x.code) ||
+        host?.toLowerCase() === x.name.toLowerCase()
+    );
+    return b ? b.name : "-";
   };
 
-  /* ===================== FETCH DATA FLOW ===================== */
+  /* ===================== FETCH ===================== */
 
   const fetchCsvTable = async () => {
     try {
       setLoading(true);
 
-      // 1️⃣ Trigger history generation
-      const startRes = await axios.post(
-        "/api/api_system_report_data/get_history_data",
-        {
-          auth: localStorage.getItem("zabbix_auth"),
-          groupids: ["210"],
-        }
-      );
+      await axios.post("/api/api_system_report_data/get_history_data", {
+        auth: localStorage.getItem("zabbix_auth"),
+        groupids: ["210"],
+      });
 
-      const { statusUrl } = startRes.data;
-
-      // 2️⃣ Poll status
       while (true) {
-        const statusRes = await axios.get(statusUrl, {
-          headers: { "Cache-Control": "no-cache" },
-        });
+        const status = await axios.get("/api/api_system_report_data/readStatus");
+        message.loading(`Generating… ${status.data.progress}%`, 1);
 
-        if (statusRes.data.status === "DONE") break;
-        if (statusRes.data.status === "FAILED") {
-          throw new Error(statusRes.data.error || "Job failed");
-        }
+        if (status.data.status === "DONE") break;
+        if (status.data.status === "FAILED") throw new Error("Generation failed");
 
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 1500));
       }
 
-      // 3️⃣ Read CSV
       const csvRes = await axios.get("/api/api_system_report_data/readCsv");
-      const csvHeaders = csvRes.data?.headers ?? [];
-      const csvRows = csvRes.data?.rows ?? [];
+      setHeaders(csvRes.data.headers);
+      setRows(csvRes.data.rows.map((r: any, i: number) => ({
+        key: i,
+        Hostname: r.Hostname,
+        branch: findBranch(r.Hostname),
+        ...r,
+      })));
 
-      setHeaders(csvHeaders);
-      setFileName(csvRes.data?.fileName ?? "");
-
-      setRows(
-        csvRows.map((r: any, idx: number) => ({
-          key: `${r?.Hostname}_${idx}`,
-          Hostname: r?.Hostname ?? "-",
-          branch: findBranch(r?.Hostname),
-          ...r,
-        }))
-      );
-
-      message.success("System report loaded");
-    } catch (err: any) {
-      console.error(err);
-      message.error(err.message || "Failed to load report");
+      message.success("System report ready");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ===================== EXPORT EXCEL ===================== */
+
+  /* ===================== EXPORT CSV ===================== */
 
   const handleExportCSV = () => {
-    if (!rows.length) {
-      message.warning("No data to export");
-      return;
-    }
+    if (!rows.length) return;
 
-    // 1️⃣ Build CSV headers (mapped names)
-    const csvHeaders = headers.map(
-      (h) => COLUMN_HEADER_MAP[h] || h
-    );
+    const csvHeaders = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
+    const csvRows = rows.map((r) => headers.map((h) => r[h] ?? "-"));
 
-    // 2️⃣ Build CSV rows
-    const csvRows = rows.map((r) =>
-      headers.map((h) => {
-        const val = r[h];
-        return val === null || val === undefined || val === ""
-          ? "-"
-          : val;
-      })
-    );
-
-    // 3️⃣ CSV escape helper (same as your history export)
-    const escapeCSV = (value: any) => {
-      const str = String(value ?? "");
-      if (str.includes(",") || str.includes("\n") || str.includes('"')) {
-        return `"${str.replace(/"/g, '""')}"`;
+    const escape = (v: any) => {
+      const s = String(v ?? "");
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
       }
-      return str;
+      return s;
     };
 
-    // 4️⃣ Build CSV content
-    const csvContent = [csvHeaders, ...csvRows]
-      .map((row) => row.map(escapeCSV).join(","))
+    const csv = [csvHeaders, ...csvRows]
+      .map((r) => r.map(escape).join(","))
       .join("\n");
 
-    // 5️⃣ Download CSV
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "System-Report.csv";
     link.click();
-
-    URL.revokeObjectURL(link.href);
   };
-
 
   /* ===================== EXPORT PDF ===================== */
 
-  const handleExportPDF = async () => {
-    if (!rows.length) {
-      message.warning("No data to export");
-      return;
-    }
+  const handleExportPDF = () => {
+    if (!rows.length) return;
 
-    const pdf = new jsPDF("l", "mm", "a4"); // landscape for wide tables
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const logo = "/images/logos/techsec-logo_name.png";
-    const generatedAt = dayjs().format("DD/MM/YYYY, h:mm a");
+    const pdf = new jsPDF("l", "mm", "a4");
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
     const margin = 12;
 
-    /* ================= COMMON HELPERS ================= */
+    let y = 32;
+    const rowH = 7;
 
-    const drawPageBorder = () => {
-      pdf.setDrawColor(0);
-      pdf.setLineWidth(0.5);
-      pdf.rect(
-        margin,
-        margin,
-        pageWidth - margin * 2,
-        pageHeight - margin * 2
-      );
-    };
-
-    const drawWatermark = (opacity = 0.05) => {
-      pdf.setGState(new (pdf as any).GState({ opacity }));
-      pdf.addImage(
-        logo,
-        "PNG",
-        pageWidth / 2 - 90,
-        pageHeight / 2 - 45,
-        180,
-        90
-      );
-      pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
-    };
-
-    /* ================= PAGE HEADER ================= */
-
-    drawPageBorder();
-    drawWatermark();
-
-    // pdf.addImage(logo, "PNG", margin, margin + 2, 45, 25);
-
-    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
-    pdf.text("Techsec NMS – System Report (30 Days Avg)", pageWidth / 2, 22, {
-      align: "center",
-    });
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    // pdf.text(`Generated: ${generatedAt}`, pageWidth - margin, 22, {
-    //   align: "right",
-    // });
-
-    /* ================= TABLE CONFIG ================= */
-
-    const tableStartY = 32;
-    const rowHeight = 7;
-    let y = tableStartY;
-
-    const columnTitles = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
-    const columnWidths = columnTitles.map(() =>
-      Math.max(35, (pageWidth - margin * 2) / columnTitles.length)
+    pdf.text(
+      "Techsec NMS – System Report (30 Days Avg)",
+      pageW / 2,
+      20,
+      { align: "center" }
     );
 
-    const startX = margin;
-
-    /* ================= DRAW HEADER ================= */
+    const titles = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
+    const colW = (pageW - margin * 2) / titles.length;
 
     const drawHeader = () => {
-      pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
-
-      let x = startX;
-      columnTitles.forEach((title, i) => {
-        pdf.rect(x, y, columnWidths[i], rowHeight);
-        pdf.text(title, x + 2, y + 5);
-        x += columnWidths[i];
+      let x = margin;
+      titles.forEach((t) => {
+        pdf.rect(x, y, colW, rowH);
+        pdf.text(t, x + 2, y + 5);
+        x += colW;
       });
-
-      y += rowHeight;
-      pdf.setFont("helvetica", "normal");
+      y += rowH;
     };
 
     drawHeader();
 
-    /* ================= DRAW ROWS ================= */
-
-    rows.forEach((row) => {
-      if (y + rowHeight > pageHeight - margin) {
+    rows.forEach((r) => {
+      if (y + rowH > pageH - margin) {
         pdf.addPage();
-        drawPageBorder();
-        drawWatermark();
-        y = tableStartY;
+        y = 32;
         drawHeader();
       }
 
-      let x = startX;
-
-      headers.forEach((h, colIdx) => {
-        const value = row[h] ?? "-";
-
+      let x = margin;
+      headers.forEach((h) => {
+        const val = r[h] ?? "-";
         let highlight = false;
 
-        // 🔴 THRESHOLD LOGIC
         if (h === CPU_KEY || h === MEM_KEY) {
-          const num = Number(String(value).replace("%", ""));
-          if (!Number.isNaN(num) && num > THRESHOLD) {
-            highlight = true;
-          }
+          const n = getNumber(val);
+          if (n && n > THRESHOLD) highlight = true;
         }
 
         if (highlight) {
-          pdf.setFillColor(255, 204, 204); // light red
-          pdf.rect(x, y, columnWidths[colIdx], rowHeight, "F");
+          pdf.setFillColor(255, 204, 204);
+          pdf.rect(x, y, colW, rowH, "F");
         }
 
-        pdf.rect(x, y, columnWidths[colIdx], rowHeight);
-        pdf.text(String(value), x + 2, y + 5);
-
-        x += columnWidths[colIdx];
+        pdf.rect(x, y, colW, rowH);
+        pdf.text(String(val), x + 2, y + 5);
+        x += colW;
       });
 
-      y += rowHeight;
+      y += rowH;
     });
 
     pdf.save("Techsec-System-Report.pdf");
   };
 
-  /* ===================== TABLE COLUMNS ===================== */
+  /* ===================== TABLE ===================== */
 
   const columns = useMemo(() => {
-    const fixed = [
+    return [
       { title: "Host", dataIndex: "Hostname", fixed: "left", width: 200 },
       { title: "Branch", dataIndex: "branch", fixed: "left", width: 220 },
+      ...headers
+        .filter((h) => h !== "Hostname")
+        .map((h) => ({
+          title: COLUMN_HEADER_MAP[h] || h,
+          dataIndex: h,
+          align: "center" as const,
+          sorter:
+            h.includes("Bits sent")
+              ? (a: any, b: any) =>
+                getTrafficRankValue(b[h]) -
+                getTrafficRankValue(a[h])
+              : undefined,
+          render: (val: any) => {
+            if (!val || val === "N/A") return <Tag color="red">N/A</Tag>;
+            if (h === CPU_KEY || h === MEM_KEY) {
+              const n = getNumber(val);
+              return (
+                <div
+                  style={{
+                    background: n && n > THRESHOLD ? "#ffccc7" : "transparent",
+                    padding: 6,
+                    borderRadius: 6,
+                  }}
+                >
+                  {val}
+                </div>
+              );
+            }
+            return val;
+          },
+        })),
     ];
-
-    const dynamic = headers
-      .filter((h) => h !== "Hostname")
-      .map((h) => ({
-        title: COLUMN_HEADER_MAP[h] || h,
-        dataIndex: h,
-        align: "center" as const,
-        width: 200,
-        sorter:
-          h === PRIMARY_SENT_KEY
-            ? (a: any, b: any) =>
-              getTrafficRankValue(b[h]) -
-              getTrafficRankValue(a[h])
-            : undefined,
-        render: (val: any) => {
-          if (!val || val === "N/A") return <Tag color="red">N/A</Tag>;
-
-          if (h === CPU_KEY || h === MEM_KEY) {
-            const n = getNumber(val);
-            return (
-              <div
-                style={{
-                  background: n && n > THRESHOLD ? "#ffccc7" : "transparent",
-                  padding: 6,
-                  borderRadius: 6,
-                }}
-              >
-                {val}
-              </div>
-            );
-          }
-
-          return val;
-        },
-      }));
-
-    return [...fixed, ...dynamic];
   }, [headers]);
-
-  /* ===================== UI ===================== */
 
   return (
     <Form layout="vertical">
@@ -413,7 +280,6 @@ const SystemReportData: React.FC = () => {
         scroll={{ x: "max-content" }}
         dataSource={rows}
         columns={columns as any}
-        rowClassName={(r) => ""}
         onRow={(r) => ({
           style: { background: getRowColorBySecondChar(r.Hostname) },
         })}
