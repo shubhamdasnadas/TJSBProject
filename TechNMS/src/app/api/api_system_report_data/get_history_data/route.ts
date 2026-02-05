@@ -374,7 +374,7 @@ export async function POST(req: Request) {
       ok: true,
       message: "Report generation started",
       jobId,
-      statusUrl: `/reports/status_${jobId}.json`,
+      // statusUrl: `/reports/status_${jobId}.json`,
     });
   } catch (e: any) {
     console.error("System report error:", e?.response?.data || e?.message);
