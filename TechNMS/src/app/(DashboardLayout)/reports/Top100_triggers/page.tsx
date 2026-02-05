@@ -417,7 +417,7 @@ export default function ZabbixTopProblemsPage() {
 
   const [timeFrom, setTimeFrom] = useState<number>(Math.floor(Date.now() / 1000) - 24 * 3600);
   const [timeTill, setTimeTill] = useState<number>(Math.floor(Date.now() / 1000));
-  const [selectedSeverities, setSelectedSeverities] = useState<number[]>([1,2,3,4,5]);
+  const [selectedSeverities, setSelectedSeverities] = useState<number[]>([0,1,2,3,4,5]);
 
   const severityOptions = Object.entries(severityList).map(
     ([value, label]) => ({

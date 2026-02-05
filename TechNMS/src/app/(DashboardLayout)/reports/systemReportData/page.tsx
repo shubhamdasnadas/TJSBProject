@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Card,
   Form,
@@ -26,30 +26,41 @@ const COLUMN_HEADER_MAP: Record<string, string> = {
   "CPU utilization": "CPU Usage (Avg)",
   'Interface ["GigabitEthernet0/0/0"]: Bits sent': "Primary Sent (Avg)",
   'Interface ["GigabitEthernet0/0/0"]: Bits received': "Primary Received (Avg)",
+  'Interface ["GigabitEthernet0/0/0"]: Speed': "Primary Speed (Avg)",
   'Interface ["GigabitEthernet0/0/1"]: Bits received': "Secondary Received (Avg)",
   'Interface ["GigabitEthernet0/0/1"]: Bits sent': "Secondary Sent (Avg)",
+  'Interface ["GigabitEthernet0/0/1"]: Speed': "Secondary Speed (Avg)",
 };
 
 const THRESHOLD = 75;
 const CPU_KEY = "CPU utilization";
 const MEM_KEY = "Memory utilization";
+const PRIMARY_SENT_KEY =
+  'Interface ["GigabitEthernet0/0/0"]: Bits sent';
 
 /* ===================== HELPERS ===================== */
 
 function getNumber(val: any): number | null {
-  const n = Number(String(val).replace("%", ""));
+  if (val === null || val === undefined) return null;
+  const n = Number(String(val).replace(/[^0-9.]/g, ""));
   return Number.isNaN(n) ? null : n;
 }
 
 function getTrafficRankValue(val: any): number {
   if (!val || val === "N/A") return -1;
+
   const m = String(val).match(/^([\d.]+)\s*(Kbps|Mbps|Gbps)$/i);
   if (!m) return -1;
 
   const num = Number(m[1]);
   const unit = m[2].toLowerCase();
-  const rank = unit === "kbps" ? 1 : unit === "mbps" ? 2 : 3;
-  return rank * 1_000_000_000 + num;
+
+  const multiplier =
+    unit === "kbps" ? 1 :
+      unit === "mbps" ? 1_000 :
+        unit === "gbps" ? 1_000_000 : 0;
+
+  return num * multiplier;
 }
 
 function getRowColorBySecondChar(hostname?: string) {
@@ -68,8 +79,7 @@ function getRowColorBySecondChar(hostname?: string) {
 
 const SystemReportData: React.FC = () => {
   const [rows, setRows] = useState<any[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);          // raw keys
-  const [displayHeaders, setDisplayHeaders] = useState<string[]>([]); // mapped labels
+  const [headers, setHeaders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const findBranch = (host?: string) => {
@@ -80,6 +90,38 @@ const SystemReportData: React.FC = () => {
     );
     return b ? b.name : "-";
   };
+
+  const loadCsv = async () => {
+    const csvRes = await axios.get("/api/api_system_report_data/readCsv");
+
+    const rawHeaders: string[] = csvRes.data.headers || [];
+
+    // normalize Host → Hostname
+    const normalizedHeaders = rawHeaders.map((h) =>
+      h === "Host" ? "Hostname" : h
+    );
+
+    setHeaders(normalizedHeaders);
+
+    setRows(
+      csvRes.data.rows.map((r: any, i: number) => {
+        const hostname = r.Hostname || r.Host || "-";
+        return {
+          key: i,
+          Hostname: hostname,
+          branch: findBranch(hostname),
+          ...r,
+        };
+      })
+    );
+  };
+
+  useEffect(() => {
+    loadCsv().catch(() => {
+      // silently ignore if no CSV exists
+    });
+  }, []);
+
 
   /* ===================== FETCH ===================== */
 
@@ -97,7 +139,9 @@ const SystemReportData: React.FC = () => {
         message.loading(`Generating… ${status.data.progress}%`, 1);
 
         if (status.data.status === "DONE") break;
-        if (status.data.status === "FAILED") throw new Error("Generation failed");
+        if (status.data.status === "FAILED") {
+          throw new Error("Generation failed");
+        }
 
         await new Promise((r) => setTimeout(r, 1500));
       }
@@ -106,20 +150,23 @@ const SystemReportData: React.FC = () => {
 
       const rawHeaders: string[] = csvRes.data.headers || [];
 
-      setHeaders(rawHeaders);
-
-      // ✅ MAP HEADERS USING COLUMN_HEADER_MAP
-      setDisplayHeaders(
-        rawHeaders.map((h) => COLUMN_HEADER_MAP[h] || h)
+      /* 🔧 FIX: normalize Host column */
+      const normalizedHeaders = rawHeaders.map((h) =>
+        h === "Host" ? "Hostname" : h
       );
 
+      setHeaders(normalizedHeaders);
+
       setRows(
-        csvRes.data.rows.map((r: any, i: number) => ({
-          key: i,
-          Hostname: r.Hostname,
-          branch: findBranch(r.Hostname),
-          ...r,
-        }))
+        csvRes.data.rows.map((r: any, i: number) => {
+          const hostname = r.Hostname || r.Host || "-";
+          return {
+            key: i,
+            Hostname: hostname,
+            branch: findBranch(hostname),
+            ...r,
+          };
+        })
       );
 
       message.success("System report ready");
@@ -135,6 +182,7 @@ const SystemReportData: React.FC = () => {
   const handleExportCSV = () => {
     if (!rows.length) return;
 
+    const csvHeaders = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
     const csvRows = rows.map((r) => headers.map((h) => r[h] ?? "-"));
 
     const escape = (v: any) => {
@@ -145,7 +193,7 @@ const SystemReportData: React.FC = () => {
       return s;
     };
 
-    const csv = [displayHeaders, ...csvRows]
+    const csv = [csvHeaders, ...csvRows]
       .map((r) => r.map(escape).join(","))
       .join("\n");
 
@@ -165,7 +213,6 @@ const SystemReportData: React.FC = () => {
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 12;
-
     let y = 32;
     const rowH = 7;
 
@@ -177,12 +224,13 @@ const SystemReportData: React.FC = () => {
       { align: "center" }
     );
 
-    const colW = (pageW - margin * 2) / displayHeaders.length;
+    const titles = headers.map((h) => COLUMN_HEADER_MAP[h] || h);
+    const colW = (pageW - margin * 2) / titles.length;
 
     const drawHeader = () => {
       pdf.setFontSize(8);
       let x = margin;
-      displayHeaders.forEach((t) => {
+      titles.forEach((t) => {
         pdf.rect(x, y, colW, rowH);
         pdf.text(t, x + 2, y + 5);
         x += colW;
@@ -234,14 +282,14 @@ const SystemReportData: React.FC = () => {
       ...headers
         .filter((h) => h !== "Hostname")
         .map((h) => ({
-          title: displayHeaders[headers.indexOf(h)] || h,
+          title: COLUMN_HEADER_MAP[h] || h,
           dataIndex: h,
           align: "center" as const,
           sorter:
-            h.includes("Bits sent")
+            h === PRIMARY_SENT_KEY
               ? (a: any, b: any) =>
-                  getTrafficRankValue(b[h]) -
-                  getTrafficRankValue(a[h])
+                getTrafficRankValue(b[h]) -
+                getTrafficRankValue(a[h])
               : undefined,
           render: (val: any) => {
             if (!val || val === "N/A") return <Tag color="red">N/A</Tag>;
@@ -263,7 +311,7 @@ const SystemReportData: React.FC = () => {
           },
         })),
     ];
-  }, [headers, displayHeaders]);
+  }, [headers]);
 
   /* ===================== UI ===================== */
 
