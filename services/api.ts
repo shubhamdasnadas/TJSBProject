@@ -31,6 +31,14 @@ const handleResponse = async (res: Response) => {
   return res.json();
 };
 
+const isNewRecord = (id: string | number | undefined): boolean => {
+    if (!id) return true;
+    const idStr = String(id);
+    // If ID is a long timestamp (frontend generated) or NaN, it's new.
+    // If ID is a small numeric string (Postgres serial), it's existing.
+    return idStr.length > 10 || isNaN(Number(idStr));
+};
+
 export const apiService = {
   getApiBase,
 
@@ -61,8 +69,7 @@ export const apiService = {
   },
 
   saveUser: async (item: UserItem): Promise<UserItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
+    const isNew = isNewRecord(item.id);
     const url = isNew ? `${getApiBase()}/users` : `${getApiBase()}/users/${item.id}`;
     const method = isNew ? 'POST' : 'PUT';
     const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
@@ -79,8 +86,7 @@ export const apiService = {
   },
   
   saveHardware: async (item: HardwareItem): Promise<HardwareItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
+    const isNew = isNewRecord(item.id);
     const url = isNew ? `${getApiBase()}/hardware` : `${getApiBase()}/hardware/${item.id}`;
     const method = isNew ? 'POST' : 'PUT';
     const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
@@ -97,11 +103,15 @@ export const apiService = {
   },
 
   saveSoftware: async (item: SoftwareItem): Promise<SoftwareItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
+    const isNew = isNewRecord(item.id);
     const url = isNew ? `${getApiBase()}/software` : `${getApiBase()}/software/${item.id}`;
     const method = isNew ? 'POST' : 'PUT';
-    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
+    
+    const res = await fetch(url, { 
+        method, 
+        headers: getHeaders(), 
+        body: JSON.stringify(item) 
+    });
     return handleResponse(res);
   },
 
@@ -125,8 +135,7 @@ export const apiService = {
   },
 
   saveDepartment: async (item: DepartmentItem): Promise<DepartmentItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
+    const isNew = isNewRecord(item.id);
     const url = isNew ? `${getApiBase()}/departments` : `${getApiBase()}/departments/${item.id}`;
     const method = isNew ? 'POST' : 'PUT';
     const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
@@ -149,8 +158,7 @@ export const apiService = {
   },
 
   saveLocation: async (item: LocationItem): Promise<LocationItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
+    const isNew = isNewRecord(item.id);
     const url = isNew ? `${getApiBase()}/locations` : `${getApiBase()}/locations/${item.id}`;
     const method = isNew ? 'POST' : 'PUT';
     const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
@@ -167,8 +175,7 @@ export const apiService = {
   },
 
   saveNetworkDevice: async (item: NetworkItem): Promise<NetworkItem> => {
-    const idStr = String(item.id);
-    const isNew = idStr.length > 10 || idStr.includes('.');
+    const isNew = isNewRecord(item.id);
     const url = isNew ? `${getApiBase()}/network` : `${getApiBase()}/network/${item.id}`;
     const method = isNew ? 'POST' : 'PUT';
     const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
