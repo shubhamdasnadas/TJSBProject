@@ -40,9 +40,15 @@ const PRIMARY_SENT_KEY =
 
 /* ===================== HELPERS ===================== */
 
+/* 🔧 UPDATED (robust but same responsibility) */
 function getNumber(val: any): number | null {
   if (val === null || val === undefined) return null;
-  const n = Number(String(val).replace(/[^0-9.]/g, ""));
+
+  // supports: 78, "78", "78.2", "78.2 (HIGH)"
+  const match = String(val).match(/[\d.]+/);
+  if (!match) return null;
+
+  const n = Number(match[0]);
   return Number.isNaN(n) ? null : n;
 }
 
@@ -96,7 +102,6 @@ const SystemReportData: React.FC = () => {
 
     const rawHeaders: string[] = csvRes.data.headers || [];
 
-    // normalize Host → Hostname
     const normalizedHeaders = rawHeaders.map((h) =>
       h === "Host" ? "Hostname" : h
     );
@@ -117,11 +122,8 @@ const SystemReportData: React.FC = () => {
   };
 
   useEffect(() => {
-    loadCsv().catch(() => {
-      // silently ignore if no CSV exists
-    });
+    loadCsv().catch(() => { });
   }, []);
-
 
   /* ===================== FETCH ===================== */
 
@@ -146,29 +148,7 @@ const SystemReportData: React.FC = () => {
         await new Promise((r) => setTimeout(r, 1500));
       }
 
-      const csvRes = await axios.get("/api/api_system_report_data/readCsv");
-
-      const rawHeaders: string[] = csvRes.data.headers || [];
-
-      /* 🔧 FIX: normalize Host column */
-      const normalizedHeaders = rawHeaders.map((h) =>
-        h === "Host" ? "Hostname" : h
-      );
-
-      setHeaders(normalizedHeaders);
-
-      setRows(
-        csvRes.data.rows.map((r: any, i: number) => {
-          const hostname = r.Hostname || r.Host || "-";
-          return {
-            key: i,
-            Hostname: hostname,
-            branch: findBranch(hostname),
-            ...r,
-          };
-        })
-      );
-
+      await loadCsv();
       message.success("System report ready");
     } catch (e: any) {
       message.error(e?.message || "Failed to load report");
@@ -182,7 +162,6 @@ const SystemReportData: React.FC = () => {
   const handleExportCSV = () => {
     if (!rows.length) return;
 
-    // ✅ ADD branch explicitly for export
     const exportHeaders = ["Hostname", "branch", ...headers.filter(h => h !== "Hostname")];
 
     const csvHeaders = exportHeaders.map(
@@ -212,7 +191,6 @@ const SystemReportData: React.FC = () => {
     link.click();
   };
 
-
   /* ===================== EXPORT PDF ===================== */
 
   const handleExportPDF = () => {
@@ -225,7 +203,6 @@ const SystemReportData: React.FC = () => {
     let y = 32;
     const rowH = 7;
 
-    // ✅ ADD branch explicitly for export
     const exportHeaders = ["Hostname", "branch", ...headers.filter(h => h !== "Hostname")];
     const titles = exportHeaders.map((h) => COLUMN_HEADER_MAP[h] || h);
     const colW = (pageW - margin * 2) / titles.length;
@@ -285,7 +262,6 @@ const SystemReportData: React.FC = () => {
     pdf.save("Techsec-System-Report.pdf");
   };
 
-
   /* ===================== TABLE ===================== */
 
   const columns = useMemo(() => {
@@ -299,29 +275,50 @@ const SystemReportData: React.FC = () => {
           dataIndex: h,
           align: "center" as const,
           sorter:
-            h === PRIMARY_SENT_KEY
+            h === "Primary Sent"
               ? (a: any, b: any) =>
-                getTrafficRankValue(b[h]) -
-                getTrafficRankValue(a[h])
+                getTrafficRankValue(b[h]) - getTrafficRankValue(a[h])
               : undefined,
+
+          sortDirections: ["descend", "ascend"] as any,
+
+
+          /* 🎨 UPDATED ONLY HERE */
           render: (val: any) => {
-            if (!val || val === "N/A") return <Tag color="red">N/A</Tag>;
-            if (h === CPU_KEY || h === MEM_KEY) {
+            if (val === null || val === undefined || val === "N/A") {
+              return <Tag color="red">N/A</Tag>;
+            }
+
+            const columnTitle = COLUMN_HEADER_MAP[h] || h;
+
+            if (
+              h === CPU_KEY ||
+              h === MEM_KEY ||
+              columnTitle === "CPU Usage" ||
+              columnTitle === "Memory Usage"
+            ) {
               const n = getNumber(val);
+              const isHigh = typeof n === "number" && n > THRESHOLD;
+
               return (
                 <div
                   style={{
-                    background: n && n > THRESHOLD ? "#ffccc7" : "transparent",
-                    padding: 6,
+                    backgroundColor: isHigh ? "#ff4d4f" : "transparent",
+                    color: isHigh ? "#fff" : "inherit",
+                    padding: "6px 8px",
                     borderRadius: 6,
+                    fontWeight: isHigh ? 600 : 400,
+                    textAlign: "center",
                   }}
                 >
                   {val}
                 </div>
               );
             }
+
             return val;
           },
+
         })),
     ];
   }, [headers]);

@@ -44,8 +44,8 @@ const COLUMN_HEADER_MAP: Record<string, string> = {
 };
 
 /* ⚡ SPEED TUNING */
-const ITEM_BATCH_SIZE = 15;          // ⬆️ was 5
-const HISTORY_FETCH_DELAY_MS = 150;  // ⬇️ was 800
+const ITEM_BATCH_SIZE = 5;          // ⬆️ was 5
+const HISTORY_FETCH_DELAY_MS = 800;  // ⬇️ was 800
 
 const THRESHOLD = 75;
 
