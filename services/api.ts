@@ -36,7 +36,7 @@ export const apiService = {
 
   checkHealth: async (): Promise<boolean> => {
     try {
-        const res = await fetch(`${getApiBase()}/health`, { method: 'GET', signal: AbortSignal.timeout(1000) });
+        const res = await fetch(`${getApiBase()}/health`, { method: 'GET', signal: AbortSignal.timeout(1500) });
         return res.ok;
     } catch (e) { return false; }
   },
@@ -105,8 +105,8 @@ export const apiService = {
     return handleResponse(res);
   },
 
-  getPasswords: async (): Promise<PasswordItem[]> => {
-    return []; // Secrets handled separately if needed
+  deleteSoftware: async (id: string) => {
+    await fetch(`${getApiBase()}/software/${id}`, { method: 'DELETE', headers: getHeaders() });
   },
 
   getLifecycle: async (): Promise<LifecycleEvent[]> => {
@@ -157,7 +157,6 @@ export const apiService = {
     return handleResponse(res);
   },
 
-  // Added missing deleteLocation method
   deleteLocation: async (id: string): Promise<void> => {
     await fetch(`${getApiBase()}/locations/${id}`, { method: 'DELETE', headers: getHeaders() });
   },
@@ -165,6 +164,19 @@ export const apiService = {
   getNetworkDevices: async (): Promise<NetworkItem[]> => {
       const res = await fetch(`${getApiBase()}/network`, { headers: getHeaders() });
       return handleResponse(res);
+  },
+
+  saveNetworkDevice: async (item: NetworkItem): Promise<NetworkItem> => {
+    const idStr = String(item.id);
+    const isNew = idStr.length > 10 || idStr.includes('.');
+    const url = isNew ? `${getApiBase()}/network` : `${getApiBase()}/network/${item.id}`;
+    const method = isNew ? 'POST' : 'PUT';
+    const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(item) });
+    return handleResponse(res);
+  },
+
+  deleteNetworkDevice: async (id: string): Promise<void> => {
+    await fetch(`${getApiBase()}/network/${id}`, { method: 'DELETE', headers: getHeaders() });
   },
 
   getAlertDefinitions: async (): Promise<AlertDefinition[]> => {
@@ -178,11 +190,8 @@ export const apiService = {
   },
 
   getOrganizations: async (): Promise<Organization[]> => { return []; },
-  // Fixed createOrganization parameter signature
   createOrganization: async (payload: { code: string, name: string }): Promise<Organization> => { return {} as Organization; },
   getAdmins: async (): Promise<ConsoleAdmin[]> => { return []; },
-  // Fixed createAdmin parameter signature
   createAdmin: async (payload: any): Promise<ConsoleAdmin> => { return {} as ConsoleAdmin; },
-  // Fixed deleteAdmin parameter signature
   deleteAdmin: async (id: string): Promise<void> => {}
 };
