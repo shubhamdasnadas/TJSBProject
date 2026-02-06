@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { UserItem, DepartmentItem, HardwareItem, SoftwareItem } from '../types';
-import { Plus, Trash2, Edit2, Mail, Briefcase, Building, Monitor, Disc, AlertTriangle, ArrowRight, Eye, CheckCircle2, List, LayoutGrid, User, Search, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Mail, Briefcase, Building, Monitor, Disc, AlertTriangle, ArrowRight, Eye, CheckCircle2, List, LayoutGrid, User } from 'lucide-react';
 
 interface UsersViewProps {
   items: UserItem[];
@@ -31,7 +31,6 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [editingItem, setEditingItem] = useState<UserItem | null>(null);
   const [formData, setFormData] = useState<Partial<UserItem>>({});
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
-  const [searchTerm, setSearchTerm] = useState('');
   
   // View Assets Modal State
   const [viewingUser, setViewingUser] = useState<UserItem | null>(null);
@@ -181,42 +180,13 @@ export const UsersView: React.FC<UsersViewProps> = ({
     });
   };
 
-  // Filter Logic: Search by name, role, and department
-  const filteredUsers = items.filter(user => {
-    const term = searchTerm.toLowerCase();
-    return (
-      user.name.toLowerCase().includes(term) ||
-      (user.role || '').toLowerCase().includes(term) ||
-      (user.department || '').toLowerCase().includes(term)
-    );
-  });
-
   const allDepts = Array.from(new Set(items.map(u => u.department || 'Unassigned')));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Users & Employees</h2>
-        <div className="flex gap-3 w-full md:w-auto">
-            {/* Search Input Box */}
-            <div className="relative flex-1 md:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                    type="text" 
-                    placeholder="Search by name, role, or dept..."
-                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm shadow-sm transition-all"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {searchTerm && (
-                    <button 
-                        onClick={() => setSearchTerm('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <X size={14} />
-                    </button>
-                )}
-            </div>
+        <div className="flex gap-3">
             <div className="flex bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
                 <button 
                     onClick={() => setViewMode('list')}
@@ -233,8 +203,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     <LayoutGrid size={18} />
                 </button>
             </div>
-            <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm shrink-0 font-medium">
-                <Plus size={18} /> <span className="hidden sm:inline">Add User</span>
+            <button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+            <Plus size={18} /> Add User
             </button>
         </div>
       </div>
@@ -254,60 +224,54 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {filteredUsers.length === 0 ? (
-                            <tr>
-                                <td colSpan={6} className="p-12 text-center text-slate-400 italic">No matching users found for "{searchTerm}".</td>
-                            </tr>
-                        ) : (
-                            filteredUsers.map(item => {
-                                const userHwCount = hardware.filter(h => h.assignedTo === item.name).length;
-                                const userSwCount = software.filter(s => s.assignedTo?.some(a => a.username === item.name)).length;
-                                return (
-                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">
-                                                    {item.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div className="font-bold text-slate-900">{item.name}</div>
+                        {items.map(item => {
+                            const userHwCount = hardware.filter(h => h.assignedTo === item.name).length;
+                            const userSwCount = software.filter(s => s.assignedTo?.some(a => a.username === item.name)).length;
+                            return (
+                                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                                {item.name.charAt(0).toUpperCase()}
                                             </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="text-sm font-medium text-slate-800">{item.role || 'Unspecified'}</div>
-                                            <div className="text-xs text-slate-500">{item.department || 'No Dept'} {item.hod ? `(HOD: ${item.hod})` : ''}</div>
-                                        </td>
-                                        <td className="p-4 text-sm text-slate-600">
-                                            {item.email || '-'}
-                                        </td>
-                                        <td className="p-4">
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${item.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <div className="flex justify-center gap-2">
-                                                {userHwCount > 0 && <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs border border-blue-100 flex items-center gap-1" title="Devices"><Monitor size={10}/> {userHwCount}</span>}
-                                                {userSwCount > 0 && <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-xs border border-emerald-100 flex items-center gap-1" title="Licenses"><Disc size={10}/> {userSwCount}</span>}
-                                                {userHwCount === 0 && userSwCount === 0 && <span className="text-slate-300">-</span>}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button 
-                                                    onClick={() => setViewingUser(item)}
-                                                    title="View Assets"
-                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-50 transition-colors"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                <button onClick={() => handleEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-50 transition-colors"><Edit2 size={16} /></button>
-                                                <button onClick={() => handleDeleteClick(item)} className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-slate-50 transition-colors"><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
+                                            <div className="font-bold text-slate-900">{item.name}</div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-sm font-medium text-slate-800">{item.role || 'Unspecified'}</div>
+                                        <div className="text-xs text-slate-500">{item.department || 'No Dept'} {item.hod ? `(HOD: ${item.hod})` : ''}</div>
+                                    </td>
+                                    <td className="p-4 text-sm text-slate-600">
+                                        {item.email || '-'}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${item.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                            {item.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <div className="flex justify-center gap-2">
+                                            {userHwCount > 0 && <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs border border-blue-100 flex items-center gap-1" title="Devices"><Monitor size={10}/> {userHwCount}</span>}
+                                            {userSwCount > 0 && <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-xs border border-emerald-100 flex items-center gap-1" title="Licenses"><Disc size={10}/> {userSwCount}</span>}
+                                            {userHwCount === 0 && userSwCount === 0 && <span className="text-slate-300">-</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <button 
+                                                onClick={() => setViewingUser(item)}
+                                                title="View Assets"
+                                                className="p-1.5 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-50"
+                                            >
+                                                <Eye size={16} />
+                                            </button>
+                                            <button onClick={() => handleEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-50"><Edit2 size={16} /></button>
+                                            <button onClick={() => handleDeleteClick(item)} className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-slate-50"><Trash2 size={16} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -315,8 +279,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
       ) : (
           <div className="flex overflow-x-auto pb-4 gap-6 animate-in fade-in duration-300">
               {allDepts.map(dept => {
-                  const usersInDept = filteredUsers.filter(u => (u.department || 'Unassigned') === dept);
-                  if (searchTerm && usersInDept.length === 0) return null;
+                  const usersInDept = items.filter(u => (u.department || 'Unassigned') === dept);
                   
                   return (
                       <div key={dept} className="flex-none w-80 flex flex-col">
@@ -326,15 +289,15 @@ export const UsersView: React.FC<UsersViewProps> = ({
                           </div>
                           <div className={`bg-slate-50/50 p-2 rounded-b-xl border-x border-b border-slate-200 min-h-[200px] space-y-2`}>
                               {usersInDept.map(user => (
-                                  <div key={user.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md cursor-pointer group relative overflow-hidden transition-all" onClick={() => handleEdit(user)}>
+                                  <div key={user.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md cursor-pointer group relative overflow-hidden" onClick={() => handleEdit(user)}>
                                       <div className={`absolute top-0 left-0 w-1 h-full ${user.status === 'Active' ? 'bg-green-400' : 'bg-red-400'}`}></div>
                                       <div className="flex justify-between items-start mb-1 pl-2">
-                                          <div className="font-bold text-sm text-slate-800 truncate">{user.name}</div>
+                                          <div className="font-bold text-sm text-slate-800">{user.name}</div>
                                           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                               <Edit2 size={12} className="text-slate-400"/>
                                           </div>
                                       </div>
-                                      <div className="text-xs text-slate-500 pl-2 mb-2 truncate">{user.role}</div>
+                                      <div className="text-xs text-slate-500 pl-2 mb-2">{user.role}</div>
                                       <div className="flex items-center gap-2 text-xs border-t border-slate-100 pt-2 mt-2 pl-2">
                                           <Mail size={10} className="text-slate-400"/>
                                           <span className="truncate text-slate-600">{user.email || 'No Email'}</span>
@@ -342,7 +305,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                                   </div>
                               ))}
                               {usersInDept.length === 0 && (
-                                  <div className="text-center py-4 text-slate-400 text-xs italic">No matching users</div>
+                                  <div className="text-center py-4 text-slate-400 text-xs italic">No users</div>
                               )}
                           </div>
                       </div>
@@ -351,7 +314,6 @@ export const UsersView: React.FC<UsersViewProps> = ({
           </div>
       )}
 
-      {/* Existing Modals */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
@@ -431,7 +393,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                    />
               </div>
               
-              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg mt-4 hover:bg-blue-700 font-medium transition-colors">Save User</button>
+              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg mt-4 hover:bg-blue-700 font-medium">Save User</button>
             </form>
           </div>
         </div>
@@ -455,6 +417,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                 </div>
                 
                 <div className="p-6 overflow-y-auto space-y-8">
+                    {/* Hardware Section */}
                     <div>
                         <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Monitor size={16}/> Assigned Hardware
@@ -462,7 +425,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         {hardware.filter(h => h.assignedTo === viewingUser.name).length > 0 ? (
                             <div className="border border-slate-200 rounded-lg divide-y divide-slate-100">
                                 {hardware.filter(h => h.assignedTo === viewingUser.name).map(h => (
-                                    <div key={h.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                    <div key={h.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
                                         <div>
                                             <div className="font-bold text-slate-800">{h.name}</div>
                                             <div className="text-xs text-slate-500">{h.manufacturer} {h.model} • SN: {h.serialNumber}</div>
@@ -478,6 +441,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         )}
                     </div>
 
+                    {/* Software Section */}
                     <div>
                         <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Disc size={16}/> Assigned Software
@@ -485,7 +449,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         {software.filter(s => s.assignedTo?.some(a => a.username === viewingUser.name)).length > 0 ? (
                             <div className="border border-slate-200 rounded-lg divide-y divide-slate-100">
                                 {software.filter(s => s.assignedTo?.some(a => a.username === viewingUser.name)).map(s => (
-                                    <div key={s.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                    <div key={s.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
                                         <div>
                                             <div className="font-bold text-slate-800">{s.name}</div>
                                             <div className="text-xs text-slate-500">Version: {s.version}</div>
@@ -587,7 +551,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         </button>
                         <button 
                             onClick={confirmConflictResolution}
-                            className={`px-6 py-2 text-white rounded-lg shadow-sm font-medium flex items-center gap-2 transition-colors ${actionType === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                            className={`px-6 py-2 text-white rounded-lg shadow-sm font-medium flex items-center gap-2 ${actionType === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}
                         >
                             {Object.keys(reassignmentMap).length > 0 ? <CheckCircle2 size={16}/> : <AlertTriangle size={16}/>}
                             Confirm & {actionType === 'delete' ? 'Delete' : 'Deactivate'}
