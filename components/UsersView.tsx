@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { UserItem, DepartmentItem, HardwareItem, SoftwareItem } from '../types';
 import { Plus, Trash2, Edit2, Mail, Briefcase, Building, Monitor, Disc, AlertTriangle, ArrowRight, Eye, CheckCircle2, List, LayoutGrid, User, Search, X, Upload, Download, Loader2, Fingerprint, IdCard, FileSpreadsheet, Info, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface UsersViewProps {
   items: UserItem[];
@@ -73,98 +74,109 @@ export const UsersView: React.FC<UsersViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processImportRows = async (data: any[]) => {
+    const report: ImportReport = { successes: [], updates: [], failures: [] };
+    
+    for (let i = 0; i < data.length; i++) {
+        const rowNum = i + 2;
+        const row = data[i];
+        
+        // Handle both CSV array columns and Excel object keys
+        let name = row.name || row[1] || row["Full Name"] || "";
+        let email = row.email || row[2] || row["Email"] || "";
+        let dept = row.department || row[3] || row["Dept"] || "";
+        let hod = row.hod || row[4] || row["HOD"] || "";
+        let role = row.role || row[5] || row["Designation"] || "";
+        let statusInput = row.status || row[6] || "Active";
+        let empCode = row.emp_code || row.empCode || row[7] || row["Employee Code"] || row["ID"] || "";
+
+        // Fallback for simple single-column or loosely formatted rows
+        if (!name && typeof row === 'object') {
+            const vals = Object.values(row);
+            name = String(vals[0] || "");
+        }
+
+        const status: 'Active' | 'Inactive' = String(statusInput).toLowerCase().includes('inactive') ? 'Inactive' : 'Active';
+
+        if (!empCode) empCode = `EMP-TEMP-${rowNum}`;
+        const cleanEmpCode = String(empCode).toUpperCase();
+
+        const existingUser = items.find(u => u.empCode === cleanEmpCode);
+
+        const user: UserItem = {
+            id: existingUser ? existingUser.id : (Date.now().toString() + Math.random().toString().slice(2, 5)),
+            name: name || (existingUser?.name) || 'Imported User',
+            empCode: cleanEmpCode,
+            email: email || (existingUser?.email) || '',
+            department: dept || (existingUser?.department) || '',
+            role: role || (existingUser?.role) || '',
+            hod: hod || (existingUser?.hod) || '',
+            status: status
+        };
+
+        try {
+            await onSave(user);
+            if (existingUser) report.updates.push(String(name));
+            else report.successes.push(String(name));
+        } catch (err: any) {
+            report.failures.push({ 
+                row: rowNum, 
+                name: String(name), 
+                reason: err.message || 'Server Reject', 
+                raw: JSON.stringify(row) 
+            });
+        }
+    }
+    return report;
+  };
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsImporting(true);
-    setBulkStatus('Syncing with database...');
+    setBulkStatus('Processing file...');
     setImportReport(null);
 
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
     const reader = new FileReader();
+
     reader.onload = async (event) => {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        
-        if (lines.length < 2) {
-            setBulkStatus('Error: CSV file is empty.');
-            setIsImporting(false);
-            return;
-        }
-
-        const dataLines = lines.slice(1);
-        const report: ImportReport = { successes: [], updates: [], failures: [] };
-
-        for (let i = 0; i < dataLines.length; i++) {
-            const rowNum = i + 2;
-            const line = dataLines[i];
+        try {
+            let data: any[] = [];
             
-            const delimiter = line.includes('\t') ? '\t' : ',';
-            const regex = new RegExp(`${delimiter}(?=(?:(?:[^"]*"){2})*[^"]*$)`);
-            let cols = line.split(regex).map(c => c.trim().replace(/^"|"$/g, ''));
-            
-            if (cols.length < 2) continue;
-
-            let name = "";
-            let email = "";
-            let empCode = "";
-            let dept = "";
-            let status: 'Active' | 'Inactive' = 'Active';
-            let role = "";
-            let hod = "";
-
-            if (cols.length >= 8) {
-                name = cols[1];
-                email = cols[2];
-                dept = cols[3];
-                hod = cols[4];
-                role = cols[5];
-                status = cols[6].toLowerCase().includes('inactive') ? 'Inactive' : 'Active';
-                empCode = cols[7];
+            if (isExcel) {
+                const bstr = event.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                data = XLSX.utils.sheet_to_json(ws);
             } else {
-                name = cols[0];
-                cols.forEach((val, idx) => {
-                    const low = val.toLowerCase();
-                    if (val.includes('@')) email = val;
-                    else if (low === 'active' || low === 'inactive') status = low === 'inactive' ? 'Inactive' : 'Active';
-                    else if (val.includes('-') && idx > 1) empCode = val;
+                const text = event.target?.result as string;
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) throw new Error("File is empty or has no data rows.");
+                
+                const dataLines = lines.slice(1);
+                data = dataLines.map(line => {
+                    const delimiter = line.includes('\t') ? '\t' : ',';
+                    const regex = new RegExp(`${delimiter}(?=(?:(?:[^"]*"){2})*[^"]*$)`);
+                    return line.split(regex).map(c => c.trim().replace(/^"|"$/g, ''));
                 });
             }
 
-            if (!empCode) empCode = `EMP-TEMP-${rowNum}`;
-            const cleanEmpCode = empCode.toUpperCase();
-
-            // UPSERT LOGIC: Check if this emp_code already exists
-            const existingUser = items.find(u => u.empCode === cleanEmpCode);
-
-            const user: UserItem = {
-                // If it exists, use the existing ID (triggers Update in API)
-                // If new, use a temporary unique string (triggers Insert in API)
-                id: existingUser ? existingUser.id : (Date.now().toString() + Math.random().toString().slice(2, 5)),
-                name: name || (existingUser?.name) || 'Imported User',
-                empCode: cleanEmpCode,
-                email: email || (existingUser?.email) || '',
-                department: dept || (existingUser?.department) || '',
-                role: role || (existingUser?.role) || '',
-                hod: hod || (existingUser?.hod) || '',
-                status: status
-            };
-
-            try {
-                await onSave(user);
-                if (existingUser) report.updates.push(name);
-                else report.successes.push(name);
-            } catch (err: any) {
-                report.failures.push({ row: rowNum, name: name, reason: err.message || 'Server Reject', raw: line });
-            }
+            const report = await processImportRows(data);
+            setImportReport(report);
+            setBulkStatus(`Success: ${report.successes.length} New, ${report.updates.length} Updated, ${report.failures.length} Failed.`);
+        } catch (err: any) {
+            setBulkStatus(`Error: ${err.message}`);
+        } finally {
+            setIsImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
-
-        setImportReport(report);
-        setBulkStatus(`Success: ${report.successes.length} New, ${report.updates.length} Updated, ${report.failures.length} Failed.`);
-        setIsImporting(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
     };
-    reader.readAsText(file);
+
+    if (isExcel) reader.readAsBinaryString(file);
+    else reader.readAsText(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -195,7 +207,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                 <Building size={24} className="text-blue-600" /> Employee Console
             </h2>
-            <p className="text-sm text-slate-500 mt-1">Intelligent registry with auto-update for duplicate employee codes.</p>
+            <p className="text-sm text-slate-500 mt-1">Intelligent registry supporting Excel (.xlsx) and CSV with auto-upsert.</p>
         </div>
         <div className="flex gap-3 w-full md:w-auto flex-wrap">
             <div className="relative flex-1 md:w-64">
@@ -214,14 +226,14 @@ export const UsersView: React.FC<UsersViewProps> = ({
             </button>
 
             <div className="flex bg-slate-900 rounded-lg overflow-hidden shadow-lg shadow-slate-200">
-                <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleCsvImport} />
+                <input type="file" accept=".csv,.xlsx,.xls" className="hidden" ref={fileInputRef} onChange={handleFileImport} />
                 <button 
                     onClick={() => fileInputRef.current?.click()} 
                     disabled={isImporting}
                     className="hover:bg-black text-white px-4 py-2 flex items-center gap-2 font-medium border-r border-slate-700"
                 >
                     {isImporting ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />} 
-                    Import CSV
+                    Import XLS/CSV
                 </button>
                 <button 
                     onClick={() => setShowSampleData(!showSampleData)}
@@ -238,7 +250,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
           <div className="bg-slate-800 rounded-xl p-6 text-white animate-in zoom-in-95 duration-200 shadow-xl border border-slate-700">
               <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-blue-400 flex items-center gap-2 uppercase text-xs tracking-widest">
-                      <FileSpreadsheet size={16}/> Correct CSV Structure
+                      <FileSpreadsheet size={16}/> Correct Data Structure
                   </h3>
                   <div className="flex gap-2">
                     <button onClick={copySampleToClipboard} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
@@ -250,19 +262,17 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     </button>
                   </div>
               </div>
+              <p className="text-xs text-slate-400 mb-3">You can upload a CSV with these headers or an Excel file where columns are labeled "Name", "ID", "Email", etc.</p>
               <pre className="bg-black/40 p-4 rounded-lg font-mono text-[11px] overflow-x-auto text-blue-100/80 border border-white/5 whitespace-pre-wrap leading-relaxed">
                   {sampleCsvText}
               </pre>
-              <div className="text-[10px] text-slate-400 mt-3 flex items-center gap-4 italic">
-                  <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-green-500"/> "Upsert" Active: Existing codes will update details automatically.</span>
-              </div>
           </div>
       )}
 
       {bulkStatus && (
-          <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 ${bulkStatus.includes('Failed') && !bulkStatus.includes('0 Failed') ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+          <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 ${bulkStatus.includes('Error') || (importReport && importReport.failures.length > 0) ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
               <div className="flex items-center gap-3 font-bold text-sm">
-                  {bulkStatus.includes('Failed') && !bulkStatus.includes('0 Failed') ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
+                  {bulkStatus.includes('Error') ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
                   {bulkStatus}
                   {importReport && importReport.failures.length > 0 && (
                       <button onClick={() => setShowFullReport(!showFullReport)} className="underline ml-4 text-xs font-bold">Show Error Log</button>
